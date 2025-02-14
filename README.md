@@ -10,6 +10,8 @@ This will be the backend for "Nogler", a multiplayer game based on "balatro" by 
 
 - [@octokatherine](https://www.github.com/octokatherine)
 
+- [@JSerranom04](https://github.com/JSerranom04)
+
 _(add here github of authors, Nicolas, Juan, Jose, Yago)_
 
 
