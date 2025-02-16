@@ -12,7 +12,7 @@ This will be the backend for "Nogler", a multiplayer game based on "balatro" by 
 
 - [@Yago-Torres](https://github.com/Yago-Torres)
 
-_(add here github of authors, Nicolas, Juan, Jose, Yago)_
+- [@nicolas-pueyo](https://github.com/nicolas-pueyo)
 
 
 ## Deployment
