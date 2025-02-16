@@ -22,10 +22,11 @@ gin-gonic (https://github.com/gin-gonic/gin) version 1.10
 
 To deploy this project run
 
-```bash
-  npm run deploy
+``` terminal
+  go mod tidy
+  go run main.go
 ```
-_add here deployment details_
+_Github actions and testing should be implemented and documented here eventually_
 
 ![Logo](letras-img.png)
 
@@ -33,12 +34,5 @@ _Nogler logo here_
 
 ## Usage/Examples
 
-```javascript
-import Component from 'my-project'
-
-function App() {
-  return <Component />
-}
-```
 
 _reference api here, code or postman package or..._
