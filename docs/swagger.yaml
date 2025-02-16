@@ -1,0 +1,22 @@
+basePath: /
+host: localhost:8080
+info:
+  contact: {}
+  description: Gin-Gonic server for the "Nogler" game API
+  title: Nogler API
+  version: "1.0"
+paths:
+  /ping:
+    get:
+      description: Returns a basic message
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Endpoint just pings the server
+      tags:
+      - test
+swagger: "2.0"
