@@ -27,7 +27,7 @@ To deploy this project run
 ```
 _add here deployment details_
 
-![Logo](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/th5xamgrr6se0x5ro4g6.png)
+![Logo](letras-img.png)
 
 _Nogler logo here_
 
