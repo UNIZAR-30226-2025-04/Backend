@@ -28,11 +28,23 @@ To deploy this project run
   go mod tidy
   go run main.go
 ```
+Documentation will be generated with swaggo, from:
+
+```
+go get -u github.com/swaggo/swag/cmd/swag
+go get -u github.com/swaggo/gin-swagger
+go get -u github.com/swaggo/files
+```
+
 _Github actions and testing should be implemented and documented here eventually_
 
 ![Logo](letras-img.png)
 
 _Nogler logo here_
+
+## Commenting format (swaggo for api)
+
+[declarative comments format guide](https://github.com/swaggo/swag#declarative-comments-format)
 
 ## Usage/Examples
 
