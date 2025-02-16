@@ -14,6 +14,8 @@ This will be the backend for "Nogler", a multiplayer game based on "balatro" by 
 
 - [@nicolas-pueyo](https://github.com/nicolas-pueyo)
 
+- [@jmquilez](https://github.com/jmquilez)
+
 ## Dependencies
 go version 1.24
 gin-gonic (https://github.com/gin-gonic/gin) version 1.10
