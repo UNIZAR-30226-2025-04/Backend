@@ -1,0 +1,4 @@
+username,user_stats,is_in_a_game
+john_doe,{"games_played":10,"wins":5},false
+alice_smith,{"games_played":8,"wins":3},true
+bob_jones,{"games_played":15,"wins":7},false
