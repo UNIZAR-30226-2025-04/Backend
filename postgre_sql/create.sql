@@ -61,7 +61,6 @@ CREATE TABLE game_lobbies (
     -- Attributes
     number_of_rounds INTEGER DEFAULT 0,
     total_points INTEGER DEFAULT 0,
-    number_of_rounds INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -79,7 +78,7 @@ CREATE TABLE in_game_players (
     current_deck JSONB DEFAULT '{}',
     current_modifiers JSONB DEFAULT '{}',
     current_wildcards JSONB DEFAULT '{}',
-    winner BOOLEAN DEFAULT FALSE
+    winner BOOLEAN DEFAULT FALSE -- Since there might be two or more winners. (ties are possible)
 );
 
 -- Game invitations table

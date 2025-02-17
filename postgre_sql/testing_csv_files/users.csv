@@ -1,0 +1,4 @@
+email,username,email_verified,id,full_name,member_since,settings
+john@example.com,john_doe,true,usr_123,John Doe,2024-03-20 10:00:00,{"theme":"dark","notifications":true}
+alice@example.com,alice_smith,true,usr_124,Alice Smith,2024-03-20 10:01:00,{"theme":"light","notifications":false}
+bob@example.com,bob_jones,false,usr_125,Bob Jones,2024-03-20 10:02:00,{"theme":"dark","notifications":true}

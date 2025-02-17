@@ -1,0 +1,4 @@
+lobby_id,username,players_money,current_deck,current_modifiers,current_wildcards,winner
+lobby_123,john_doe,1000,{"cards":["A♠","K♥"]},{},{"joker1":true},false
+lobby_123,alice_smith,1500,{"cards":["Q♦","J♣"]},{},{"joker2":true},false
+lobby_124,bob_jones,2000,{"cards":["10♠","9♥"]},{},{"joker3":true},true 
