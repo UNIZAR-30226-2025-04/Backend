@@ -1,4 +1,3 @@
-
 # Nogler's backend
 
 This will be the backend for "Nogler", a multiplayer game based on "balatro" by LocalThunk, focused on creating a entertaining experience for players, in a multiplayer environment.
@@ -44,7 +43,7 @@ function App() {
 
 ### Postgre SQL database
 
-# Design Decisions and Justifications:
+# Design Decisions and Justifications
 
 1. Email as Primary Key (users table):
    - Emails are unique and globally identifiable
@@ -91,6 +90,35 @@ function App() {
    - Focus on foreign key fields
    - Optimized for common join operations
 
+_reference api here, code or postman package or...
 
+### Redis database
 
-_reference api here, code or postman package or..._
+# Design Decisions and Justifications
+
+1. Temporary Game State Storage:
+   - Game state stored temporarily in Redis for performance
+   - Data synchronized with PostgreSQL for permanent storage
+   - Reduces database load during active gameplay
+
+2. Chat System Implementation:
+   - Real-time chat messages stored in Redis
+   - Chat history maintained temporarily
+   - Messages wont be stored in SQL database
+
+3. Player Session Management:
+   - Current game state tracked in Redis
+   - Includes current deck, modifiers, and jokers
+   - Temporary data cleared after game completion
+
+4. Performance Optimizations:
+   - In-memory storage for faster access
+   - Reduced latency for real-time game actions
+   - Minimized database writes during gameplay
+
+5. Data Synchronization:
+   - Winner status calculated and transferred to PostgreSQL
+   - Game statistics computed before permanent storage
+   - Timestamps standardized during synchronization and wont be stored in Redis
+
+_reference api here, code or postman package or...
