@@ -14,7 +14,23 @@ func TestRedisOperations(t *testing.T) {
 	}
 	defer CloseRedis(rc)
 
+	// Helper function to clean Redis data
+	cleanupRedis := func() {
+		keys := []string{
+			"game_lobby:test_lobby_123",
+			"player:test_player",
+			"player_lobby:test_player",
+			"chat_history:test_lobby_123",
+		}
+		for _, key := range keys {
+			if err := rc.client.Del(rc.ctx, key).Err(); err != nil {
+				t.Fatalf("Failed to cleanup Redis key %s: %v", key, err)
+			}
+		}
+	}
+
 	t.Run("GameLobby Operations", func(t *testing.T) {
+		cleanupRedis()
 		lobby := &GameLobby{
 			Id:             "test_lobby_123",
 			NumberOfRounds: 15,
@@ -37,11 +53,12 @@ func TestRedisOperations(t *testing.T) {
 		if lobby.Id != retrieved.Id || 
 		   lobby.NumberOfRounds != retrieved.NumberOfRounds ||
 		   lobby.TotalPoints != retrieved.TotalPoints {
-			t.Errorf("Lobby data mismatch")
+			t.Errorf("Lobby data mismatch.")
 		}
 	})
 
 	t.Run("InGamePlayer Operations", func(t *testing.T) {
+		cleanupRedis()
 		player := &InGamePlayer{
 			Username:      "test_player",
 			LobbyId:      "test_lobby_123",
@@ -57,7 +74,7 @@ func TestRedisOperations(t *testing.T) {
 			t.Errorf("Failed to save player: %v", err)
 		}
 
-		// Verificar el lobby ID del jugador
+		// Verify player's lobby ID
 		lobbyID, err := rc.GetPlayerCurrentLobby("test_player")
 		if err != nil {
 			t.Errorf("Failed to get player's lobby ID: %v", err)
@@ -68,14 +85,14 @@ func TestRedisOperations(t *testing.T) {
 			t.Errorf("Lobby ID mismatch. Expected %s, got %s", player.LobbyId, lobbyID)
 		}
 
-		// Obtener y verificar datos del jugador
+		// Get and verify player data
 		retrieved, err := rc.GetInGamePlayer("test_player")
 		if err != nil {
 			t.Errorf("Failed to get player: %v", err)
 		}
 		fmt.Printf("Retrieved Player from Redis: %+v\n", retrieved)
 
-		// Verificar campos individuales
+		// Verify individual fields
 		if player.Username != retrieved.Username ||
 		   player.LobbyId != retrieved.LobbyId ||
 		   player.PlayersMoney != retrieved.PlayersMoney {
@@ -84,6 +101,7 @@ func TestRedisOperations(t *testing.T) {
 	})
 
 	t.Run("Chat Operations", func(t *testing.T) {
+		cleanupRedis()
 		messages := []*ChatMessage{
 			{
 				Message:   "Hello!",

@@ -1,10 +1,10 @@
--- Limpiamos las tablas en orden inverso para evitar problemas de FK
+-- Clean tables in reverse order to avoid FK issues
 TRUNCATE game_invitations, in_game_players, game_lobbies, friendship_requests, friendships, users, game_profiles CASCADE;
 
--- 1. Primero game_profiles porque users lo referencia
+-- 1. First game_profiles because users references it
 \copy game_profiles(username, user_stats, is_in_a_game) FROM './postgre_sql/testing_csv_files/game_profiles.csv' WITH (FORMAT CSV, HEADER, DELIMITER ',');
 
--- 2. Luego users
+-- 2. Then users
 \copy users FROM './postgre_sql/testing_csv_files/users.csv' CSV HEADER;
 
 -- 3. Friendships
