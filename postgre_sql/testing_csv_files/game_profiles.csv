@@ -2,3 +2,4 @@ username,user_stats,is_in_a_game
 bob_jones,"{""games_played"":0,""wins"":0}",false
 alice_smith,"{""games_played"":0,""wins"":0}",false
 john_doe,"{""games_played"":0,""wins"":0}",false
+test_user_1,{},false

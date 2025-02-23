@@ -121,4 +121,23 @@ _reference api here, code or postman package or...
    - Game statistics computed before permanent storage
    - Timestamps standardized during synchronization and wont be stored in Redis
 
+### Connection between Redis and PostgreSQL
+
+# Design Decisions and Justifications
+
+1. Synchronization Manager:
+   - Dedicated SyncManager component handles all data transfers
+   - Implements transaction management for data consistency
+   - Provides clear interface for game state synchronization
+   - Handles cleanup of temporary Redis data (TODO: Implement)
+
+2. Data Flow Direction:
+   - Game state flows: Redis -> PostgreSQL
+   - Chat history remains in Redis only
+
+3. Data Transformation:
+   - JSON structures standardized between both databases
+   - Minimal data transformation to reduce overhead
+   - Type conversion handled at database interface level
+
 _reference api here, code or postman package or...
