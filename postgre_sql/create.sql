@@ -5,6 +5,7 @@ CREATE TABLE game_profiles (
 
     -- Attributes
     user_stats JSONB DEFAULT '{}', -- We choose JSONB as it's a flexible type that can store complex data
+    user_icon INTEGER DEFAULT 0,
     is_in_a_game BOOLEAN DEFAULT FALSE -- TODO: Check if this is ACTUALLY needed
 );
 
@@ -17,8 +18,7 @@ CREATE TABLE users (
     username VARCHAR(50) NOT NULL REFERENCES game_profiles(username),
 
     -- Attributes
-    email_verified BOOLEAN DEFAULT FALSE,
-    id VARCHAR(50) UNIQUE, -- As of right now we leave it like this. TODO: Define a better type for the id
+    password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100),
     member_since TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
