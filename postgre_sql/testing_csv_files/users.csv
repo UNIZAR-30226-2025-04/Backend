@@ -1,4 +1,6 @@
-email,username,email_verified,id,full_name,member_since
-john@example.com,john_doe,true,usr_123,John Doe,2024-03-20 10:00:00
-alice@example.com,alice_smith,true,usr_124,Alice Smith,2024-03-20 10:01:00
-bob@example.com,bob_jones,false,usr_125,Bob Jones,2024-03-20 10:02:00
+email,username,password_hash,full_name,member_since
+john@example.com,john_doe,hashed_password_123,John Doe,2024-03-20 10:00:00
+alice@example.com,alice_smith,hashed_password_456,Alice Smith,2024-03-20 10:01:00
+bob@example.com,bob_jones,hashed_password_789,Bob Jones,2024-03-20 10:02:00
+test@example.com,testuser,password123,Test User,2024-03-20 10:03:00
+test_user_1@example.com,test_user_1,password123,Test User One,2024-03-20 10:04:00

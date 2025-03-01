@@ -38,11 +38,10 @@ function App() {
   return <Component />
 }
 ```
-## Design decisions
+## Design decisions and justifications
 
 ### Postgre SQL database
 
-# Design Decisions and Justifications
 
 1. Email as Primary Key (users table):
    - Emails are unique and globally identifiable
@@ -93,7 +92,6 @@ _reference api here, code or postman package or...
 
 ### Redis database
 
-# Design Decisions and Justifications
 
 1. Temporary Game State Storage:
    - Game state stored temporarily in Redis for performance
@@ -122,7 +120,6 @@ _reference api here, code or postman package or...
 
 ### Connection between Redis and PostgreSQL
 
-# Design Decisions and Justifications
 
 1. Synchronization Manager:
    - Dedicated SyncManager component handles all data transfers
@@ -139,4 +136,40 @@ _reference api here, code or postman package or...
    - Minimal data transformation to reduce overhead
    - Type conversion handled at database interface level
 
+### Api
+
+
+
 _reference api here, code or postman package or...
+
+### API Design and Implementation
+
+1. RESTful Architecture:
+   - Built using Gin-Gonic framework for high-performance HTTP routing
+   - Follows RESTful principles with resource-based endpoints
+   - Clean separation of concerns with controllers, routes, and middleware
+
+2. Initial Endpoints:
+   - `/api/v1/lobby/:codigo` - Retrieves lobby information by code
+   - Provides essential lobby details including host information and player count
+   - Designed for frontend integration with lobby discovery and joining flows
+
+3. Controller Structure:
+   - Modular controller design with dependency injection
+   - Each controller handles a specific domain (lobbies, users, games)
+   - Structured error handling with appropriate HTTP status codes
+
+4. Database Integration:
+   - Controllers interact with both PostgreSQL (persistent data) and Redis (real-time data)
+   - Synchronization manager mediates between databases when needed
+   - Optimized queries with proper error handling
+
+5. Testing Strategy:
+   - Comprehensive unit tests with mocked dependencies
+   - Integration tests that verify end-to-end functionality
+   - Test coverage for both success and error scenarios
+
+6. Future Development:
+   - Authentication and authorization middleware (planned)
+   - WebSocket integration for real-time game updates
+   - Additional endpoints for game management, user profiles, and social features
