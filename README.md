@@ -21,11 +21,8 @@ gin-gonic (https://github.com/gin-gonic/gin) version 1.10
 
 ## Deployment
 
-To deploy this project run
+To deploy this project run:
 
-```bash
-  npm run deploy
-```
 _add here deployment details_
 
 ![Logo](letras-img.png)
