@@ -23,7 +23,16 @@ gin-gonic (https://github.com/gin-gonic/gin) version 1.10
 
 To deploy this project run:
 
-_add here deployment details_
+```
+go mod tidy
+go run cmd/main.go
+```
+Or compile it as a binary:
+```
+go mod tidy
+go build cmd/main.go
+./main
+```
 
 ![Logo](letras-img.png)
 
