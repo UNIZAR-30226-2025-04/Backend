@@ -1,5 +1,5 @@
 basePath: /
-host: localhost:8080
+host: 74.234.191.199:8080
 info:
   contact: {}
   description: Gin-Gonic server for the "Nogler" game API

@@ -6,7 +6,7 @@
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8080",
+    "host": "74.234.191.199:8080",
     "basePath": "/",
     "paths": {
         "/ping": {
