@@ -1,39 +1,66 @@
 package main
 
 import (
+	"os"
 	_ "Nogler/docs"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"database/sql"
+	"Nogler/routes"
+	"Nogler/redis"
+	"log"
+	"Nogler/routes"
+
+	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
 )
 
-// @title Nogler API
-// @version 1.0
-// @description Gin-Gonic server for the "Nogler" game API
-// @host localhost:8080
-// @BasePath /
-// @paths
-
-// localhost only for now, logically it should be the server's IP
-
-// @Summary Endpoint just pings the server
-// @Description Returns a basic message
-// @Tags test
-// @Produce json
-// @Success 200 {object} string
-// @Router /ping [get]
 func main() {
+	//Setup DB conn
+	pgConnStr := os.Getenv("DB_CONN_STR")
+	if pgConnStr == "" {
+		pgConnStr = "postgresql://nogler:nogler@localhost:5432/nogler?sslmode=disable"
+	}
+
+	//Start communication with Postgre DB
+	db, err := sql.Open("postgres", pgConnStr)
+	if err != nil {
+		log.Fatalf("Error connecting to PostgreSQL: %v", err)
+	}
+	defer db.Close()
+
+	// Verify connection to PostgreSQL
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Error making ping to PostgreSQL: %v", err)
+	}
+	log.Println("PostgreSQL connection established")
+	
+
+	// Configure connection to Redis
+	redisUri := os.Getenv("REDIS_URL")
+	if redisUri == "" {
+		redisUri = "localhost:6379"
+	}
+
+	redisClient, err := redis.InitRedis(redisAddr, redisUri
+	if err != nil {
+		log.Fatalf("Error connecting to Redis: %v", err)
+	}
+	defer redis.CloseRedis(redisClient)
+	log.Println("Redis connection established")
+	
+	
 	r := gin.Default()
 
-	// Swagger route
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	// Testing a basic endpoint, and the auto-docs
-
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "pong, hola"})
-	})
-
-	r.Run(":8080") // Endpoint on port 8080 for now, test
+	routes.SetupRoutes(r, db, redisClient)
+	// Configure port
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	// Start server
+	log.Printf("Server started on port %s", port)
+	if err := router.Run(":" + port); err != nil {
+		log.Fatalf("Error starting server: %v", err)
+	}
 }
