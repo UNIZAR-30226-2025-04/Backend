@@ -1,15 +1,12 @@
 package main
 
 import (
-	"os"
 	_ "Nogler/docs"
-
-	"github.com/gin-gonic/gin"
-	"database/sql"
-	"Nogler/routes"
 	"Nogler/redis"
-	"log"
 	"Nogler/routes"
+	"database/sql"
+	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
@@ -34,7 +31,6 @@ func main() {
 		log.Fatalf("Error making ping to PostgreSQL: %v", err)
 	}
 	log.Println("PostgreSQL connection established")
-	
 
 	// Configure connection to Redis
 	redisUri := os.Getenv("REDIS_URL")
@@ -42,14 +38,13 @@ func main() {
 		redisUri = "localhost:6379"
 	}
 
-	redisClient, err := redis.InitRedis(redisAddr, redisUri
+	redisClient, err := redis.InitRedis(redisUri, 0)
 	if err != nil {
 		log.Fatalf("Error connecting to Redis: %v", err)
 	}
 	defer redis.CloseRedis(redisClient)
 	log.Println("Redis connection established")
-	
-	
+
 	r := gin.Default()
 
 	routes.SetupRoutes(r, db, redisClient)
@@ -60,7 +55,7 @@ func main() {
 	}
 	// Start server
 	log.Printf("Server started on port %s", port)
-	if err := router.Run(":" + port); err != nil {
+	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Error starting server: %v", err)
 	}
 }
