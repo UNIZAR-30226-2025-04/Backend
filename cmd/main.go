@@ -1,10 +1,9 @@
 package main
 
 import (
-	_ "Nogler/docs"
-	"Nogler/redis"
+	"Nogler/config"
+	_ "Nogler/config/swagger"
 	"Nogler/routes"
-	"database/sql"
 	"log"
 	"os"
 
@@ -13,24 +12,14 @@ import (
 )
 
 func main() {
-	//Setup DB conn
-	pgConnStr := os.Getenv("DB_CONN_STR")
-	if pgConnStr == "" {
-		pgConnStr = "postgresql://nogler:nogler@localhost:5432/nogler?sslmode=disable"
-	}
 
-	//Start communication with Postgre DB
-	db, err := sql.Open("postgres", pgConnStr)
+	//Setup DB conn
+
+	db, err := config.Connect_postgres()
 	if err != nil {
 		log.Fatalf("Error connecting to PostgreSQL: %v", err)
 	}
 	defer db.Close()
-
-	// Verify connection to PostgreSQL
-	if err := db.Ping(); err != nil {
-		log.Fatalf("Error making ping to PostgreSQL: %v", err)
-	}
-	log.Println("PostgreSQL connection established")
 
 	// Configure connection to Redis
 	redisUri := os.Getenv("REDIS_URL")
@@ -38,12 +27,12 @@ func main() {
 		redisUri = "localhost:6379"
 	}
 
-	redisClient, err := redis.InitRedis(redisUri, 0)
+	// Connect to Redis
+	redisClient, err := config.Connect_redis()
 	if err != nil {
 		log.Fatalf("Error connecting to Redis: %v", err)
 	}
-	defer redis.CloseRedis(redisClient)
-	log.Println("Redis connection established")
+	defer redisClient.Close()
 
 	r := gin.Default()
 

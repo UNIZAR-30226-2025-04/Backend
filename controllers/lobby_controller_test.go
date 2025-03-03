@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"Nogler/redis"
-	"Nogler/sync"
+	"Nogler/services/sync"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -34,7 +34,7 @@ func TestGetLobbyInfo(t *testing.T) {
 
 	// Setup mock expectations with minimal verbosity
 	fmt.Println("Request: GET /lobby/test123")
-	
+
 	mock.ExpectQuery(`SELECT id, creator_username, is_started FROM game_lobbies WHERE id = \$1 AND is_started = false`).
 		WithArgs("test123").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "creator_username", "is_started"}).
@@ -60,7 +60,7 @@ func TestGetLobbyInfo(t *testing.T) {
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	
+
 	fmt.Println("Response:", w.Body.String())
 
 	// Verify response fields
@@ -92,7 +92,7 @@ func TestGetLobbyInfoNotFound(t *testing.T) {
 
 	// Setup mock expectations for not found case
 	fmt.Println("Request: GET /lobby/nonexistent")
-	
+
 	mock.ExpectQuery(`SELECT id, creator_username, is_started FROM game_lobbies WHERE id = \$1 AND is_started = false`).
 		WithArgs("nonexistent").
 		WillReturnError(sql.ErrNoRows)
@@ -108,4 +108,4 @@ func TestGetLobbyInfoNotFound(t *testing.T) {
 	fmt.Println("Response:", w.Body.String())
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.NoError(t, mock.ExpectationsWereMet())
-} 
+}

@@ -1,4 +1,4 @@
-package middleware
+package utils
 
 import (
 	"net/http"
@@ -42,4 +42,4 @@ func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 	}
-} 
+}

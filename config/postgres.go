@@ -1,67 +1,35 @@
- cmd
-│   └── main.go
-├── config
-│   ├── postgres.go
-│   ├── redis.go
-│   └── swagger
-│       ├── docs.go
-│       ├── swagger.json
-│       └── swagger.yaml
-├── controllers
-│   ├── friends.go
-│   ├── inbox.go
-│   ├── lobby_controller.go
-│   ├── lobby_controller_test.go
-│   ├── lobby.go
-│   └── user.go
-├── go.mod
-├── go.sum
-├── letras-img.png
-├── middleware
-│   └── auth.go
-├── models
-│   ├── game_profile.go
-│   ├── lobby.go
-│   ├── postgres
-│   ├── redis
-│   ├── TODO-PONER-EL-RESTO-QUE-NO-TENEMOS
-│   ├── user.go
-│   └── users.go
-├── postgre_sql
-│   ├── create.sql
-│   ├── delete.sql
-│   ├── populate.sql
-│   └── testing_csv_files
-│       ├── friendship_requests.csv
-│       ├── friendships.csv
-│       ├── game_invitations.csv
-│       ├── game_lobbies.csv
-│       ├── game_profiles.csv
-│       ├── in_game_players.csv
-│       └── users.csv
-├── README.md
-├── redis
-│   ├── dump.rdb
-│   ├── init.go
-│   ├── redis.go
-│   ├── redis_interface.go
-│   └── redis_test.go
-├── routes
-│   ├── api_integration_test.go
-│   └── routes.go
-├── services
-│   ├── redis
-│   │   ├── dump.rdb
-│   │   ├── init.go
-│   │   ├── redis.go
-│   │   ├── redis_interface.go
-│   │   └── redis_test.go
-│   └── sync
-│       ├── sync_manager.go
-│       └── sync_test.go
-├── utils
-│   ├── logger.go
-│   └── utils.go
-└── views
-    └── json_structs.txt
+package config
 
+import (
+	"database/sql"
+	"fmt"
+	"log"
+	"os"
+)
+
+// Connect_postgres returns a connection string for PostgreSQL
+func Connect_postgres() (*sql.DB, error) {
+	user := os.Getenv("POSTGRES_USER")
+	password := os.Getenv("POSTGRES_PASSWORD")
+	host := os.Getenv("POSTGRES_HOST")
+	port := os.Getenv("POSTGRES_PORT")
+	database := os.Getenv("POSRGRES_DATABASE")
+
+	pg_connection_string := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+		user, password, host, port, database)
+
+	//Start communication with Postgre DB
+	db, err := sql.Open("postgres", pg_connection_string)
+	if err != nil {
+		log.Printf("Error connecting to PostgreSQL: %v", err)
+		return nil, err
+	}
+
+	// Verify connection to PostgreSQL
+	if err := db.Ping(); err != nil {
+		log.Printf("Error making ping to PostgreSQL: %v", err)
+		return nil, err
+	}
+
+	return db, nil
+}
