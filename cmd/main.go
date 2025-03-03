@@ -3,6 +3,7 @@ package main
 import (
 	"Nogler/config"
 	_ "Nogler/config/swagger"
+	"Nogler/redis"
 	"Nogler/routes"
 	"log"
 	"os"
@@ -21,18 +22,12 @@ func main() {
 	}
 	defer db.Close()
 
-	// Configure connection to Redis
-	redisUri := os.Getenv("REDIS_URL")
-	if redisUri == "" {
-		redisUri = "localhost:6379"
-	}
-
 	// Connect to Redis
 	redisClient, err := config.Connect_redis()
 	if err != nil {
 		log.Fatalf("Error connecting to Redis: %v", err)
 	}
-	defer redisClient.Close()
+	defer redis.CloseRedis(redisClient)
 
 	r := gin.Default()
 

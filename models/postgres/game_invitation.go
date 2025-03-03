@@ -4,13 +4,16 @@ import (
 	"time"
 )
 
+/*
+ * 'GameInvitation' represents an invitation to a Balatro game. It contains
+ * a reference to GameLobby and GameProfile
+ */
 type GameInvitation struct {
-	LobbyID         string    `gorm:"size:50;not null"` // Clave ajena hacia GameLobby
-	InvitedUsername string    `gorm:"size:50;not null"` // Clave ajena hacia GameProfile
+	LobbyID         string    `gorm:"primaryKey;size:50;not null"`
+	InvitedUsername string    `gorm:"primaryKey;size:50;not null"`
 	CreatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP"`
-	// Relación con el lobby y el perfil invitado
+
+	// Relationships
 	GameLobby   GameLobby   `gorm:"foreignKey:LobbyID"`
 	GameProfile GameProfile `gorm:"foreignKey:InvitedUsername"`
-	// Llave primaria compuesta
-	PrimaryKey struct{} `gorm:"primaryKey;"`
 }
