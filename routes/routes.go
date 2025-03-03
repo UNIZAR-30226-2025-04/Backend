@@ -3,7 +3,7 @@ package routes
 import (
 	"Nogler/controllers"
 	"Nogler/redis"
-	"Nogler/sync"
+	"Nogler/services/sync"
 	utils "Nogler/utils"
 	"database/sql"
 
