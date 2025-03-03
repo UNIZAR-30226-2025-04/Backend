@@ -1,11 +1,25 @@
 package config
 
 import (
+	"Nogler/models/postgres"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 )
+
+// Return all models for migration
+func AllModels() []interface{} {
+	return []interface{}{
+		&postgres.GameProfile{},
+		&postgres.User{},
+		&postgres.Friendship{},
+		&postgres.FriendshipRequest{},
+		&postgres.GameLobby{},
+		&postgres.InGamePlayer{},
+		&postgres.GameInvitation{},
+	}
+}
 
 // Connect_postgres returns a connection string for PostgreSQL
 func Connect_postgres() (*sql.DB, error) {

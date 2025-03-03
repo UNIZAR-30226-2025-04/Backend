@@ -47,7 +47,14 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.RedisClient)
 	})
 
 	// API routes group
-	api := router.Group("/api/v1")
+	api := router.Group("/")
+
+	authentication := api.Group("/auth")
+	{
+		api.POST("/login", user.login)
+		api.POST("/signup", user.signup)
+		api.POST("/logout", user.logout)
+	}
 
 	// Routes that require authentication
 	authenticated := api.Group("/")

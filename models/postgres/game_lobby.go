@@ -4,6 +4,10 @@ import (
 	"time"
 )
 
+/*
+ * 'GameLobby' defines the structure of a Balatro game lobby.
+ * It contains references to GameProfile and InGamePlayer
+ */
 type GameLobby struct {
 	ID              string    `gorm:"primaryKey;size:50;not null"`
 	CreatorUsername string    `gorm:"size:50;index"` // Clave ajena hacia GameProfile, con índice
