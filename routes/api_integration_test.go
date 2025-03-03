@@ -1,4 +1,4 @@
-package main
+package routes
 
 import (
 	"database/sql"
@@ -27,37 +27,37 @@ type TestConfig struct {
 
 func TestMainAPIIntegration(t *testing.T) {
 	fmt.Println("\n=== MAIN API INTEGRATION TEST ===")
-	
+
 	// Initialize configuration
 	config := &TestConfig{
 		DBUser: "nogler",
 		DBPass: "nogler",
 		DBName: "nogler",
 	}
-	
+
 	// Connect to database
 	connectToDatabase(t, config)
 	defer config.DB.Close()
-	
+
 	// Verify table structure
 	verifyTableStructure(t, config)
-	
+
 	// Prepare test data
 	prepareTestData(t, config)
-	
+
 	// Start the main server
 	startMainServer(t, config)
 	defer stopServer(config)
-	
+
 	// Perform HTTP request
 	response := performHTTPRequest(t, config)
-	
+
 	// Verify response
 	verifyResponse(t, response)
-	
+
 	// Clean test data
 	cleanTestData(t, config)
-	
+
 	fmt.Println("\n=== RESULT ===")
 	fmt.Println("Main API integration test completed successfully")
 }
@@ -65,16 +65,16 @@ func TestMainAPIIntegration(t *testing.T) {
 // Connects to PostgreSQL database
 func connectToDatabase(t *testing.T, config *TestConfig) {
 	fmt.Println("\n=== CONFIGURING POSTGRESQL CONNECTION ===")
-	dbConnStr := fmt.Sprintf("postgresql://%s:%s@localhost:5432/%s?sslmode=disable", 
+	dbConnStr := fmt.Sprintf("postgresql://%s:%s@localhost:5432/%s?sslmode=disable",
 		config.DBUser, config.DBPass, config.DBName)
-	
+
 	fmt.Printf("Connecting to database with user: %s\n", config.DBUser)
 	db, err := sql.Open("postgres", dbConnStr)
 	if err != nil {
 		t.Fatalf("Error connecting to PostgreSQL: %v", err)
 	}
 	config.DB = db
-	
+
 	// Verify PostgreSQL connection
 	if err := db.Ping(); err != nil {
 		t.Fatalf("Error pinging PostgreSQL: %v", err)
@@ -91,7 +91,7 @@ func verifyTableStructure(t *testing.T, config *TestConfig) {
 		return
 	}
 	defer rows.Close()
-	
+
 	for rows.Next() {
 		var column string
 		rows.Scan(&column)
@@ -103,19 +103,19 @@ func verifyTableStructure(t *testing.T, config *TestConfig) {
 // Cleans and prepares test data in the database
 func prepareTestData(t *testing.T, config *TestConfig) {
 	fmt.Println("\n=== PREPARING TEST DATA ===")
-	
+
 	// Clean existing data
 	cleanTestData(t, config)
-	
+
 	// Create test user if it doesn't exist
 	createTestUser(t, config)
-	
+
 	// Update user icon
 	updateUserIcon(t, config)
-	
+
 	// Create test lobby
 	createTestLobby(t, config)
-	
+
 	fmt.Println("Test data prepared successfully")
 }
 
@@ -142,7 +142,7 @@ func createTestUser(t *testing.T, config *TestConfig) {
 	} else {
 		fmt.Println("User already exists")
 	}
-	
+
 	// Check if game profile exists
 	var profileExists bool
 	err = config.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM game_profiles WHERE username = 'testuser')").Scan(&profileExists)
@@ -231,13 +231,13 @@ func createTestLobby(t *testing.T, config *TestConfig) {
 // Starts the main server (main.go)
 func startMainServer(t *testing.T, config *TestConfig) {
 	fmt.Println("\n=== STARTING MAIN SERVER (main.go) ===")
-	
+
 	// Find main.go file
 	findMainFile(t, config)
-	
+
 	// Configure and run server
 	runServer(t, config)
-	
+
 	// Wait for server to be ready
 	waitForServerReady(t, config)
 }
@@ -251,18 +251,18 @@ func findMainFile(t *testing.T, config *TestConfig) {
 		"./main.go",
 		"api/main.go",
 	}
-	
+
 	for _, path := range mainLocations {
 		if _, err := os.Stat(path); err == nil {
 			config.MainPath = path
 			break
 		}
 	}
-	
+
 	if config.MainPath == "" {
 		t.Fatalf("Could not find main.go file")
 	}
-	
+
 	fmt.Printf("Main.go file found at: %s\n", config.MainPath)
 }
 
@@ -281,23 +281,23 @@ func runServer(t *testing.T, config *TestConfig) {
 		"GIN_MODE=release",
 	)
 	config.Cmd = cmd
-	
+
 	// Capture server output
 	serverOutput, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatalf("Error capturing server output: %v", err)
 	}
-	
+
 	serverError, err := cmd.StderrPipe()
 	if err != nil {
 		t.Fatalf("Error capturing server errors: %v", err)
 	}
-	
+
 	// Start server in background
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Error starting server: %v", err)
 	}
-	
+
 	// Read server output in background
 	go readServerOutput(serverOutput, "Server")
 	go readServerOutput(serverError, "Server error")
@@ -309,7 +309,7 @@ func readServerOutput(pipe interface{}, prefix string) {
 	if !ok {
 		return
 	}
-	
+
 	buf := make([]byte, 1024)
 	for {
 		n, err := reader.Read(buf)
@@ -324,11 +324,11 @@ func readServerOutput(pipe interface{}, prefix string) {
 func waitForServerReady(t *testing.T, config *TestConfig) {
 	fmt.Println("Waiting for main server to be ready...")
 	time.Sleep(5 * time.Second)
-	
+
 	// Verify server is listening
 	ready := false
 	apiURL := "http://localhost:8082/api/v1/lobby/test123"
-	
+
 	for i := 0; i < 10; i++ {
 		resp, err := http.Get(apiURL)
 		if err == nil {
@@ -339,11 +339,11 @@ func waitForServerReady(t *testing.T, config *TestConfig) {
 		fmt.Printf("Attempt %d: Error connecting: %v\n", i+1, err)
 		time.Sleep(1 * time.Second)
 	}
-	
+
 	if !ready {
 		t.Fatalf("Server is not responding after several attempts")
 	}
-	
+
 	fmt.Println("Main server started successfully")
 }
 
@@ -352,16 +352,16 @@ func performHTTPRequest(t *testing.T, config *TestConfig) map[string]interface{}
 	fmt.Println("\n=== PERFORMING HTTP REQUEST TO MAIN SERVER ===")
 	apiURL := "http://localhost:8082/api/v1/lobby/test123"
 	fmt.Printf("Request URL: %s\n", apiURL)
-	
+
 	// Create HTTP client
 	client := &http.Client{}
-	
+
 	// Create request
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		t.Fatalf("Error creating HTTP request: %v", err)
 	}
-	
+
 	// Execute request
 	fmt.Println("Sending request to main server...")
 	resp, err := client.Do(req)
@@ -369,21 +369,21 @@ func performHTTPRequest(t *testing.T, config *TestConfig) map[string]interface{}
 		t.Fatalf("Error performing HTTP request: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// Verify response
 	fmt.Println("\n=== HTTP RESPONSE FROM MAIN SERVER ===")
 	fmt.Printf("Status code: %d\n", resp.StatusCode)
-	
+
 	// Verify status code
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	
+
 	// Decode JSON response
 	var response map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
 		t.Fatalf("Error deserializing JSON response: %v", err)
 	}
-	
+
 	fmt.Printf("Response body: %v\n", response)
 	return response
 }
@@ -394,7 +394,7 @@ func verifyResponse(t *testing.T, response map[string]interface{}) {
 	fmt.Printf("Expected - code: %s, Received: %v\n", "test123", response["code"])
 	fmt.Printf("Expected - host_name: %s, Received: %v\n", "testuser", response["host_name"])
 	fmt.Printf("Expected - host_icon: %s, Received: %v\n", "5", response["host_icon"])
-	
+
 	assert.Equal(t, "test123", response["code"])
 	assert.Equal(t, "testuser", response["host_name"])
 	assert.Equal(t, "5", response["host_icon"])
@@ -424,4 +424,4 @@ func stopServer(config *TestConfig) {
 			fmt.Printf("Error stopping server: %v\n", err)
 		}
 	}
-} 
+}
