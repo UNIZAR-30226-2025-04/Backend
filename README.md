@@ -2,9 +2,6 @@
 
 This will be the backend for "Nogler", a multiplayer game based on "balatro" by LocalThunk, focused on creating a entertaining experience for players, in a multiplayer environment.
 
-
-
-
 ## Authors
 
 - [@JSerranom04](https://github.com/JSerranom04)
@@ -18,6 +15,10 @@ This will be the backend for "Nogler", a multiplayer game based on "balatro" by 
 ## Dependencies
 go version 1.24
 gin-gonic (https://github.com/gin-gonic/gin) version 1.10
+_Todo add gorm here_
+
+#### Remote dependencies
+_pg versión, redis version_
 
 ## Deployment
 
@@ -36,17 +37,14 @@ go build cmd/main.go
 
 ![Logo](letras-img.png)
 
-_Nogler logo here_
-
 ## Usage/Examples
 
-```javascript
-import Component from 'my-project'
+### Every endpoint should be testable in:
 
-function App() {
-  return <Component />
-}
-```
+~~~ copy
+
+74.234.191.199:8080/swagger/index.html
+~~~
 ## Design decisions and justifications
 
 ### Postgre SQL database
