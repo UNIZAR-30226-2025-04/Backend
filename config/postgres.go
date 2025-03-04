@@ -60,6 +60,7 @@ func ConnectGORM() (*gorm.DB, error) {
 	// port := os.Getenv("POSTGRES_PORT")
 	// database := os.Getenv("POSTGRES_DATABASE")
 
+	//TODO quitar este hardcode
 	user := "nogler_admin"
 	password := "N0gler1234"
 	host := "nogler.postgres.database.azure.com"
@@ -76,12 +77,15 @@ func ConnectGORM() (*gorm.DB, error) {
 		log.Printf("Error connecting to PostgreSQL: %v", err)
 		return nil, err
 	}
+	log.Println("Successfully connected to PostgreSQL")
 
+	sqlDB1.Exec("SELECT * FROM USERS;")
 	// Verify connection to PostgreSQL
 	if err := sqlDB1.Ping(); err != nil {
 		log.Printf("Error making ping to PostgreSQL: %v", err)
 		return nil, err
 	}
+	log.Println("Postgre ping OK")
 
 	db, err := gorm.Open(pgdriver.New(pgdriver.Config{
 		Conn: sqlDB1,
@@ -94,18 +98,22 @@ func ConnectGORM() (*gorm.DB, error) {
 		return nil, err
 	}
 
+	log.Println("GORM opened PostgreSQL")
+
 	// Get the underlying SQL DB object
 	sqlDB, err := db.DB()
 	if err != nil {
 		log.Printf("Error getting underlying SQL DB: %v", err)
 		return nil, err
 	}
+	log.Println("Underlying database recovered correctly")
 
 	// Verify connection
 	if err := sqlDB.Ping(); err != nil {
 		log.Printf("Error pinging PostgreSQL: %v", err)
 		return nil, err
 	}
+	log.Println("PostgreSQL ping OK")
 
 	// Set connection pool settings
 	sqlDB.SetMaxIdleConns(10)
@@ -141,6 +149,7 @@ func MigrateDatabase(db *gorm.DB) error {
 	if err != nil {
 		return fmt.Errorf("auto migration failed: %w", err)
 	}
+	log.Println("Database migrated successfully")
 
 	return nil
 }

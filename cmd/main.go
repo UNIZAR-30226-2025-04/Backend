@@ -3,6 +3,7 @@ package main
 import (
 	"Nogler/config"
 	_ "Nogler/config/swagger"
+	"Nogler/middleware"
 	"Nogler/routes"
 	"log"
 	"os"
@@ -14,13 +15,14 @@ import (
 func main() {
 
 	// Setup DB conn
-
+	log.Println("Setting up server...")
 	// NOTE: still keeping old raw sql DB instantiation commented
 	/* db, err := config.Connect_postgres() */
 	gormDB, err := config.ConnectGORM()
 	if err != nil {
 		log.Fatalf("Error connecting to PostgreSQL: %v", err)
 	}
+	log.Println("GORM Connected")
 
 	// Only migrate in development or during deployment
 	//if os.Getenv("ENVIRONMENT") == "development" {
@@ -29,6 +31,7 @@ func main() {
 		// Continue execution even if migration fails
 	}
 	//}
+	log.Println("Database migrated successfully")
 
 	sqlDB, err := gormDB.DB()
 	if err != nil {
@@ -45,6 +48,8 @@ func main() {
 	defer redis.CloseRedis(redisClient)*/
 
 	r := gin.Default()
+
+	middleware.SetUpMiddleware(r)
 
 	// TODO: pass in redisClient
 	/* routes.SetupRoutes(r, db, redisClient) */
