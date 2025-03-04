@@ -2,12 +2,10 @@ package routes
 
 import (
 	"Nogler/controllers"
-	"Nogler/redis"
-	"Nogler/services/sync"
 	utils "Nogler/utils"
-	"database/sql"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -21,12 +19,12 @@ import (
 // @paths
 
 // SetupRoutes configures all API routes
-func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.RedisClient) {
+func SetupRoutes(router *gin.Engine, db *gorm.DB /*redisClient *redis.RedisClient*/) {
 	// Create SyncManager instance
-	syncManager := sync.NewSyncManager(redisClient, db)
+	// syncManager := sync.NewSyncManager(redisClient, db)
 
 	// Create controllers
-	lobbyController := &controllers.LobbyController{DB: db, RedisClient: redisClient, SyncManager: syncManager}
+	// lobbyController := &controllers.LobbyController{DB: db, RedisClient: redisClient, SyncManager: syncManager}
 
 	// utils global
 	router.Use(utils.ErrorHandler())
@@ -51,18 +49,32 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.RedisClient)
 
 	authentication := api.Group("/auth")
 	{
-		api.POST("/login", user.login)
-		api.POST("/signup", user.signup)
-		api.POST("/logout", user.logout)
+		authentication.POST("/login", controllers.Login(db))
+
+		// @Summary Sign up a new user
+		// @Description TODO: COMPLETE
+		// @Tags auth
+		// @Produce json
+		// @Success 200 {object} string
+		// @Router /ping [get]
+		api.POST("/signup", controllers.SignUp(db))
+
+		// @Summary Log out a user from the session
+		// @Description TODO: COMPLETE
+		// @Tags auth
+		// @Produce json
+		// @Success 200 {object} string
+		// @Router /ping [get]
+		api.DELETE("/logout", controllers.Logout)
 	}
 
 	// Routes that require authentication
-	authenticated := api.Group("/")
+	//authenticated := api.Group("/")
 	{
 		// Lobby routes TODO: Documentar
-		lobby := authenticated.Group("/lobby")
+		//lobby := authenticated.Group("/lobby")
 		{
-			lobby.GET("/:codigo", lobbyController.GetLobbyInfo)
+			//lobby.GET("/:codigo", lobbyController.GetLobbyInfo)
 		}
 	}
 }

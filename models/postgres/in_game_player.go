@@ -5,7 +5,7 @@ import (
 )
 
 /*
- * InGamePlayer represents the state of a player in a game. It contains
+ * 'InGamePlayer' represents the state of a player in a game. It contains
  * references to GameLobby and GameProfile
  */
 type InGamePlayer struct {
@@ -13,7 +13,7 @@ type InGamePlayer struct {
 	LobbyID        string         `gorm:"primaryKey;size:50;not null"`
 	Username       string         `gorm:"primaryKey;size:50;not null;index"`
 	PlayersMoney   int            `gorm:"default:0"`
-	MostPlayedHand datatypes.JSON `gorm:"default:'{}'"`
+	MostPlayedHand datatypes.JSON `gorm:"type:jsonb;default:'{}'"`
 	Winner         bool           `gorm:"default:false"`
 
 	// Relationship with the lobby and the user's game profile

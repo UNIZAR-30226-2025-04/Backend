@@ -10,12 +10,10 @@ import (
  */
 type GameProfile struct {
 	Username  string         `gorm:"primaryKey;size:50;not null"`
-	UserStats datatypes.JSON `gorm:"default:'{}'"` // We use `datatypes.JSON` to handle JSONB on Gorm
+	UserStats datatypes.JSON `gorm:"default:'{}'"`
 	UserIcon  int            `gorm:"default:0"`
 	IsInAGame bool           `gorm:"default:false"`
 
-	// Relationships with other tables
-	// Modelled as 0..1 for simplicity on GORM
 	User            *User               `gorm:"foreignKey:Username"`
 	Friendships1    []Friendship        `gorm:"foreignKey:Username1"`
 	Friendships2    []Friendship        `gorm:"foreignKey:Username2"`
