@@ -2,15 +2,17 @@ package controllers
 
 import (
 	models "Nogler/models/postgres"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
-func Login(db *gorm.Db) gin.HandlerFunc {
+func Login(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		email := c.PostForm("email")
@@ -28,7 +30,7 @@ func Login(db *gorm.Db) gin.HandlerFunc {
 			return
 		}
 
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password!"})
 			return
 		}
@@ -38,7 +40,7 @@ func Login(db *gorm.Db) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "No session!"})
 			return
 		}
-		c.JSON(http)
+		c.JSON(http.StatusOK, gin.H{})
 	}
 }
 
@@ -61,4 +63,8 @@ func Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
 }
 
-func SignIn()
+func SignUp(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) { // TODO: completar
+		fmt.Print("test")
+	}
+}
