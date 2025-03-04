@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"time"
 
 	pgdriver "gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // Return all models for migration
@@ -87,9 +89,19 @@ func ConnectGORM() (*gorm.DB, error) {
 	}
 	log.Println("Postgre ping OK")
 
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold:             time.Second, // Slow SQL threshold
+			LogLevel:                  logger.Info, // Log level (Silent, Error, Warn, Info)
+			IgnoreRecordNotFoundError: false,       // Ignore ErrRecordNotFound error for logger
+			Colorful:                  true,        // Enable color
+		},
+	)
 	db, err := gorm.Open(pgdriver.New(pgdriver.Config{
 		Conn: sqlDB1,
 	}), &gorm.Config{
+		Logger: newLogger, // Add the logger to the configuration
 		//DisableForeignKeyConstraintWhenMigrating: true,
 	})
 
@@ -122,6 +134,18 @@ func ConnectGORM() (*gorm.DB, error) {
 
 	log.Println("Successfully connected to PostgreSQL with GORM")
 	return db, nil
+}
+
+type Category struct {
+	ID   uint   `gorm:"primaryKey"`
+	Name string `gorm:"not null"`
+}
+
+type Movie struct {
+	ID         uint     `gorm:"primaryKey"`
+	Title      string   `gorm:"not null"`
+	CategoryID uint     `gorm:"not null;index"`
+	Category   Category `gorm:"foreignKey:CategoryID"`
 }
 
 func MigrateDatabase(db *gorm.DB) error {
