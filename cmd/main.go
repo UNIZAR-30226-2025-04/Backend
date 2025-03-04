@@ -5,6 +5,7 @@ import (
 	_ "Nogler/config/swagger"
 	"Nogler/middleware"
 	"Nogler/routes"
+	"Nogler/services/redis"
 	"log"
 	"os"
 
@@ -39,7 +40,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error reading GORM PostgreSQL instance: %v", err)
 	}
-	/* defer db.Close() */
 	defer sqlDB.Close()
 
 	redisClient, err := config.Connect_redis()
@@ -55,7 +55,7 @@ func main() {
 
 	// TODO: pass in redisClient
 	/* routes.SetupRoutes(r, db, redisClient) */
-	routes.SetupRoutes(r, gormDB /*redisClient*/)
+	routes.SetupRoutes(r, gormDB, redisClient)
 
 	// Configure port
 	port := os.Getenv("PORT")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -45,6 +46,7 @@ type RedisClient struct {
 func NewRedisClient(Addr string, DB int) *RedisClient {
 	var client *redis.Client
 	if Addr != "localhost:6379" {
+		log.Println("Connecting to remote Redis...")
 		opt, err := redis.ParseURL(Addr)
 		if err != nil {
 			panic("Error parsing Redis URL")

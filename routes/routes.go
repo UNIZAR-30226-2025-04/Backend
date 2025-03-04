@@ -2,6 +2,7 @@ package routes
 
 import (
 	"Nogler/controllers"
+	"Nogler/services/redis"
 	utils "Nogler/utils"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,7 @@ import (
 // @paths
 
 // SetupRoutes configures all API routes
-func SetupRoutes(router *gin.Engine, db *gorm.DB /*redisClient *redis.RedisClient*/) {
+func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient) {
 	// Create SyncManager instance
 	// syncManager := sync.NewSyncManager(redisClient, db)
 
