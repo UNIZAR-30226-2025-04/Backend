@@ -14,8 +14,9 @@ type GameLobby struct {
 	NumberOfRounds  int       `gorm:"default:0"`
 	TotalPoints     int       `gorm:"default:0"`
 	CreatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP"`
-	// Relación con el creador del lobby
+
+	// Relationships
 	Creator GameProfile `gorm:"foreignKey:CreatorUsername"`
-	// Relación con jugadores en el juego
+	// Relationship with players in the game
 	InGamePlayers []InGamePlayer `gorm:"foreignKey:LobbyID"`
 }

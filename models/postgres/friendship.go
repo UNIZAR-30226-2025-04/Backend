@@ -21,7 +21,7 @@ type Friendship struct {
 // GORM hook to ensure that both user's usernames are different
 func (f *Friendship) BeforeSave(tx *gorm.DB) error {
 	if f.Username1 == f.Username2 {
-		return errors.New("no se puede crear una amistad entre el mismo usuario")
+		return errors.New("Cannot create friendship between the same user")
 	}
 	return nil
 }

@@ -10,11 +10,12 @@ import (
  */
 type GameProfile struct {
 	Username  string         `gorm:"primaryKey;size:50;not null"`
-	UserStats datatypes.JSON `gorm:"default:'{}'"`
+	UserStats datatypes.JSON `gorm:"type:jsonb;default:'{}'"`
 	UserIcon  int            `gorm:"default:0"`
 	IsInAGame bool           `gorm:"default:false"`
 
-	User            *User               `gorm:"foreignKey:Username"`
+	// NOTE: was creating a circular dependency between GameProfile and User
+	// User            *User               `gorm:"foreignKey:Username"`
 	Friendships1    []Friendship        `gorm:"foreignKey:Username1"`
 	Friendships2    []Friendship        `gorm:"foreignKey:Username2"`
 	FriendRequests1 []FriendshipRequest `gorm:"foreignKey:Username1"`
