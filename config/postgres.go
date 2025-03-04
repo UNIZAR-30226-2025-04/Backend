@@ -67,20 +67,9 @@ func ConnectGORM() (*gorm.DB, error) {
 	database := "postgres"
 
 	// NOTE: https://stackoverflow.com/questions/57205060/how-to-connect-postgresql-database-using-gorm
-
-	// Create DSN (Data Source Name)
-	// "host=localhost user=gorm password=gorm dbname=gorm port=9920 sslmode=disable TimeZone=Asia/Shanghai"
-	/*dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-	host, user, password, database, port)*/
-
-	// Connect to PostgreSQL with GORM
-	// driver := pgdriver.Open(dsn)
-	// fmt.Println("Opened dsn")
-
 	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s",
 		user, password, host, port, database)
 
-	/* db, err := gorm.Open(driver, &gorm.Config{}) */
 	sqlDB1, err := sql.Open("postgres", dsn)
 
 	if err != nil {
@@ -88,28 +77,22 @@ func ConnectGORM() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	fmt.Println("Opened pgx")
-
 	// Verify connection to PostgreSQL
 	if err := sqlDB1.Ping(); err != nil {
 		log.Printf("Error making ping to PostgreSQL: %v", err)
 		return nil, err
 	}
 
-	fmt.Println("Pinged PostgreSQL")
-
 	db, err := gorm.Open(pgdriver.New(pgdriver.Config{
 		Conn: sqlDB1,
-	}), &gorm.Config{})
-
-	fmt.Println("Opened GORM")
+	}), &gorm.Config{
+		//DisableForeignKeyConstraintWhenMigrating: true,
+	})
 
 	if err != nil {
 		log.Printf("Error connecting to PostgreSQL with GORM: %v", err)
 		return nil, err
 	}
-
-	log.Println("Opened GORM driver")
 
 	// Get the underlying SQL DB object
 	sqlDB, err := db.DB()
@@ -117,8 +100,6 @@ func ConnectGORM() (*gorm.DB, error) {
 		log.Printf("Error getting underlying SQL DB: %v", err)
 		return nil, err
 	}
-
-	log.Println("Retrieved sql DB")
 
 	// Verify connection
 	if err := sqlDB.Ping(); err != nil {
@@ -135,13 +116,8 @@ func ConnectGORM() (*gorm.DB, error) {
 	return db, nil
 }
 
-type Product struct {
-	Code  string
-	Price uint
-}
-
 func MigrateDatabase(db *gorm.DB) error {
-	// List all your models here
+
 	all_models := AllModels()
 
 	for _, model := range all_models {
@@ -153,20 +129,14 @@ func MigrateDatabase(db *gorm.DB) error {
 		}
 	}
 
-	// err := db.AutoMigrate(all_models)
-
-	db.Exec("SET CONSTRAINTS ALL DEFERRED")
-	db.AutoMigrate(&postgres.User{})
-	db.AutoMigrate(&postgres.GameProfile{})
-	db.AutoMigrate(&postgres.Friendship{})
-	db.AutoMigrate(&postgres.FriendshipRequest{})
-	db.AutoMigrate(&postgres.GameLobby{})
-	db.AutoMigrate(&postgres.InGamePlayer{})
-	err := db.AutoMigrate(&postgres.GameInvitation{})
-	db.Exec("SET CONSTRAINTS ALL IMMEDIATE")
-
-	/*db.Migrator().DropTable(&Product{})
-	err := db.AutoMigrate(&Product{})*/
+	err := db.AutoMigrate(
+		&postgres.GameProfile{},
+		&postgres.User{},
+		&postgres.Friendship{},
+		&postgres.FriendshipRequest{},
+		&postgres.GameLobby{},
+		&postgres.InGamePlayer{},
+		&postgres.GameInvitation{})
 
 	if err != nil {
 		return fmt.Errorf("auto migration failed: %w", err)

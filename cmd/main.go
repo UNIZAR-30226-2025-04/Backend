@@ -37,7 +37,7 @@ func main() {
 	/* defer db.Close() */
 	defer sqlDB.Close()
 
-	// Connect to Redis
+	// TODO: Connect to Redis
 	/*redisClient, err := config.Connect_redis()
 	if err != nil {
 		log.Fatalf("Error connecting to Redis: %v", err)
@@ -46,6 +46,7 @@ func main() {
 
 	r := gin.Default()
 
+	// TODO: pass in redisClient
 	/* routes.SetupRoutes(r, db, redisClient) */
 	routes.SetupRoutes(r, gormDB /*redisClient*/)
 
