@@ -1,8 +1,6 @@
 package postgres
 
-import (
-	"gorm.io/datatypes"
-)
+import "gorm.io/datatypes"
 
 /*
  * 'GameProfile' defines the structure for a user's game profile. It is
