@@ -16,7 +16,7 @@ type GameLobby struct {
 	CreatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 
 	// Relationships
-	Creator GameProfile `gorm:"foreignKey:CreatorUsername"`
+	Creator GameProfile `gorm:"foreignKey:CreatorUsername;constraint:OnDelete:CASCADE"`
 	// Relationship with players in the game
-	InGamePlayers []InGamePlayer `gorm:"foreignKey:LobbyID"`
+	InGamePlayers []InGamePlayer `gorm:"foreignKey:LobbyID;constraint:OnDelete:CASCADE"`
 }

@@ -15,5 +15,5 @@ type User struct {
 	MemberSince   time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 
 	// Relationship with the game profile
-	GameProfile GameProfile `gorm:"foreignKey:NiggaUsername"`
+	GameProfile GameProfile `gorm:"foreignKey:NiggaUsername;constraint:OnDelete:CASCADE"`
 }
