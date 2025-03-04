@@ -95,8 +95,31 @@ type Movie struct {
 	Category   Category `gorm:"foreignKey:CategoryID"`
 }
 
+// DropAllTables drops all tables in the database
+func DropAllTables(db *gorm.DB) error {
+	tables := []interface{}{
+		&postgres.GameInvitation{},
+		&postgres.InGamePlayer{},
+		&postgres.GameLobby{},
+		&postgres.FriendshipRequest{},
+		&postgres.Friendship{},
+		&postgres.User{},
+		&postgres.GameProfile{},
+	}
+
+	// Drop tables in reverse order to handle foreign key constraints
+	for _, table := range tables {
+		if err := db.Migrator().DropTable(table); err != nil {
+			return fmt.Errorf("failed to drop table: %w", err)
+		}
+	}
+	log.Println("All tables dropped successfully")
+	return nil
+}
+
 // MigrateDatabase migrates the GORM models to the PostgreSQL database
 func MigrateDatabase(db *gorm.DB) error {
+	// DropAllTables(db)
 	// TODO: check https://forums.devart.com/viewtopic.php?t=28835
 	// TODO: check https://github.com/go-gorm/gorm/issues/4154
 	// TODO: check https://stackoverflow.com/questions/51471973/gorm-automigrate-and-createtable-not-working

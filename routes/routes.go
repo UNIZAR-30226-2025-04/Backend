@@ -47,6 +47,14 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB /*redisClient *redis.RedisClien
 	// API routes group
 	api := router.Group("/")
 
+	// @Summary Get all users
+	// @Description Returns a list of all users with their usernames and icons
+	// @Tags users
+	// @Produce json
+	// @Success 200 {array} object{username=string,icon=integer}
+	// @Router /allusers [get]
+	api.GET("/allusers", controllers.GetAllUsers(db))
+
 	authentication := api.Group("/auth")
 	{
 		// @Summary Manages user login
