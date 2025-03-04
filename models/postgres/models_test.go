@@ -44,11 +44,11 @@ func TestUserAndGameProfile(t *testing.T) {
 	}
 
 	user := postgres.User{
-		Email:         "test@example.com",
-		NiggaUsername: "testuser",
-		PasswordHash:  "hashedpassword",
-		FullName:      "Test User",
-		MemberSince:   time.Now(),
+		Email:           "test@example.com",
+		ProfileUsername: "testuser",
+		PasswordHash:    "hashedpassword",
+		FullName:        "Test User",
+		MemberSince:     time.Now(),
 	}
 
 	// Insert data
@@ -62,7 +62,7 @@ func TestUserAndGameProfile(t *testing.T) {
 	var foundUser postgres.User
 	err = db.Preload("GameProfile").Where("email = ?", "test@example.com").First(&foundUser).Error
 	assert.NoError(t, err)
-	assert.Equal(t, "testuser", foundUser.NiggaUsername)
+	assert.Equal(t, "testuser", foundUser.ProfileUsername)
 	assert.Equal(t, "testuser", foundUser.GameProfile.Username)
 
 	log.Println("FoundUser: ", foundUser)
