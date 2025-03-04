@@ -49,6 +49,12 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB /*redisClient *redis.RedisClien
 
 	authentication := api.Group("/auth")
 	{
+		// @Summary Manages user login
+		// @Description Checks user inputs validity and returns confirmation or denial
+		// @Tags auth
+		// @Produce json
+		// @Success 200 {object} string
+		// @Router /auth/login [post]
 		authentication.POST("/login", controllers.Login(db))
 
 		// @Summary Sign up a new user
@@ -56,16 +62,16 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB /*redisClient *redis.RedisClien
 		// @Tags auth
 		// @Produce json
 		// @Success 200 {object} string
-		// @Router /ping [get]
-		api.POST("/signup", controllers.SignUp(db))
+		// @Router /auth/signup [postdiff]
+		authentication.POST("/signup", controllers.SignUp(db))
 
 		// @Summary Log out a user from the session
 		// @Description TODO: COMPLETE
 		// @Tags auth
 		// @Produce json
 		// @Success 200 {object} string
-		// @Router /ping [get]
-		api.DELETE("/logout", controllers.Logout)
+		// @Router /auth/logout [delete]
+		authentication.DELETE("/logout", controllers.Logout)
 	}
 
 	// Routes that require authentication
