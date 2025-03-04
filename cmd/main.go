@@ -49,6 +49,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error connecting to Redis: %v", err)
 	}
+	log.Println("Connection to Redis successful")
 	defer redis.CloseRedis(redisClient)
 
 	r := gin.Default()
