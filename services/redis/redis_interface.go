@@ -18,7 +18,7 @@ type ChatMessage struct {
 
 // InGamePlayer represents a player's state during a game
 type InGamePlayer struct {
-	Username       string          `json:"username"`          // Matches game_profiles.username
+	Username       string          `json:"username"`         // Matches game_profiles.username
 	LobbyId        string          `json:"lobby_id"`         // Matches game_lobbies.id
 	PlayersMoney   int             `json:"players_money"`    // Matches in_game_players.players_money
 	CurrentDeck    json.RawMessage `json:"current_deck"`     // Temporary Redis field
@@ -29,10 +29,10 @@ type InGamePlayer struct {
 
 // GameLobby represents a game lobby state
 type GameLobby struct {
-	Id              string        `json:"id"`               // Matches game_lobbies.id
-	NumberOfRounds  int           `json:"number_of_rounds"` // Matches game_lobbies.number_of_rounds
-	TotalPoints     int           `json:"total_points"`     // Matches game_lobbies.total_points
-	ChatHistory     []ChatMessage `json:"chat_history"`     // Chat history for the lobby
+	Id             string        `json:"id"`               // Matches game_lobbies.id
+	NumberOfRounds int           `json:"number_of_rounds"` // Matches game_lobbies.number_of_rounds
+	TotalPoints    int           `json:"total_points"`     // Matches game_lobbies.total_points
+	ChatHistory    []ChatMessage `json:"chat_history"`     // Chat history for the lobby
 }
 
 // RedisClient handles Redis operations
@@ -43,10 +43,19 @@ type RedisClient struct {
 
 // NewRedisClient creates a new Redis client instance
 func NewRedisClient(Addr string, DB int) *RedisClient {
-	client := redis.NewClient(&redis.Options{
-		Addr: Addr,
-		DB:   DB,
-	})
+	var client *redis.Client
+	if Addr != "localhost:6379" {
+		opt, err := redis.ParseURL(Addr)
+		if err != nil {
+			panic("Error parsing Redis URL")
+		}
+		client = redis.NewClient(opt)
+	} else {
+		client = redis.NewClient(&redis.Options{
+			Addr: Addr,
+			DB:   DB,
+		})
+	}
 	return &RedisClient{
 		client: client,
 		ctx:    context.Background(),
