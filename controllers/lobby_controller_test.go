@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"Nogler/redis"
+	"Nogler/services/redis"
 	"Nogler/services/sync"
 	"database/sql"
 	"encoding/json"

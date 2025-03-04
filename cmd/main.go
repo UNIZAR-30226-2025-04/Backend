@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 
-	"Nogler/redis"
+	"Nogler/services/redis"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -19,8 +19,7 @@ func main() {
 	godotenv.Load()
 	// Setup DB conn
 	log.Println("Setting up server...")
-	// NOTE: still keeping old raw sql DB instantiation commented
-	/* db, err := config.Connect_postgres() */
+
 	gormDB, err := config.ConnectGORM()
 	if err != nil {
 		log.Fatalf("Error connecting to PostgreSQL: %v", err)
@@ -28,13 +27,15 @@ func main() {
 	log.Println("GORM Connected")
 
 	// Only migrate in development or during deployment
-	//if os.Getenv("ENVIRONMENT") == "development" {
-	if err := config.MigrateDatabase(gormDB); err != nil {
-		log.Printf("Warning: Database migration failed: %v", err)
-		// Continue execution even if migration fails
+	if os.Getenv("MIGRATE_POSTGRES") == "true" {
+		log.Println("Migrating PostgreSQL database...")
+		if err := config.MigrateDatabase(gormDB); err != nil {
+			log.Printf("Warning: Database migration failed: %v", err)
+			// Continue execution even if migration fails
+		} else {
+			log.Println("Database migrated successfully")
+		}
 	}
-	//}
-	log.Println("Database migrated successfully")
 
 	sqlDB, err := gormDB.DB()
 	if err != nil {

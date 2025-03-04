@@ -1,7 +1,7 @@
 package sync
 
 import (
-	"Nogler/redis"
+	"Nogler/services/redis"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -24,7 +24,7 @@ func printGameLobbyTable(t *testing.T, db *sql.DB) {
 	defer rows.Close()
 
 	fmt.Println("\nGame Lobbies Table:")
-	fmt.Printf("%-15s %-15s %-15s %-15s %-25s\n", 
+	fmt.Printf("%-15s %-15s %-15s %-15s %-25s\n",
 		"ID", "Creator", "Rounds", "Points", "Created At")
 	fmt.Println(strings.Repeat("-", 85))
 
@@ -35,7 +35,7 @@ func printGameLobbyTable(t *testing.T, db *sql.DB) {
 		if err := rows.Scan(&id, &creator, &rounds, &points, &createdAt); err != nil {
 			t.Fatalf("Failed to scan row: %v", err)
 		}
-		fmt.Printf("%-15s %-15s %-15d %-15d %-25s\n", 
+		fmt.Printf("%-15s %-15s %-15d %-15d %-25s\n",
 			id, creator, rounds, points, createdAt.Format("2006-01-02 15:04:05"))
 	}
 }
@@ -52,7 +52,7 @@ func printInGamePlayersTable(t *testing.T, db *sql.DB) {
 	defer rows.Close()
 
 	fmt.Println("\nIn Game Players Table:")
-	fmt.Printf("%-15s %-15s %-15s %-40s %-8s\n", 
+	fmt.Printf("%-15s %-15s %-15s %-40s %-8s\n",
 		"Lobby ID", "Username", "Money", "Most Played Hand", "Winner")
 	fmt.Println(strings.Repeat("-", 93))
 
@@ -64,7 +64,7 @@ func printInGamePlayersTable(t *testing.T, db *sql.DB) {
 		if err := rows.Scan(&lobbyId, &username, &money, &hand, &winner); err != nil {
 			t.Fatalf("Failed to scan row: %v", err)
 		}
-		fmt.Printf("%-15s %-15s %-15d %-40s %-8v\n", 
+		fmt.Printf("%-15s %-15s %-15d %-40s %-8v\n",
 			lobbyId, username, money, string(hand), winner)
 	}
 }
@@ -149,7 +149,7 @@ func TestSyncManager(t *testing.T) {
 		// Create data in Redis
 		player := &redis.InGamePlayer{
 			Username:     testUsername,
-			LobbyId:     testLobbyId,
+			LobbyId:      testLobbyId,
 			PlayersMoney: 1000,
 			MostPlayedHand: json.RawMessage(`{
 				"hand_type": "full_house",
@@ -179,7 +179,7 @@ func TestSyncManager(t *testing.T) {
 			FROM in_game_players 
 			WHERE username = $1 AND lobby_id = $2`,
 			testUsername, testLobbyId).Scan(&dbMoney, &dbHand)
-		
+
 		if err != nil {
 			t.Fatalf("Failed to verify PostgreSQL data: %v", err)
 		}
@@ -235,8 +235,8 @@ func TestSyncManager(t *testing.T) {
 			FROM game_lobbies 
 			WHERE id = $1`,
 			testLobbyId).Scan(&initialRounds, &initialPoints)
-		
-		fmt.Printf("\nInitial data in PostgreSQL:\nRounds: %d\nPoints: %d\n", 
+
+		fmt.Printf("\nInitial data in PostgreSQL:\nRounds: %d\nPoints: %d\n",
 			initialRounds, initialPoints)
 
 		// Sync with PostgreSQL
@@ -252,7 +252,7 @@ func TestSyncManager(t *testing.T) {
 			FROM game_lobbies 
 			WHERE id = $1`,
 			testLobbyId).Scan(&dbRounds, &dbPoints)
-		
+
 		if err != nil {
 			t.Fatalf("Failed to verify PostgreSQL data: %v", err)
 		}
@@ -267,4 +267,4 @@ func TestSyncManager(t *testing.T) {
 		fmt.Println("\nFinal State:")
 		printGameLobbyTable(t, db)
 	})
-} 
+}

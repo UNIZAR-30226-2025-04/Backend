@@ -1,26 +1,25 @@
 package middleware
 
 import (
-	"Nogler/models"
 	"net/http"
+
+	"Nogler/constants/auth"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
-var secret = []byte("secret")
-var user models.User
-
 // AuthRequired is a simple middleware to check the session.
 func AuthRequired(c *gin.Context) {
 	session := sessions.Default(c)
-	user := session.Get(user.Email)
-	if user == nil {
-		// Abort the request with the appropriate error code
+	userEmail := session.Get(auth.Email)
+	if userEmail == nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	// Continue down the chain to handler etc
+	// Store the email in the context if needed for handlers
+	// NOTE: check if this is needed
+	c.Set(auth.Email, userEmail)
 	c.Next()
 }
 
@@ -28,7 +27,7 @@ func AuthRequired(c *gin.Context) {
 // session.
 func me(c *gin.Context) {
 	session := sessions.Default(c)
-	user := session.Get(user.Email)
+	user := session.Get(auth.Email)
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
