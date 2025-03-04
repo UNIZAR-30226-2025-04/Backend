@@ -65,6 +65,8 @@ func Logout(c *gin.Context) {
 
 func SignUp(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) { // TODO: completar
+		email := c.PostForm("email")
+		username := c.PostForm("username")
 		fmt.Print("test")
 	}
 }

@@ -8,12 +8,15 @@ import (
 	"log"
 	"os"
 
+	"Nogler/redis"
+
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-
+	godotenv.Load()
 	// Setup DB conn
 	log.Println("Setting up server...")
 	// NOTE: still keeping old raw sql DB instantiation commented
@@ -41,11 +44,11 @@ func main() {
 	defer sqlDB.Close()
 
 	// TODO: Connect to Redis
-	/*redisClient, err := config.Connect_redis()
+	redisClient, err := config.Connect_redis()
 	if err != nil {
 		log.Fatalf("Error connecting to Redis: %v", err)
 	}
-	defer redis.CloseRedis(redisClient)*/
+	defer redis.CloseRedis(redisClient)
 
 	r := gin.Default()
 
