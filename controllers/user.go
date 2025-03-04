@@ -26,12 +26,12 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 
 		var user models.User
 		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password!"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password!"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
 			return
 		}
 
@@ -40,7 +40,7 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "No session!"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{})
+		c.JSON(http.StatusOK, gin.H{"message": "bien hecho niga"})
 	}
 }
 
