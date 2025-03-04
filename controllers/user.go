@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"Nogler/constants/auth"
 	models "Nogler/models/postgres"
 	"fmt"
 	"net/http"
@@ -35,7 +36,7 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		session.Set("Email", user.Email)
+		session.Set(auth.Email, user.Email)
 		if err := session.Save(); err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "No session!"})
 			return
@@ -47,7 +48,7 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 // Logout from server, deletes the session associated with the Email key
 func Logout(c *gin.Context) {
 	session := sessions.Default(c)
-	user := session.Get("Email")
+	user := session.Get(auth.Email)
 	// There is no session for the user, won't delete nothing
 	if user == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid session token"})
@@ -55,7 +56,7 @@ func Logout(c *gin.Context) {
 	}
 
 	// Deletes the session associated with that userkey
-	session.Delete("Email")
+	session.Delete(auth.Email)
 	if err := session.Save(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
 		return
@@ -65,8 +66,8 @@ func Logout(c *gin.Context) {
 
 func SignUp(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) { // TODO: completar
-		email := c.PostForm("email")
-		username := c.PostForm("username")
+		// email := c.PostForm("email")
+		// username := c.PostForm("username")
 		fmt.Print("test")
 	}
 }

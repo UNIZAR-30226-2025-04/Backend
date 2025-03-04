@@ -1,7 +1,7 @@
 package config
 
 import (
-	"Nogler/redis"
+	"Nogler/services/redis"
 	"log"
 	"os"
 )
