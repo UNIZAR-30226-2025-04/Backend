@@ -16,6 +16,24 @@ import (
 	"gorm.io/gorm"
 )
 
+// @title Nogler API
+// @version 1.0
+// @description Gin-Gonic server for the "Nogler" game API
+// @host 74.234.191.199:8080
+// @BasePath /
+// @paths
+
+// @Summary Login user
+// @Description Authenticates a user and creates a session
+// @Tags auth
+// @Accept x-www-form-urlencoded
+// @Produce json
+// @Param email formData string true "User email"
+// @Param password formData string true "User password"
+// @Success 200 {object} object{message=string}
+// @Failure 400 {object} object{error=string}
+// @Failure 401 {object} object{error=string}
+// @Router /login [post]
 func Login(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
@@ -48,7 +66,14 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// Logout from server, deletes the session associated with the Email key
+// @Summary Log out a user
+// @Description Ends the user's session
+// @Tags auth
+// @Produce json
+// @Success 200 {object} object{message=string}
+// @Failure 400 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
+// @Router /auth/logout [delete]
 func Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(auth.Email)
@@ -67,6 +92,21 @@ func Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
 }
 
+
+// @Summary Sign up a new user
+// @Description Creates a new user account
+// @Tags auth
+// @Accept x-www-form-urlencoded
+// @Produce json
+// @Param username formData string true "Username"
+// @Param email formData string true "Email"
+// @Param password formData string true "Password"
+// @Param icono formData string true "Icon number"
+// @Success 201 {object} object{message=string,user=object{username=string,email=string}}
+// @Failure 400 {object} object{error=string}
+// @Failure 409 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
+// @Router /signup [post]
 func SignUp(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		username := c.PostForm("username")
@@ -138,6 +178,14 @@ func SignUp(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+
+// @Summary Get all users
+// @Description Returns a list of all users with their usernames and icons
+// @Tags users
+// @Produce json
+// @Success 200 {array} object{username=string,icon=integer}
+// @Failure 500 {object} object{error=string}
+// @Router /allusers [get]
 func GetAllUsers(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var users []models.User
@@ -162,7 +210,17 @@ func GetAllUsers(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// GetUserPublicInfo returns public information about a specific user
+
+// @Summary Get user public info
+// @Description Returns public information about a specific user (username and icon)
+// @Tags users
+// @Produce json
+// @Param username path string true "Username"
+// @Success 200 {object} object{username=string,icon=integer}
+// @Failure 400 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
+// @Router /users/{username} [get]
 func GetUserPublicInfo(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		username := c.Param("username")
@@ -194,7 +252,16 @@ func GetUserPublicInfo(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// GetUserPrivateInfo returns private information about the authenticated user
+// @Summary Get user private info
+// @Description Returns private information about the authenticated user
+// @Tags users
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} object{username=string,email=string,icon=integer}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
+// @Router /auth/me [get]
 func GetUserPrivateInfo(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get email from session
@@ -230,7 +297,23 @@ func GetUserPrivateInfo(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// UpdateUserInfo updates the authenticated user's information
+
+// @Summary Update user information
+// @Description Updates the authenticated user's information
+// @Tags users
+// @Accept x-www-form-urlencoded
+// @Produce json
+// @Param username formData string false "New username"
+// @Param email formData string false "New email"
+// @Param password formData string false "New password"
+// @Param icono formData string false "New icon number"
+// @Success 200 {object} object{message=string,user=object{username=string,email=string,icon=integer}}
+// @Failure 400 {object} object{error=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 409 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
+// @Router /auth/update [patch]
 func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get email from session
