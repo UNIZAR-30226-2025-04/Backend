@@ -25,6 +25,8 @@ jobs:
             git reset --hard  # Ensure clean state
             git pull origin main
 
+            swag init --output config/swagger
+
             echo "Restarting Go Server..."
             sudo systemctl restart go-app
 
