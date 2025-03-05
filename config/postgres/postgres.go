@@ -1,4 +1,4 @@
-package config
+package postgres
 
 import (
 	"Nogler/models/postgres"
@@ -22,6 +22,8 @@ func ConnectGORM() (*gorm.DB, error) {
 	port := os.Getenv("POSTGRES_PORT")
 	database := os.Getenv("POSTGRES_DATABASE")
 	verbose := os.Getenv("VERBOSE_POSTGRES")
+
+	log.Println("Connecting to PostgreSQL with GORM, credentials:", user, password, host, port, database)
 
 	// NOTE: https://stackoverflow.com/questions/57205060/how-to-connect-postgresql-database-using-gorm
 	// NOTE: See https://github.com/go-gorm/gorm/issues/5409

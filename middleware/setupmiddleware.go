@@ -15,14 +15,16 @@ func SetUpMiddleware(r *gin.Engine) {
 	store := cookie.NewStore([]byte(key))
 	store.Options(sessions.Options{
 		Path:     "/",
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
 	})
 	r.Use(sessions.Sessions("mysession", store))
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"*"},
+		AllowOriginFunc: func(origin string) bool {
+			return true
+		},
+		AllowMethods:     []string{"GET", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"*"},
 		AllowCredentials: true,
 	}))

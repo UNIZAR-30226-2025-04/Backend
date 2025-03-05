@@ -94,8 +94,9 @@ func GetAllGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Retrieve all game lobby invitations where the user is the recipient
+		// Preload the GameLobby relationship
 		var gameInvitations []models.GameInvitation
-		if err := db.Where("invited_username = ?", user.ProfileUsername).Find(&gameInvitations).Error; err != nil {
+		if err := db.Preload("GameLobby").Where("invited_username = ?", user.ProfileUsername).Find(&gameInvitations).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving game lobby invitations"})
 			return
 		}
@@ -132,9 +133,9 @@ func GetAllGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // @Failure 500 {object} map[string]string "error: Error deleting friendship request"
 // @Router /friendship-requests/{username} [delete]
 // @Security ApiKeyAuth
-func DeleteFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
+func DeleteSentFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Obtain the user's email from the token
+		// Obtener el email del usuario desde el token
 		session := sessions.Default(c)
 		email := session.Get(auth.Email)
 		if email == nil {
@@ -142,50 +143,50 @@ func DeleteFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Find the user's game profile
+		// Buscar el perfil de juego del usuario
 		var user models.User
 		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
 
-		// Get the recipient's username from the URL parameter
+		// Obtener el nombre de usuario del parámetro de la URL
 		username := c.Param("username")
 
-		// Delete the friendship request
-		if err := db.Where("sender = ? AND recipient = ?", user.ProfileUsername, username).Delete(&models.FriendshipRequest{}).Error; err != nil {
+		// Eliminar la solicitud de amistad
+		result := db.Where("sender = ? AND recipient = ?", user.ProfileUsername, username).Delete(&models.FriendshipRequest{})
+		if result.Error != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting friendship request"})
 			return
 		}
 
-		// Check if the request was actually deleted
-		if db.RowsAffected == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Friendship request not found"})
+		// Verificar si la solicitud se eliminó realmente
+		if result.RowsAffected == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Friendship request not found"})
 			return
 		}
 
-		// Return success message
+		// Devolver mensaje de éxito
 		c.JSON(http.StatusOK, gin.H{"message": "Friendship request deleted successfully"})
 	}
 }
 
-// DeleteGameLobbyInvitation godoc
-// @Summary Delete a game lobby invitation for the authenticated user
-// @Description Delete a game lobby invitation where the authenticated user is the recipient and the specified username is the sender for a specific lobby code.
-// @Tags GameLobby
+// DeleteReceivedFriendshipRequest godoc
+// @Summary Delete a friendship request received by the authenticated user
+// @Description Delete a friendship request where the authenticated user is the recipient and the specified username is the sender.
+// @Tags Friendship
 // @Accept json
 // @Produce json
 // @Param username path string true "Sender's username"
-// @Param code path string true "Lobby code"
-// @Success 200 {object} map[string]string "message: Game lobby invitation deleted successfully"
+// @Success 200 {object} map[string]string "message: Friendship request deleted successfully"
 // @Failure 401 {object} map[string]string "error: User not authenticated"
-// @Failure 404 {object} map[string]string "error: Game lobby invitation not found"
-// @Failure 500 {object} map[string]string "error: Error deleting game lobby invitation"
-// @Router /game-lobby-invitations/{username}/{code} [delete]
+// @Failure 404 {object} map[string]string "error: Friendship request not found"
+// @Failure 500 {object} map[string]string "error: Error deleting friendship request"
+// @Router /received-friendship-requests/{username} [delete]
 // @Security ApiKeyAuth
-func DeleteGameLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
+func DeleteReceivedFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Obtain the user's email from the token
+		// Obtener el email del usuario desde el token
 		session := sessions.Default(c)
 		email := session.Get(auth.Email)
 		if email == nil {
@@ -193,30 +194,30 @@ func DeleteGameLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Find the user's game profile
+		// Buscar el perfil de juego del usuario
 		var user models.User
 		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
 
-		// Get the sender's username and lobby code from the URL parameters
-		username := c.Param("username")
-		code := c.Param("code")
+		// Obtener el nombre de usuario del parámetro de la URL
+		senderUsername := c.Param("username")
 
-		// Delete the game lobby invitation
-		if err := db.Where("invited_username = ? AND lobby_id = ? AND game_lobby.creator_username = ?", user.ProfileUsername, code, username).Delete(&models.GameInvitation{}).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting game lobby invitation"})
+		// Eliminar la solicitud de amistad donde el usuario es el receptor y el nombre de usuario especificado es el emisor
+		result := db.Where("sender = ? AND recipient = ?", senderUsername, user.ProfileUsername).Delete(&models.FriendshipRequest{})
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting friendship request"})
 			return
 		}
 
-		// Check if the invitation was actually deleted
-		if db.RowsAffected == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Game lobby invitation not found"})
+		// Verificar si la solicitud se eliminó realmente
+		if result.RowsAffected == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Friendship request not found"})
 			return
 		}
 
-		// Return success message
-		c.JSON(http.StatusOK, gin.H{"message": "Game lobby invitation deleted successfully"})
+		// Devolver mensaje de éxito
+		c.JSON(http.StatusOK, gin.H{"message": "Friendship request deleted successfully"})
 	}
 }

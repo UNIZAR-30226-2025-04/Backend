@@ -1,7 +1,7 @@
 package postgres_test
 
 import (
-	"Nogler/config"
+	config "Nogler/config/postgres"
 	"Nogler/models/postgres"
 	"log"
 	"testing"

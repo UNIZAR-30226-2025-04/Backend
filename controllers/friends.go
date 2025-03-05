@@ -19,6 +19,8 @@ import (
 // @Router /auth/friends [get]
 func ListFriends(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		// TODO: we should get the username from the session instead of the query
 		username := c.Query("username")
 
 		if username == "" {
@@ -78,7 +80,9 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 // @Router /auth/addFriend [post]
 func AddFriend(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+
 		// Get the username of the requester
+		// TODO: we should get the username from the session instead of the query
 		username := c.Param("username")
 		friendUsername := c.PostForm("friendUsername")
 
