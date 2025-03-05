@@ -1,11 +1,233 @@
 basePath: /
-host: 74.234.191.199:8080
+host: nogler.ddns.net:8080
 info:
   contact: {}
   description: Gin-Gonic server for the "Nogler" game API
   title: Nogler API
   version: "1.0"
 paths:
+  /allusers:
+    get:
+      description: Returns a list of all users with their usernames and icons
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              properties:
+                icon:
+                  type: integer
+                username:
+                  type: string
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Get all users
+      tags:
+      - users
+  /auth/logout:
+    delete:
+      description: Ends the user's session
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Log out a user
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Returns private information about the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              email:
+                type: string
+              icon:
+                type: integer
+              username:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user private info
+      tags:
+      - users
+  /auth/update:
+    patch:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Updates the authenticated user's information
+      parameters:
+      - description: New username
+        in: formData
+        name: username
+        type: string
+      - description: New email
+        in: formData
+        name: email
+        type: string
+      - description: New password
+        in: formData
+        name: password
+        type: string
+      - description: New icon number
+        in: formData
+        name: icono
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+              user:
+                properties:
+                  email:
+                    type: string
+                  icon:
+                    type: integer
+                  username:
+                    type: string
+                type: object
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Update user information
+      tags:
+      - users
+  /login:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Authenticates a user and creates a session
+      parameters:
+      - description: User email
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: User password
+        in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Login user
+      tags:
+      - auth
   /ping:
     get:
       description: Returns a basic message
@@ -19,4 +241,117 @@ paths:
       summary: Endpoint just pings the server
       tags:
       - test
+  /signup:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Creates a new user account
+      parameters:
+      - description: Username
+        in: formData
+        name: username
+        required: true
+        type: string
+      - description: Email
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: Password
+        in: formData
+        name: password
+        required: true
+        type: string
+      - description: Icon number
+        in: formData
+        name: icono
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            properties:
+              message:
+                type: string
+              user:
+                properties:
+                  email:
+                    type: string
+                  username:
+                    type: string
+                type: object
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Sign up a new user
+      tags:
+      - auth
+  /users/{username}:
+    get:
+      description: Returns public information about a specific user (username and
+        icon)
+      parameters:
+      - description: Username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              icon:
+                type: integer
+              username:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Get user public info
+      tags:
+      - users
 swagger: "2.0"
