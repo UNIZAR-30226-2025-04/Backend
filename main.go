@@ -2,6 +2,7 @@ package main
 
 import (
 	"Nogler/config"
+	pgconfig "Nogler/config/postgres"
 	_ "Nogler/config/swagger"
 	"Nogler/middleware"
 	"Nogler/routes"
@@ -25,7 +26,7 @@ func main() {
 	// Setup DB conn
 	log.Println("Setting up server...")
 
-	gormDB, err := config.ConnectGORM()
+	gormDB, err := pgconfig.ConnectGORM()
 	if err != nil {
 		log.Fatalf("Error connecting to PostgreSQL: %v", err)
 	}
@@ -34,7 +35,7 @@ func main() {
 	// Only migrate in development or during deployment
 	if os.Getenv("MIGRATE_POSTGRES") == "true" {
 		log.Println("Migrating PostgreSQL database...")
-		if err := config.MigrateDatabase(gormDB); err != nil {
+		if err := pgconfig.MigrateDatabase(gormDB); err != nil {
 			log.Printf("Warning: Database migration failed: %v", err)
 			// Continue execution even if migration fails
 		} else {
@@ -65,12 +66,25 @@ func main() {
 
 	// Configure port
 	port := os.Getenv("PORT")
-	if port == "" {
+	if port == "" && os.Getenv("USE_HTTPS") == "true" {
+		port = "443"
+	} else {
 		port = "8080"
 	}
-	// Start server
-	log.Printf("Server started on port %s", port)
-	if err := r.Run(":" + port); err != nil {
-		log.Fatalf("Error starting server: %v", err)
+
+	if os.Getenv("USE_HTTPS") == "true" {
+		//SSL certification configuration for HTTPS
+		certFile := "/etc/letsencrypt/live/nogler.ddns.net/fullchain.pem"
+		keyFile := "/etc/letsencrypt/live/nogler.ddns.net/privkey.pem"
+
+		// Start server
+		if err := r.RunTLS(":"+port, certFile, keyFile); err != nil {
+			log.Fatalf("Error starting server: %v", err)
+		}
+	} else {
+		if err := r.Run(":" + port); err != nil {
+			log.Fatalf("Error starting server: %v", err)
+		}
 	}
+	log.Printf("Server started on port %s", port)
 }
