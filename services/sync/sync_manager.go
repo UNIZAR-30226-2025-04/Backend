@@ -1,7 +1,7 @@
 package sync
 
 import (
-	"Nogler/redis"
+	"Nogler/services/redis"
 	"database/sql"
 	"fmt"
 )
@@ -121,10 +121,10 @@ func (sm *SyncManager) CleanupGameData(lobbyId string) error {
 
 	// Clean Redis data
 	// TODO: Implement Redis data cleanup in the future
-	
+
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing final state: %v", err)
 	}
 
 	return nil
-} 
+}

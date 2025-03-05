@@ -3,35 +3,60 @@ package main
 import (
 	"Nogler/config"
 	_ "Nogler/config/swagger"
-	"Nogler/redis"
+	"Nogler/middleware"
 	"Nogler/routes"
+	"Nogler/services/redis"
 	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 func main() {
+	godotenv.Load()
+	// Setup DB conn
+	log.Println("Setting up server...")
 
-	//Setup DB conn
-
-	db, err := config.Connect_postgres()
+	gormDB, err := config.ConnectGORM()
 	if err != nil {
 		log.Fatalf("Error connecting to PostgreSQL: %v", err)
 	}
-	defer db.Close()
+	log.Println("GORM Connected")
 
-	// Connect to Redis
+	// Only migrate in development or during deployment
+	if os.Getenv("MIGRATE_POSTGRES") == "true" {
+		log.Println("Migrating PostgreSQL database...")
+		if err := config.MigrateDatabase(gormDB); err != nil {
+			log.Printf("Warning: Database migration failed: %v", err)
+			// Continue execution even if migration fails
+		} else {
+			log.Println("Database migrated successfully")
+		}
+	}
+
+	sqlDB, err := gormDB.DB()
+	if err != nil {
+		log.Fatalf("Error reading GORM PostgreSQL instance: %v", err)
+	}
+	defer sqlDB.Close()
+
 	redisClient, err := config.Connect_redis()
 	if err != nil {
 		log.Fatalf("Error connecting to Redis: %v", err)
 	}
+	log.Println("Connection to Redis successful")
 	defer redis.CloseRedis(redisClient)
 
 	r := gin.Default()
 
-	routes.SetupRoutes(r, db, redisClient)
+	middleware.SetUpMiddleware(r)
+
+	// TODO: pass in redisClient
+	/* routes.SetupRoutes(r, db, redisClient) */
+	routes.SetupRoutes(r, gormDB, redisClient)
+
 	// Configure port
 	port := os.Getenv("PORT")
 	if port == "" {
