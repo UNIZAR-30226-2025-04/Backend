@@ -16,8 +16,8 @@ type GameProfile struct {
 	// User            *User               `gorm:"foreignKey:Username"`
 	Friendships1    []Friendship        `gorm:"foreignKey:Username1"`
 	Friendships2    []Friendship        `gorm:"foreignKey:Username2"`
-	FriendRequests1 []FriendshipRequest `gorm:"foreignKey:Username1"`
-	FriendRequests2 []FriendshipRequest `gorm:"foreignKey:Username2"`
+	FriendRequests1 []FriendshipRequest `gorm:"foreignKey:Sender"`
+	FriendRequests2 []FriendshipRequest `gorm:"foreignKey:Recipient"`
 	GameLobbies     []GameLobby         `gorm:"foreignKey:CreatorUsername"`
 	InGamePlayers   []InGamePlayer      `gorm:"foreignKey:Username"`
 	GameInvitations []GameInvitation    `gorm:"foreignKey:InvitedUsername"`

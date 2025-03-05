@@ -35,6 +35,11 @@ go build cmd/main.go
 ./main
 ```
 
+documentation generation:
+```
+swag init --output config/swagger
+```
+
 ![Logo](letras-img.png)
 
 ## Usage/Examples

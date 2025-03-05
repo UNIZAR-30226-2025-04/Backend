@@ -13,7 +13,6 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-
 // SetupRoutes configures all API routes
 func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient) {
 	// Create SyncManager instance
@@ -33,7 +32,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient
 	// API routes group
 	api := router.Group("/")
 
-  api.GET("/ping", controllers.Ping)
+	api.GET("/ping", controllers.Ping)
 
 	api.GET("/allusers", controllers.GetAllUsers(db))
 
@@ -51,15 +50,31 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient
 		authentication.GET("/me", controllers.GetUserPrivateInfo(db))
 
 		authentication.PATCH("/update", controllers.UpdateUserInfo(db))
+
+		authentication.GET("/friendship_requests", controllers.GetAllFriendshipRequests(db))
+
+		authentication.GET("/lobby_invitations", controllers.GetAllGameLobbyInvitations(db))
+
+		authentication.DELETE("/delete_friendship_request", controllers.DeleteFriendshipRequest(db))
+
+		authentication.DELETE("/delete_game_lobby_invitation", controllers.DeleteGameLobbyInvitation(db))
+
+		authentication.GET("/friends", controllers.ListFriends(db))
+
+		authentication.POST("/addFriend", controllers.AddFriend(db))
 	}
 
 	// Routes that require authentication
-	//authenticated := api.Group("/")
+	/*authenticated := api.Group("/")
 	{
-		// Lobby routes TODO: Documentar
-		//lobby := authenticated.Group("/lobby")
+		lobby := authenticated.Group("/lobby")
 		{
-			//lobby.GET("/:codigo", lobbyController.GetLobbyInfo)
+			lobby.GET("/:codigo", lobbyController.GetLobbyInfo)
 		}
-	}
+
+		friends := authenticated.Group("/friends")
+		{
+			api.POST("/list", controllers.ListFriends(db))
+		}
+	}*/
 }

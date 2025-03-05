@@ -4,6 +4,7 @@ import (
 	"Nogler/constants/auth"
 	models "Nogler/models/postgres"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -59,10 +60,12 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 
 		session.Set(auth.Email, user.Email)
 		if err := session.Save(); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "No session!"})
+			// Log the actual error for better debugging
+			log.Printf("Session save error: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to save session!"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "bien hecho niga"})
+		c.JSON(http.StatusOK, gin.H{"message": "Successfully logged in."})
 	}
 }
 
@@ -91,7 +94,6 @@ func Logout(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
 }
-
 
 // @Summary Sign up a new user
 // @Description Creates a new user account
@@ -178,7 +180,6 @@ func SignUp(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-
 // @Summary Get all users
 // @Description Returns a list of all users with their usernames and icons
 // @Tags users
@@ -209,7 +210,6 @@ func GetAllUsers(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, simplifiedUsers)
 	}
 }
-
 
 // @Summary Get user public info
 // @Description Returns public information about a specific user (username and icon)
@@ -296,7 +296,6 @@ func GetUserPrivateInfo(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, privateInfo)
 	}
 }
-
 
 // @Summary Update user information
 // @Description Updates the authenticated user's information
