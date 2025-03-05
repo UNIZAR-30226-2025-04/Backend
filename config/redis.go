@@ -1,7 +1,7 @@
 package config
 
 import (
-	"Nogler/redis"
+	"Nogler/services/redis"
 	"log"
 	"os"
 )
@@ -9,6 +9,7 @@ import (
 // Connect to Redis
 func Connect_redis() (*redis.RedisClient, error) {
 	redisUri := os.Getenv("REDIS_URL")
+	log.Println(redisUri)
 	redisClient, err := redis.InitRedis(redisUri, 0)
 	if err != nil {
 		log.Fatalf("Error connecting to Redis: %v", err)

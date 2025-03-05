@@ -1,54 +1,33 @@
 package middleware
 
 import (
-	"Nogler/controllers"
 	"net/http"
 
+	"Nogler/constants/auth"
+
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 )
-
-var secret = []byte("secret")
 
 // AuthRequired is a simple middleware to check the session.
 func AuthRequired(c *gin.Context) {
 	session := sessions.Default(c)
-	user := session.Get(userkey)
-	if user == nil {
-		// Abort the request with the appropriate error code
+	userEmail := session.Get(auth.Email)
+	if userEmail == nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	// Continue down the chain to handler etc
+	// Store the email in the context if needed for handlers
+	// NOTE: check if this is needed
+	c.Set(auth.Email, userEmail)
 	c.Next()
-}
-
-func engine() *gin.Engine {
-	r := gin.New()
-
-	// Setup the cookie store for session management
-	r.Use(sessions.Sessions("mysession", cookie.NewStore(secret)))
-
-	// Login and logout routes
-	r.POST("/login", controllers.Login)
-	r.GET("/logout", controllers.Logout)
-
-	// Private group, require authentication to access
-	private := r.Group("/private")
-	private.Use(AuthRequired)
-	{
-		private.GET("/me", me)
-		private.GET("/status", status)
-	}
-	return r
 }
 
 // me is the handler that will return the user information stored in the
 // session.
 func me(c *gin.Context) {
 	session := sessions.Default(c)
-	user := session.Get(userkey)
+	user := session.Get(auth.Email)
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
