@@ -14,14 +14,14 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy to the AZURE VM (docs in whatsapp)
+      - name: Deploy to RASPI (docs in whatsapp)
         run: |
-          ssh -o StrictHostKeyChecking=no nogler_admin@74.234.191.199 -ip << 'EOF'
+          ssh -o StrictHostKeyChecking=no pi@nogler.ddns.net -ip << 'EOF'
             echo "Stopping Go Server..."
             sudo systemctl stop go-app || true  # Ignore errors if not running
 
             echo "Updating repository..."
-            cd /home/nogler_admin/Backend
+            cd /home/pi/psoft/Backend
             git reset --hard  # Ensure clean state
             git pull origin main
 
