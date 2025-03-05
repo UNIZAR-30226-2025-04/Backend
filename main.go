@@ -18,13 +18,17 @@ import (
 // @title Nogler API
 // @version 1.0
 // @description Gin-Gonic server for the "Nogler" game API
-// @host nogler.ddns.net:8080
+// @host https://nogler.ddns.net:443
 // @BasePath /
 // @paths
 func main() {
 	godotenv.Load()
 	// Setup DB conn
 	log.Println("Setting up server...")
+
+	if os.Getenv("PROD") == "true" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	gormDB, err := pgconfig.ConnectGORM()
 	if err != nil {

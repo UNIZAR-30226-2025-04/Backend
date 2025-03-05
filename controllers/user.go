@@ -20,7 +20,7 @@ import (
 // @title Nogler API
 // @version 1.0
 // @description Gin-Gonic server for the "Nogler" game API
-// @host 74.234.191.199:8080
+// @host https://nogler.ddns.net:443
 // @BasePath /
 // @paths
 
