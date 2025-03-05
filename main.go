@@ -66,13 +66,16 @@ func main() {
 
 	// Configure port
 	port := os.Getenv("PORT")
-	if port == "" && os.Getenv("USE_HTTPS") == "true" {
+	log.Println("Puerto leido: ", port)
+	if port == "443" && os.Getenv("USE_HTTPS") == "true" {
 		port = "443"
 	} else {
 		port = "8080"
 	}
+	log.Println("Puerto =", port)
 
 	if os.Getenv("USE_HTTPS") == "true" {
+		log.Println("Using HTTPS on port 443")
 		//SSL certification configuration for HTTPS
 		certFile := "/etc/letsencrypt/live/nogler.ddns.net/fullchain.pem"
 		keyFile := "/etc/letsencrypt/live/nogler.ddns.net/privkey.pem"
@@ -82,6 +85,7 @@ func main() {
 			log.Fatalf("Error starting server: %v", err)
 		}
 	} else {
+		log.Println("Using HTTP on port 8080")
 		if err := r.Run(":" + port); err != nil {
 			log.Fatalf("Error starting server: %v", err)
 		}
