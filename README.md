@@ -48,7 +48,7 @@ swag init --output config/swagger
 
 ~~~ copy
 
-74.234.191.199:8080/swagger/index.html
+https://nogler.ddns.net:443
 ~~~
 ## Design decisions and justifications
 
