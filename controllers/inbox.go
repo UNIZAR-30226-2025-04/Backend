@@ -1,11 +1,10 @@
 package controllers
 
 import (
-	"Nogler/constants/auth"
+	"Nogler/middleware"
 	models "Nogler/models/postgres"
 	"net/http"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -24,11 +23,10 @@ import (
 // @Security ApiKeyAuth
 func GetAllFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Obtener el email del usuario desde el token
-		session := sessions.Default(c)
-		email := session.Get(auth.Email)
-		if email == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		// Obtaining user mail from JWT
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			c.Abort()
 			return
 		}
 
@@ -78,11 +76,10 @@ func GetAllFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // @Security ApiKeyAuth
 func GetAllGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Obtain the user's email from the token
-		session := sessions.Default(c)
-		email := session.Get(auth.Email)
-		if email == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		// Obtaining user mail from JWT
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			c.Abort()
 			return
 		}
 
@@ -135,11 +132,10 @@ func GetAllGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // @Security ApiKeyAuth
 func DeleteSentFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Obtener el email del usuario desde el token
-		session := sessions.Default(c)
-		email := session.Get(auth.Email)
-		if email == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		// Obtaining user mail from JWT
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			c.Abort()
 			return
 		}
 
@@ -186,11 +182,10 @@ func DeleteSentFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 // @Security ApiKeyAuth
 func DeleteReceivedFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Obtener el email del usuario desde el token
-		session := sessions.Default(c)
-		email := session.Get(auth.Email)
-		if email == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		// Obtaining user mail from JWT
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			c.Abort()
 			return
 		}
 

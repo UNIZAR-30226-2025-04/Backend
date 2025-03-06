@@ -21,7 +21,7 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		// TODO: we should get the username from the session instead of the query
-		username := c.Query("username")
+		username := c.Param("username")
 
 		if username == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
@@ -83,7 +83,8 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 
 		// Get the username of the requester
 		// TODO: we should get the username from the session instead of the query
-		username := c.Param("username")
+		// With JWT username is NOT in the session, only email
+		username := c.PostForm("username")
 		friendUsername := c.PostForm("friendUsername")
 
 		if username == "" || friendUsername == "" {

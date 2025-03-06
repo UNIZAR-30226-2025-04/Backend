@@ -59,7 +59,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient
 
 		authentication.DELETE("/received_friendship_request/:username", controllers.DeleteReceivedFriendshipRequest(db))
 
-		authentication.GET("/friends", controllers.ListFriends(db))
+		authentication.GET("/friends/:username", controllers.ListFriends(db))
 
 		authentication.POST("/addFriend", controllers.AddFriend(db))
 	}
