@@ -1,7 +1,11 @@
 package controllers
 
 import (
+	"Nogler/middleware"
 	"Nogler/models/postgres"
+	models "Nogler/models/postgres"
+	"log"
+
 	// "errors"
 	"net/http"
 
@@ -20,8 +24,19 @@ import (
 func ListFriends(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		// TODO: we should get the username from the session instead of the query
-		username := c.Param("username")
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		username := user.GameProfile.Username
 
 		if username == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
@@ -72,7 +87,6 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 // @Tags friends
 // @Accept json
 // @Produce json
-// @Param username path string true "Username of the user sending the friend request"
 // @Param friendUsername query string true "Username of the friend to be added"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
@@ -81,10 +95,20 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 func AddFriend(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		// Get the username of the requester
-		// TODO: we should get the username from the session instead of the query
-		// With JWT username is NOT in the session, only email
-		username := c.PostForm("username")
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		username := user.GameProfile.Username
+
 		friendUsername := c.PostForm("friendUsername")
 
 		if username == "" || friendUsername == "" {
@@ -130,7 +154,6 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 // @Tags friends
 // @Accept json
 // @Produce json
-// @Param username path string true "Username of the user removing the friend"
 // @Param friendUsername query string true "Username of the friend to be removed"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
@@ -138,8 +161,21 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 // @Router /auth/deleteFriend [delete]
 func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract usernames
-		username := c.Param("username")
+
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		username := user.GameProfile.Username
+
 		friendUsername := c.PostForm("friendUsername")
 
 		if username == "" || friendUsername == "" {
@@ -175,7 +211,6 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 // @Tags friends
 // @Accept json
 // @Produce json
-// @Param username path string true "Username of the sender"
 // @Param friendUsername query string true "Username of the recipient"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
@@ -183,9 +218,20 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 // @Router /auth/sendFriendRequest [post]
 func SendFriendRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract sender's username
-		senderUsername := c.Param("username")
-		// Extract recipient's username
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		senderUsername := user.GameProfile.Username
+
 		receiverUsername := c.PostForm("friendUsername")
 
 		if senderUsername == "" || receiverUsername == "" {
