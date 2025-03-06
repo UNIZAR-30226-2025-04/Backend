@@ -14,10 +14,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// @Param Authorization header string true "Bearer JWT token"
 // @Summary Get a list of a user friends
 // @Description Returns a list of the user's friends
 // @Tags friends
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Success 200 {array} object{username=string,icon=integer}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/friends [get]
@@ -87,6 +90,8 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 // @Tags friends
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Param friendUsername query string true "Username of the friend to be added"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
@@ -154,6 +159,8 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 // @Tags friends
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Param friendUsername query string true "Username of the friend to be removed"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
@@ -211,6 +218,8 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 // @Tags friends
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Param friendUsername query string true "Username of the recipient"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
