@@ -247,7 +247,7 @@ func SendFriendRequest(db *gorm.DB) gin.HandlerFunc {
 		receiverUsername := c.PostForm("friendUsername")
 
 		if senderUsername == "" || receiverUsername == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required", "senderUsername": senderUsername, "recieverUsername": receiverUsername})
 			return
 		}
 
