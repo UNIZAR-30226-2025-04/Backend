@@ -21,7 +21,7 @@ import (
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: User not found"
 // @Failure 500 {object} map[string]string "error: Error retrieving friendship requests"
-// @Router /auth/friendship-requests [get]
+// @Router /auth/received_friendship_requests [get]
 // @Security ApiKeyAuth
 func GetAllReceivedFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -76,7 +76,7 @@ func GetAllReceivedFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: User not found"
 // @Failure 500 {object} map[string]string "error: Error retrieving friendship requests"
-// @Router /auth/sent-friendship-requests [get]
+// @Router /auth/sent_friendship_requests [get]
 // @Security ApiKeyAuth
 func GetAllSentFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -131,7 +131,7 @@ func GetAllSentFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: User not found"
 // @Failure 500 {object} map[string]string "error: Error retrieving game lobby invitations"
-// @Router /auth/game-lobby-invitations [get]
+// @Router /auth/received_lobby_invitations [get]
 // @Security ApiKeyAuth
 func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -188,7 +188,7 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: User not found"
 // @Failure 500 {object} map[string]string "error: Error retrieving game lobby invitations"
-// @Router /auth/sent-game-lobby-invitations [get]
+// @Router /auth/sent_lobby_invitations [get]
 // @Security ApiKeyAuth
 func GetAllSentGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 	// TODO: add more checks, user in a game, etc? Ask Victor?
@@ -247,7 +247,7 @@ func GetAllSentGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: Friendship request not found"
 // @Failure 500 {object} map[string]string "error: Error deleting friendship request"
-// @Router /auth/friendship-requests/{username} [delete]
+// @Router /auth/sent_friendship_request/{username} [delete]
 // @Security ApiKeyAuth
 func DeleteSentFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -299,7 +299,7 @@ func DeleteSentFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: Friendship request not found"
 // @Failure 500 {object} map[string]string "error: Error deleting friendship request"
-// @Router /auth/received-friendship-requests/{username} [delete]
+// @Router /auth/received_friendship_request/{username} [delete]
 // @Security ApiKeyAuth
 func DeleteReceivedFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
