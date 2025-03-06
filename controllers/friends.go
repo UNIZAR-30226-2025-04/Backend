@@ -14,16 +14,15 @@ import (
 	"gorm.io/gorm"
 )
 
-// @Param Authorization header string true "Bearer JWT token"
 // @Summary Get a list of a user friends
 // @Description Returns a list of the user's friends
 // @Tags friends
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @in header
 // @Success 200 {array} object{username=string,icon=integer}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/friends [get]
+// @Security ApiKeyAuth
 func ListFriends(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -97,6 +96,7 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/addFriend [post]
+// @Security ApiKeyAuth
 func AddFriend(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -115,6 +115,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 		username := user.GameProfile.Username
 
 		friendUsername := c.PostForm("friendUsername")
+		log.Print("holi")
 
 		if username == "" || friendUsername == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required"})
@@ -165,6 +166,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
+// @Security ApiKeyAuth
 // @Router /auth/deleteFriend [delete]
 func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -224,6 +226,7 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
+// @Security ApiKeyAuth
 // @Router /auth/sendFriendRequest [post]
 func SendFriendRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
