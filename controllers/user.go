@@ -2,16 +2,17 @@ package controllers
 
 import (
 	"Nogler/constants/auth"
+	"Nogler/middleware"
 	models "Nogler/models/postgres"
 	"errors"
-	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -37,7 +38,6 @@ import (
 // @Router /login [post]
 func Login(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		session := sessions.Default(c)
 		email := c.PostForm("email")
 		password := c.PostForm("password")
 
@@ -58,14 +58,18 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		session.Set(auth.Email, user.Email)
-		if err := session.Save(); err != nil {
-			// Log the actual error for better debugging
-			log.Printf("Session save error: %v", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to save session!"})
-			return
+		// Generate JWT
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			auth.Email: user.Email,
+		})
+
+		secret := os.Getenv("KEY")
+		tokenString, err := token.SignedString([]byte(secret))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating JWT"})
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "Successfully logged in."})
+
+		c.JSON(http.StatusOK, gin.H{"message": "Successfully logged in.", "token": tokenString})
 	}
 }
 
@@ -78,18 +82,10 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 // @Failure 500 {object} object{error=string}
 // @Router /auth/logout [delete]
 func Logout(c *gin.Context) {
-	session := sessions.Default(c)
-	user := session.Get(auth.Email)
-	// There is no session for the user, won't delete nothing
-	if user == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid session token"})
-		return
-	}
-
-	// Deletes the session associated with that userkey
-	session.Delete(auth.Email)
-	if err := session.Save(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
+	//This serves no purpose with JWT so TODO rething
+	_, err := middleware.JWT_decoder(c)
+	if err != nil {
+		c.Abort()
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
@@ -265,11 +261,9 @@ func GetUserPublicInfo(db *gorm.DB) gin.HandlerFunc {
 func GetUserPrivateInfo(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get email from session
-		session := sessions.Default(c)
-		email := session.Get(auth.Email)
-
-		if email == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			c.Abort()
 			return
 		}
 
@@ -316,11 +310,9 @@ func GetUserPrivateInfo(db *gorm.DB) gin.HandlerFunc {
 func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get email from session
-		session := sessions.Default(c)
-		currentEmail := session.Get(auth.Email)
-
-		if currentEmail == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		currentEmail, err := middleware.JWT_decoder(c)
+		if err != nil {
+			c.Abort()
 			return
 		}
 
@@ -364,7 +356,7 @@ func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Check if new email is already taken (if changing email)
-		if email != "" && email != currentEmail.(string) {
+		if email != "" && email != currentEmail {
 			var existingUser models.User
 			if err := tx.Where("email = ?", email).First(&existingUser).Error; err == nil {
 				tx.Rollback()
@@ -384,15 +376,19 @@ func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 			user.PasswordHash = string(hashedPassword)
 		}
 
+		var tokenString string
 		// Update email if provided
-		if email != "" && email != currentEmail.(string) {
+		if email != "" && email != currentEmail {
 			user.Email = email
-			// Update session with new email
-			session.Set(auth.Email, email)
-			if err := session.Save(); err != nil {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update session"})
-				return
+			// Generate JWT
+			token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+				auth.Email: user.Email,
+			})
+
+			secret := os.Getenv("KEY")
+			tokenString, err = token.SignedString([]byte(secret))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating JWT"})
 			}
 		}
 
@@ -473,6 +469,7 @@ func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 				"email":    user.Email,
 				"icon":     gameProfile.UserIcon,
 			},
+			"token": tokenString,
 		})
 	}
 }
