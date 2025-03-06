@@ -77,6 +77,7 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 // @Description Ends the user's session
 // @Tags auth
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -180,6 +181,7 @@ func SignUp(db *gorm.DB) gin.HandlerFunc {
 // @Description Returns a list of all users with their usernames and icons
 // @Tags users
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
 // @Success 200 {array} object{username=string,icon=integer}
 // @Failure 500 {object} object{error=string}
 // @Router /allusers [get]
@@ -211,6 +213,7 @@ func GetAllUsers(db *gorm.DB) gin.HandlerFunc {
 // @Description Returns public information about a specific user (username and icon)
 // @Tags users
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
 // @Param username path string true "Username"
 // @Success 200 {object} object{username=string,icon=integer}
 // @Failure 400 {object} object{error=string}
@@ -252,7 +255,7 @@ func GetUserPublicInfo(db *gorm.DB) gin.HandlerFunc {
 // @Description Returns private information about the authenticated user
 // @Tags users
 // @Produce json
-// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer JWT token"
 // @Success 200 {object} object{username=string,email=string,icon=integer}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
@@ -296,6 +299,7 @@ func GetUserPrivateInfo(db *gorm.DB) gin.HandlerFunc {
 // @Tags users
 // @Accept x-www-form-urlencoded
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
 // @Param username formData string false "New username"
 // @Param email formData string false "New email"
 // @Param password formData string false "New password"

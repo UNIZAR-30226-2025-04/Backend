@@ -15,6 +15,8 @@ import (
 // @Tags Friendship
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Success 200 {object} map[string]interface{} "friendship_requests"
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: User not found"
@@ -68,6 +70,8 @@ func GetAllReceivedFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // @Tags Friendship
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Success 200 {object} map[string]interface{} "sent_friendship_requests"
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: User not found"
@@ -121,6 +125,8 @@ func GetAllSentFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // @Tags GameLobby
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Success 200 {object} map[string]interface{} "game_lobby_invitations"
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: User not found"
@@ -176,6 +182,8 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // @Tags GameLobby
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Success 200 {object} map[string]interface{} "sent_game_lobby_invitations"
 // @Failure 401 {object} map[string]string "error: User not authenticated"
 // @Failure 404 {object} map[string]string "error: User not found"
@@ -232,6 +240,8 @@ func GetAllSentGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // @Tags Friendship
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Param username path string true "Recipient's username"
 // @Success 200 {object} map[string]string "message: Friendship request deleted successfully"
 // @Failure 401 {object} map[string]string "error: User not authenticated"
@@ -282,6 +292,8 @@ func DeleteSentFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 // @Tags Friendship
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Param username path string true "Sender's username"
 // @Success 200 {object} map[string]string "message: Friendship request deleted successfully"
 // @Failure 401 {object} map[string]string "error: User not authenticated"
@@ -332,6 +344,8 @@ func DeleteReceivedFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 // @Tags GameLobby
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Param lobby_id path string true "Lobby ID"
 // @Param username path string true "Sender's username"
 // @Success 200 {object} map[string]string "message: Game lobby invitation deleted successfully"
@@ -385,6 +399,8 @@ func DeleteReceivedGameLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 // @Tags GameLobby
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
 // @Param lobby_id path string true "Lobby ID"
 // @Param username path string true "Recipient's username"
 // @Success 200 {object} map[string]string "message: Game lobby invitation deleted successfully"
