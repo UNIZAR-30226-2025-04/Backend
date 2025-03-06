@@ -38,7 +38,7 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		username := user.GameProfile.Username
+		username := user.ProfileUsername
 
 		if username == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
@@ -112,7 +112,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		username := user.GameProfile.Username
+		username := user.ProfileUsername
 
 		friendUsername := c.PostForm("friendUsername")
 		log.Print("holi")
@@ -183,7 +183,7 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		username := user.GameProfile.Username
+		username := user.ProfileUsername
 
 		friendUsername := c.PostForm("friendUsername")
 
@@ -242,7 +242,7 @@ func SendFriendRequest(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		senderUsername := user.GameProfile.Username
+		senderUsername := user.ProfileUsername
 
 		receiverUsername := c.PostForm("friendUsername")
 
