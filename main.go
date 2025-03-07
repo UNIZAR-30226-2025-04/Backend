@@ -18,7 +18,7 @@ import (
 // @title Nogler API
 // @version 1.0
 // @description Gin-Gonic server for the "Nogler" game API
-// @host https://nogler.ddns.net:443
+// @host nogler.ddns.net:8080
 // @BasePath /
 // @paths
 func main() {

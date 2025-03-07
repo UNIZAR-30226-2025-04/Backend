@@ -2,25 +2,67 @@ package middleware
 
 import (
 	"net/http"
+	"os"
+	"strings"
 
 	"Nogler/constants/auth"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // AuthRequired is a simple middleware to check the session.
 func AuthRequired(c *gin.Context) {
-	session := sessions.Default(c)
-	userEmail := session.Get(auth.Email)
-	if userEmail == nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing token"})
+		c.Abort()
 		return
 	}
-	// Store the email in the context if needed for handlers
-	// NOTE: check if this is needed
-	c.Set(auth.Email, userEmail)
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == authHeader {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
+		c.Abort()
+		return
+	}
+
+	secret := os.Getenv("KEY")
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		c.Abort()
+		return
+	}
 	c.Next()
+}
+
+func JWT_decoder(c *gin.Context) (string, error) {
+	// Obtener el token del encabezado Authorization
+	authHeader := c.GetHeader("Authorization")
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+	// Parsear el JWT
+	secret := os.Getenv("KEY")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+
+	// Obtener los datos del token
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+		return "", err
+	}
+
+	email := claims[auth.Email].(string)
+
+	return email, nil
+
 }
 
 // me is the handler that will return the user information stored in the

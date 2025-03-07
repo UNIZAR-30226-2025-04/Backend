@@ -47,7 +47,6 @@ func TestUserAndGameProfile(t *testing.T) {
 		Email:           "test@example.com",
 		ProfileUsername: "testuser",
 		PasswordHash:    "hashedpassword",
-		FullName:        "Test User",
 		MemberSince:     time.Now(),
 	}
 
