@@ -75,7 +75,7 @@ const docTemplate = `{
                 ],
                 "description": "Adds a new friend to the user's friend list",
                 "consumes": [
-                    "application/json"
+                    "application/x-www-form-urlencoded"
                 ],
                 "produces": [
                     "application/json"
@@ -146,7 +146,7 @@ const docTemplate = `{
                 ],
                 "description": "Removes a friend from the user's friend list",
                 "consumes": [
-                    "application/json"
+                    "application/x-www-form-urlencoded"
                 ],
                 "produces": [
                     "application/json"
@@ -687,7 +687,7 @@ const docTemplate = `{
                 ],
                 "description": "Sends a friend request from the sender to another user",
                 "consumes": [
-                    "application/json"
+                    "application/x-www-form-urlencoded"
                 ],
                 "produces": [
                     "application/json"

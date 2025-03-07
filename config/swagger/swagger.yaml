@@ -42,7 +42,7 @@ paths:
   /auth/addFriend:
     post:
       consumes:
-      - application/json
+      - application/x-www-form-urlencoded
       description: Adds a new friend to the user's friend list
       parameters:
       - description: Bearer JWT token
@@ -87,7 +87,7 @@ paths:
   /auth/deleteFriend:
     delete:
       consumes:
-      - application/json
+      - application/x-www-form-urlencoded
       description: Removes a friend from the user's friend list
       parameters:
       - description: Bearer JWT token
@@ -441,7 +441,7 @@ paths:
   /auth/sendFriendRequest:
     post:
       consumes:
-      - application/json
+      - application/x-www-form-urlencoded
       description: Sends a friend request from the sender to another user
       parameters:
       - description: Bearer JWT token
