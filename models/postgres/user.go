@@ -11,7 +11,6 @@ type User struct {
 	Email           string    `gorm:"primaryKey;size:100;not null"`
 	ProfileUsername string    `gorm:"size:50;not null;uniqueIndex"`
 	PasswordHash    string    `gorm:"size:255;not null"`
-	FullName        string    `gorm:"size:100"`
 	MemberSince     time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 
 	// Relationship with the game profile
