@@ -86,14 +86,12 @@ func TestAddMultipleUsers(t *testing.T) {
 			Email:           "test3@example.com",
 			ProfileUsername: "testuser3",
 			PasswordHash:    "hashedpassword3",
-			FullName:        "Test User 3",
 			MemberSince:     time.Now(),
 		},
 		{
 			Email:           "test4@example.com",
 			ProfileUsername: "testuser4",
 			PasswordHash:    "hashedpassword4",
-			FullName:        "Test User 4",
 			MemberSince:     time.Now(),
 		},
 	}
