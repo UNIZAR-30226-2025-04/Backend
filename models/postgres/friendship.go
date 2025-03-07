@@ -14,8 +14,8 @@ type Friendship struct {
 	Username2 string `gorm:"primaryKey;type:varchar(50)"`
 
 	// Relationships
-	User1 GameProfile `gorm:"foreignKey:Username1;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	User2 GameProfile `gorm:"foreignKey:Username2;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	User1 GameProfile `gorm:"foreignKey:Username1"`
+	User2 GameProfile `gorm:"foreignKey:Username2"`
 }
 
 // GORM hook to ensure that both user's usernames are different

@@ -16,8 +16,8 @@ type FriendshipRequest struct {
 	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 
 	// Relationships
-	GameProfile1 GameProfile `gorm:"foreignKey:Sender;constraint:OnDelete:CASCADE"`
-	GameProfile2 GameProfile `gorm:"foreignKey:Recipient;constraint:OnDelete:CASCADE"`
+	GameProfile1 GameProfile `gorm:"foreignKey:Sender"`
+	GameProfile2 GameProfile `gorm:"foreignKey:Recipient"`
 }
 
 // GORM hook to ensure that both user's usernames are different

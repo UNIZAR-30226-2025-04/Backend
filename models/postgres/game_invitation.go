@@ -15,7 +15,7 @@ type GameInvitation struct {
 	CreatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 
 	// Relationships
-	GameLobby          GameLobby   `gorm:"foreignKey:LobbyID;constraint:OnDelete:CASCADE"`
-	SenderGameProfile  GameProfile `gorm:"foreignKey:SenderUsername;constraint:OnDelete:CASCADE"`
-	InvitedGameProfile GameProfile `gorm:"foreignKey:InvitedUsername;constraint:OnDelete:CASCADE"`
+	GameLobby          GameLobby   `gorm:"foreignKey:LobbyID"`
+	SenderGameProfile  GameProfile `gorm:"foreignKey:SenderUsername"`
+	InvitedGameProfile GameProfile `gorm:"foreignKey:InvitedUsername"`
 }

@@ -14,11 +14,13 @@ type GameProfile struct {
 
 	// NOTE: was creating a circular dependency between GameProfile and User
 	// User            *User               `gorm:"foreignKey:Username"`
-	Friendships1    []Friendship        `gorm:"foreignKey:Username1"`
-	Friendships2    []Friendship        `gorm:"foreignKey:Username2"`
-	FriendRequests1 []FriendshipRequest `gorm:"foreignKey:Sender"`
-	FriendRequests2 []FriendshipRequest `gorm:"foreignKey:Recipient"`
-	GameLobbies     []GameLobby         `gorm:"foreignKey:CreatorUsername"`
-	InGamePlayers   []InGamePlayer      `gorm:"foreignKey:Username"`
-	GameInvitations []GameInvitation    `gorm:"foreignKey:InvitedUsername"`
+	// NOTE: constraints better be on the parent table (here): https://github.com/go-gorm/gorm/issues/4289#issuecomment-943366275
+	// NOTE: changed from regular slices ([]) to pointer slices ([]*), better praxis
+	Friendships1    []*Friendship        `gorm:"foreignKey:Username1;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Friendships2    []*Friendship        `gorm:"foreignKey:Username2;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	FriendRequests1 []*FriendshipRequest `gorm:"foreignKey:Sender;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	FriendRequests2 []*FriendshipRequest `gorm:"foreignKey:Recipient;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	GameLobbies     []*GameLobby         `gorm:"foreignKey:CreatorUsername;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	InGamePlayers   []*InGamePlayer      `gorm:"foreignKey:Username;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	GameInvitations []*GameInvitation    `gorm:"foreignKey:InvitedUsername;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }

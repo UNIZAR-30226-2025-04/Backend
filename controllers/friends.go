@@ -1,7 +1,11 @@
 package controllers
 
 import (
+	"Nogler/middleware"
 	"Nogler/models/postgres"
+	models "Nogler/models/postgres"
+	"log"
+
 	// "errors"
 	"net/http"
 
@@ -14,14 +18,27 @@ import (
 // @Description Returns a list of the user's friends
 // @Tags friends
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
 // @Success 200 {array} object{username=string,icon=integer}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/friends [get]
+// @Security ApiKeyAuth
 func ListFriends(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		// TODO: we should get the username from the session instead of the query
-		username := c.Query("username")
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		username := user.ProfileUsername
 
 		if username == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
@@ -70,20 +87,32 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 // @Summary Add a new friend
 // @Description Adds a new friend to the user's friend list
 // @Tags friends
-// @Accept json
+// @Accept x-www-form-urlencoded
 // @Produce json
-// @Param username path string true "Username of the user sending the friend request"
-// @Param friendUsername query string true "Username of the friend to be added"
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
+// @Param friendUsername formData string true "Username of the friend to be added"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/addFriend [post]
+// @Security ApiKeyAuth
 func AddFriend(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		// Get the username of the requester
-		// TODO: we should get the username from the session instead of the query
-		username := c.Param("username")
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		username := user.ProfileUsername
 		friendUsername := c.PostForm("friendUsername")
 
 		if username == "" || friendUsername == "" {
@@ -99,7 +128,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 		// Check if friendship already exists
 		var existingFriendship postgres.Friendship
 		result := db.Where(
-			"(sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)",
+			"(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
 			username, friendUsername, friendUsername, username,
 		).First(&existingFriendship)
 
@@ -129,17 +158,32 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 // @Tags friends
 // @Accept json
 // @Produce json
-// @Param username path string true "Username of the user removing the friend"
-// @Param friendUsername query string true "Username of the friend to be removed"
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
+// @Param friendUsername path string true "Username of the friend to be removed"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
-// @Router /auth/deleteFriend [delete]
+// @Security ApiKeyAuth
+// @Router /auth/deleteFriend/{friendUsername} [delete]
 func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract usernames
-		username := c.Param("username")
-		friendUsername := c.PostForm("friendUsername")
+
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		username := user.ProfileUsername
+
+		friendUsername := c.Param("friendUsername")
 
 		if username == "" || friendUsername == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required"})
@@ -149,7 +193,7 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 		// Check if the friendship exists
 		var friendship postgres.Friendship
 		result := db.Where(
-			"(sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)",
+			"(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
 			username, friendUsername, friendUsername, username,
 		).First(&friendship)
 
@@ -172,23 +216,36 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 // @Summary Send a friend request
 // @Description Sends a friend request from the sender to another user
 // @Tags friends
-// @Accept json
+// @Accept x-www-form-urlencoded
 // @Produce json
-// @Param username path string true "Username of the sender"
-// @Param friendUsername query string true "Username of the recipient"
+// @Param Authorization header string true "Bearer JWT token"
+// @in header
+// @Param friendUsername formData string true "Username of the recipient"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
-// @Router /auth/sendFriendRequest [post]
-func SendFriendRequest(db *gorm.DB) gin.HandlerFunc {
+// @Security ApiKeyAuth
+// @Router /auth/sendFriendshipRequest [post]
+func SendFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract sender's username
-		senderUsername := c.Param("username")
-		// Extract recipient's username
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		senderUsername := user.ProfileUsername
+
 		receiverUsername := c.PostForm("friendUsername")
 
 		if senderUsername == "" || receiverUsername == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required", "senderUsername": senderUsername, "recieverUsername": receiverUsername})
 			return
 		}
 
@@ -208,7 +265,7 @@ func SendFriendRequest(db *gorm.DB) gin.HandlerFunc {
 		// Check if they are already friends
 		var existingFriendship postgres.Friendship
 		result = db.Where(
-			"(sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)",
+			"(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
 			senderUsername, receiverUsername, receiverUsername, senderUsername,
 		).First(&existingFriendship)
 

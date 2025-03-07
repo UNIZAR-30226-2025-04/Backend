@@ -51,17 +51,29 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient
 
 		authentication.PATCH("/update", controllers.UpdateUserInfo(db))
 
-		authentication.GET("/friendship_requests", controllers.GetAllFriendshipRequests(db))
+		authentication.GET("/received_friendship_requests", controllers.GetAllReceivedFriendshipRequests(db))
 
-		authentication.GET("/lobby_invitations", controllers.GetAllGameLobbyInvitations(db))
+		authentication.GET("/sent_friendship_requests", controllers.GetAllSentFriendshipRequests(db))
 
-		authentication.DELETE("/sent_friendship_request/:username", controllers.DeleteSentFriendshipRequest(db))
+		authentication.GET("/received_lobby_invitations", controllers.GetAllReceivedGameLobbyInvitations(db))
+
+		authentication.GET("/sent_lobby_invitations", controllers.GetAllSentGameLobbyInvitations(db))
 
 		authentication.DELETE("/received_friendship_request/:username", controllers.DeleteReceivedFriendshipRequest(db))
 
+		authentication.DELETE("/sent_friendship_request/:username", controllers.DeleteSentFriendshipRequest(db))
+
+		authentication.DELETE("/received_lobby_invitation/:lobby_id/:username", controllers.DeleteReceivedGameLobbyInvitation(db))
+
+		authentication.DELETE("/sent_lobby_invitation/:lobby_id/:username", controllers.DeleteSentGameLobbyInvitation(db))
+
 		authentication.GET("/friends", controllers.ListFriends(db))
 
+		authentication.POST("/sendFriendshipRequest", controllers.SendFriendshipRequest(db))
+
 		authentication.POST("/addFriend", controllers.AddFriend(db))
+
+		authentication.DELETE("/deleteFriend/:friendUsername", controllers.DeleteFriend(db))
 	}
 
 	// Routes that require authentication
