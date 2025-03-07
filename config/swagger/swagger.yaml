@@ -51,7 +51,7 @@ paths:
         required: true
         type: string
       - description: Username of the friend to be added
-        in: query
+        in: formData
         name: friendUsername
         required: true
         type: string
