@@ -699,7 +699,7 @@ paths:
         type: string
       - description: New icon number
         in: formData
-        name: icono
+        name: icon
         type: string
       produces:
       - application/json

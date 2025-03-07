@@ -162,6 +162,7 @@ func SignUp(db *gorm.DB) gin.HandlerFunc {
 
 		if err := db.Create(&user).Error; err != nil {
 			// Rollback game profile creation if user creation fails
+			// TODO: do it with a transaction?
 			db.Delete(&gameProfile)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating user"})
 			return
@@ -303,7 +304,7 @@ func GetUserPrivateInfo(db *gorm.DB) gin.HandlerFunc {
 // @Param username formData string false "New username"
 // @Param email formData string false "New email"
 // @Param password formData string false "New password"
-// @Param icono formData string false "New icon number"
+// @Param icon formData string false "New icon number"
 // @Success 200 {object} object{message=string,user=object{username=string,email=string,icon=integer}}
 // @Failure 400 {object} object{error=string}
 // @Failure 401 {object} object{error=string}
@@ -324,7 +325,7 @@ func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 		username := c.PostForm("username")
 		email := c.PostForm("email")
 		password := c.PostForm("password")
-		icon := c.PostForm("icono")
+		icon := c.PostForm("icon")
 
 		// Start a transaction
 		tx := db.Begin()
@@ -351,12 +352,38 @@ func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 
 		// Check if new username is already taken (if changing username)
 		if username != "" && username != user.ProfileUsername {
+			// Check if new username is already taken
 			var existingUser models.User
 			if err := tx.Where("profile_username = ? AND email != ?", username, currentEmail).First(&existingUser).Error; err == nil {
 				tx.Rollback()
 				c.JSON(http.StatusConflict, gin.H{"error": "Username already taken"})
 				return
 			}
+			
+			// With ON UPDATE CASCADE constraints properly set up, we can simply update the username
+			// in the game_profiles table, and all related records will be updated automatically
+			
+			// First, update the game profile's username (primary key)
+			// NOTE: with raw GORM, it can be problematic
+			if err := tx.Exec("UPDATE game_profiles SET username = ? WHERE username = ?", 
+							 username, user.ProfileUsername).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update game profile username"})
+				return
+			}
+			
+			// Then update the user's profile_username field
+			user.ProfileUsername = username
+			
+			// Save user changes
+			if err := tx.Save(&user).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+				return
+			}
+			
+			// Update our local gameProfile variable to reflect the change
+			gameProfile.Username = username
 		}
 
 		// Check if new email is already taken (if changing email)
@@ -394,6 +421,10 @@ func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating JWT"})
 			}
+		} else {
+			// NEW: better not return an empty string, even if the user didn't change his email
+			authHeader := c.GetHeader("Authorization")
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
 		}
 
 		// Update icon if provided
@@ -414,49 +445,11 @@ func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 			}
 		}
 
-		// Update username if provided - this needs special handling due to foreign key constraints
-		if username != "" && username != user.ProfileUsername {
-			// Create a new game profile with the new username
-			newGameProfile := models.GameProfile{
-				Username:  username,
-				UserStats: gameProfile.UserStats,
-				UserIcon:  gameProfile.UserIcon,
-				IsInAGame: gameProfile.IsInAGame,
-			}
-
-			// Create the new profile first
-			if err := tx.Create(&newGameProfile).Error; err != nil {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create new game profile"})
-				return
-			}
-
-			// Update user to point to the new profile
-			user.ProfileUsername = username
-
-			// Save user changes
-			if err := tx.Save(&user).Error; err != nil {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
-				return
-			}
-
-			// Now we can delete the old profile
-			if err := tx.Delete(&gameProfile).Error; err != nil {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete old game profile"})
-				return
-			}
-
-			// Update gameProfile reference for the response
-			gameProfile = newGameProfile
-		} else {
-			// Save user changes if we didn't already save them above
-			if err := tx.Save(&user).Error; err != nil {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
-				return
-			}
+		// Save user changes if we didn't already save them above
+		if err := tx.Save(&user).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+			return
 		}
 
 		// Commit transaction
@@ -473,7 +466,6 @@ func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 				"email":    user.Email,
 				"icon":     gameProfile.UserIcon,
 			},
-			// TODO: remove?
 			"token": tokenString,
 		})
 	}
