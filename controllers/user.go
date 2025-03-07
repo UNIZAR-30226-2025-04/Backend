@@ -473,6 +473,7 @@ func UpdateUserInfo(db *gorm.DB) gin.HandlerFunc {
 				"email":    user.Email,
 				"icon":     gameProfile.UserIcon,
 			},
+			// TODO: remove?
 			"token": tokenString,
 		})
 	}

@@ -137,7 +137,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/deleteFriend": {
+        "/auth/deleteFriend/{friendUsername}": {
             "delete": {
                 "security": [
                     {
@@ -146,7 +146,7 @@ const docTemplate = `{
                 ],
                 "description": "Removes a friend from the user's friend list",
                 "consumes": [
-                    "application/x-www-form-urlencoded"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
@@ -167,7 +167,7 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Username of the friend to be removed",
                         "name": "friendUsername",
-                        "in": "query",
+                        "in": "path",
                         "required": true
                     }
                 ],
@@ -678,7 +678,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/sendFriendRequest": {
+        "/auth/sendFriendshipRequest": {
             "post": {
                 "security": [
                     {
@@ -708,7 +708,7 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Username of the recipient",
                         "name": "friendUsername",
-                        "in": "query",
+                        "in": "formData",
                         "required": true
                     }
                 ],

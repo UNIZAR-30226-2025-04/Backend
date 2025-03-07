@@ -101,11 +101,11 @@ func GetAllSentFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Recopilar la información pública del emisor
+		// Recopilar la información pública del receptor
 		var requestsInfo []gin.H
 		for _, request := range friendRequests {
 			var gameProfile models.GameProfile
-			if err := db.Where("username = ?", request.Sender).First(&gameProfile).Error; err != nil {
+			if err := db.Where("username = ?", request.Recipient).First(&gameProfile).Error; err != nil {
 				continue
 			}
 			requestsInfo = append(requestsInfo, gin.H{
@@ -150,9 +150,9 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Retrieve all game lobby invitations where the user is the recipient
-		// Preload the GameLobby relationship
+		// Preload the SenderGameProfile relationship to get sender information
 		var gameInvitations []models.GameInvitation
-		if err := db.Preload("GameLobby").Where("invited_username = ?", user.ProfileUsername).Find(&gameInvitations).Error; err != nil {
+		if err := db.Preload("SenderGameProfile").Where("invited_username = ?", user.ProfileUsername).Find(&gameInvitations).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving game lobby invitations"})
 			return
 		}
@@ -160,13 +160,9 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 		// Collect the public information of the sender and the lobby ID
 		var invitationsInfo []gin.H
 		for _, invitation := range gameInvitations {
-			var gameProfile models.GameProfile
-			if err := db.Where("username = ?", invitation.GameLobby.CreatorUsername).First(&gameProfile).Error; err != nil {
-				continue
-			}
 			invitationsInfo = append(invitationsInfo, gin.H{
-				"username": gameProfile.Username,
-				"icon":     gameProfile.UserIcon,
+				"username": invitation.SenderUsername,
+				"icon":     invitation.SenderGameProfile.UserIcon,
 				"lobby_id": invitation.LobbyID,
 			})
 		}
@@ -191,7 +187,6 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // @Router /auth/sent_lobby_invitations [get]
 // @Security ApiKeyAuth
 func GetAllSentGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
-	// TODO: add more checks, user in a game, etc? Ask Victor?
 	return func(c *gin.Context) {
 		// Obtaining user mail from JWT
 		email, err := middleware.JWT_decoder(c)
@@ -207,24 +202,20 @@ func GetAllSentGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Retrieve all game lobby invitations where the user is the recipient
-		// Preload the GameLobby relationship
+		// Retrieve all game lobby invitations where the user is the sender
+		// Preload the InvitedGameProfile relationship to get recipient information
 		var gameInvitations []models.GameInvitation
-		if err := db.Preload("GameLobby").Where("sender_username = ?", user.ProfileUsername).Find(&gameInvitations).Error; err != nil {
+		if err := db.Preload("InvitedGameProfile").Where("sender_username = ?", user.ProfileUsername).Find(&gameInvitations).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving game lobby invitations"})
 			return
 		}
 
-		// Collect the public information of the sender and the lobby ID
+		// Collect the public information of the recipient and the lobby ID
 		var invitationsInfo []gin.H
 		for _, invitation := range gameInvitations {
-			var gameProfile models.GameProfile
-			if err := db.Where("username = ?", invitation.GameLobby.CreatorUsername).First(&gameProfile).Error; err != nil {
-				continue
-			}
 			invitationsInfo = append(invitationsInfo, gin.H{
-				"username": gameProfile.Username,
-				"icon":     gameProfile.UserIcon,
+				"username": invitation.InvitedUsername,
+				"icon":     invitation.InvitedGameProfile.UserIcon,
 				"lobby_id": invitation.LobbyID,
 			})
 		}
