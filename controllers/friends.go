@@ -115,7 +115,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 		username := user.ProfileUsername
 
 		friendUsername := c.PostForm("friendUsername")
-		log.Print("holi")
+		log.Println("MyUsername: ", username+";", "FriendUsername: ", friendUsername)
 
 		if username == "" || friendUsername == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required"})
