@@ -91,7 +91,7 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Param friendUsername query string true "Username of the friend to be added"
+// @Param friendUsername formData string true "Username of the friend to be added"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
