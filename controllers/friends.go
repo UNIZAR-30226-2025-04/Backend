@@ -113,10 +113,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		username := user.ProfileUsername
-
 		friendUsername := c.PostForm("friendUsername")
-		log.Println("Postform: ", c.PostForm)
-		log.Println("MyUsername: ", username+";", "FriendUsername: ", friendUsername)
 
 		if username == "" || friendUsername == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required"})
@@ -163,7 +160,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Param friendUsername query string true "Username of the friend to be removed"
+// @Param friendUsername path string true "Username of the friend to be removed"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -223,13 +220,13 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Param friendUsername query string true "Username of the recipient"
+// @Param friendUsername formData string true "Username of the recipient"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Security ApiKeyAuth
-// @Router /auth/sendFriendRequest [post]
-func SendFriendRequest(db *gorm.DB) gin.HandlerFunc {
+// @Router /auth/sendFriendshipRequest [post]
+func SendFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		email, err := middleware.JWT_decoder(c)
 		if err != nil {
