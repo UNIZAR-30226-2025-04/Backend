@@ -9,6 +9,12 @@ paths:
   /allusers:
     get:
       description: Returns a list of all users with their usernames and icons
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -33,9 +39,140 @@ paths:
       summary: Get all users
       tags:
       - users
+  /auth/addFriend:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new friend to the user's friend list
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Username of the friend to be added
+        in: query
+        name: friendUsername
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Add a new friend
+      tags:
+      - friends
+  /auth/deleteFriend:
+    delete:
+      consumes:
+      - application/json
+      description: Removes a friend from the user's friend list
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Username of the friend to be removed
+        in: query
+        name: friendUsername
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Remove a friend
+      tags:
+      - friends
+  /auth/friends:
+    get:
+      description: Returns a list of the user's friends
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              properties:
+                icon:
+                  type: integer
+                username:
+                  type: string
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get a list of a user friends
+      tags:
+      - friends
   /auth/logout:
     delete:
       description: Ends the user's session
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -66,6 +203,12 @@ paths:
   /auth/me:
     get:
       description: Returns private information about the authenticated user
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -101,17 +244,447 @@ paths:
               error:
                 type: string
             type: object
-      security:
-      - ApiKeyAuth: []
       summary: Get user private info
       tags:
       - users
+  /auth/received_friendship_request/{username}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a friendship request where the authenticated user is the
+        recipient and the specified username is the sender.
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Sender's username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Friendship request deleted successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: User not authenticated'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Friendship request not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Error deleting friendship request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a friendship request received by the authenticated user
+      tags:
+      - Friendship
+  /auth/received_friendship_requests:
+    get:
+      consumes:
+      - application/json
+      description: 'Retrieve all friendship requests where the authenticated user
+        is the recipient. Each request includes the sender''s public information:
+        username and icon.'
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: friendship_requests
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: 'error: User not authenticated'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: User not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Error retrieving friendship requests'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all friendship requests for the authenticated user
+      tags:
+      - Friendship
+  /auth/received_lobby_invitation/{lobby_id}/{username}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a game lobby invitation where the authenticated user is
+        the recipient and the specified lobby ID and sender username are the targets.
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Lobby ID
+        in: path
+        name: lobby_id
+        required: true
+        type: string
+      - description: Sender's username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Game lobby invitation deleted successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: User not authenticated'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Game lobby invitation not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Error deleting game lobby invitation'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a game lobby invitation received by the authenticated user
+      tags:
+      - GameLobby
+  /auth/received_lobby_invitations:
+    get:
+      consumes:
+      - application/json
+      description: 'Retrieve all game lobby invitations where the authenticated user
+        is the recipient. Each invitation includes the sender''s public information:
+        username, icon, and the lobby ID.'
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: game_lobby_invitations
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: 'error: User not authenticated'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: User not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Error retrieving game lobby invitations'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all game lobby invitations for the authenticated user
+      tags:
+      - GameLobby
+  /auth/sendFriendRequest:
+    post:
+      consumes:
+      - application/json
+      description: Sends a friend request from the sender to another user
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Username of the recipient
+        in: query
+        name: friendUsername
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Send a friend request
+      tags:
+      - friends
+  /auth/sent_friendship_request/{username}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a friendship request where the authenticated user is the
+        sender and the specified username is the recipient.
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Recipient's username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Friendship request deleted successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: User not authenticated'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Friendship request not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Error deleting friendship request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a friendship request from a user
+      tags:
+      - Friendship
+  /auth/sent_friendship_requests:
+    get:
+      consumes:
+      - application/json
+      description: 'Retrieve all friendship requests where the authenticated user
+        is the sender. Each request includes the recipient''s public information:
+        username and icon.'
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: sent_friendship_requests
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: 'error: User not authenticated'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: User not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Error retrieving friendship requests'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all friendship requests sent by the authenticated user
+      tags:
+      - Friendship
+  /auth/sent_lobby_invitation/{lobby_id}/{username}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a game lobby invitation where the authenticated user is
+        the sender and the specified lobby ID and recipient username are the targets.
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Lobby ID
+        in: path
+        name: lobby_id
+        required: true
+        type: string
+      - description: Recipient's username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Game lobby invitation deleted successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: User not authenticated'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Game lobby invitation not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Error deleting game lobby invitation'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a game lobby invitation sent by the authenticated user
+      tags:
+      - GameLobby
+  /auth/sent_lobby_invitations:
+    get:
+      consumes:
+      - application/json
+      description: 'Retrieve all game lobby invitations where the authenticated user
+        is the sender. Each invitation includes the recipient''s public information:
+        username, icon, and the lobby ID.'
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: sent_game_lobby_invitations
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: 'error: User not authenticated'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: User not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Error retrieving game lobby invitations'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all game lobby invitations sent by the authenticated user
+      tags:
+      - GameLobby
   /auth/update:
     patch:
       consumes:
       - application/x-www-form-urlencoded
       description: Updates the authenticated user's information
       parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: New username
         in: formData
         name: username
@@ -313,6 +886,11 @@ paths:
       description: Returns public information about a specific user (username and
         icon)
       parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: Username
         in: path
         name: username
