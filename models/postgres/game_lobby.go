@@ -18,5 +18,5 @@ type GameLobby struct {
 	// Relationships
 	Creator GameProfile `gorm:"foreignKey:CreatorUsername"`
 	// Relationship with players in the game
-	InGamePlayers []InGamePlayer `gorm:"foreignKey:LobbyID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	InGamePlayers []*InGamePlayer `gorm:"foreignKey:LobbyID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }

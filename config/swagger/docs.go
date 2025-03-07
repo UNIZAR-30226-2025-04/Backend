@@ -1076,7 +1076,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "New icon number",
-                        "name": "icono",
+                        "name": "icon",
                         "in": "formData"
                     }
                 ],
