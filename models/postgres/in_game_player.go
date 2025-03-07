@@ -17,6 +17,6 @@ type InGamePlayer struct {
 	Winner         bool           `gorm:"default:false"`
 
 	// Relationship with the lobby and the user's game profile
-	GameLobby   GameLobby   `gorm:"foreignKey:LobbyID;constraint:OnDelete:CASCADE"`
-	GameProfile GameProfile `gorm:"foreignKey:Username;constraint:OnDelete:CASCADE"`
+	GameLobby   GameLobby   `gorm:"foreignKey:LobbyID"`
+	GameProfile GameProfile `gorm:"foreignKey:Username"`
 }
