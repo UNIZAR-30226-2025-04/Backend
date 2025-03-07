@@ -87,7 +87,7 @@ func ListFriends(db *gorm.DB) gin.HandlerFunc {
 // @Summary Add a new friend
 // @Description Adds a new friend to the user's friend list
 // @Tags friends
-// @Accept json
+// @Accept x-www-form-urlencoded
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
@@ -115,6 +115,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 		username := user.ProfileUsername
 
 		friendUsername := c.PostForm("friendUsername")
+		log.Println("Postform: ", c.PostForm)
 		log.Println("MyUsername: ", username+";", "FriendUsername: ", friendUsername)
 
 		if username == "" || friendUsername == "" {
@@ -130,7 +131,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 		// Check if friendship already exists
 		var existingFriendship postgres.Friendship
 		result := db.Where(
-			"(sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)",
+			"(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
 			username, friendUsername, friendUsername, username,
 		).First(&existingFriendship)
 
@@ -167,7 +168,7 @@ func AddFriend(db *gorm.DB) gin.HandlerFunc {
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Security ApiKeyAuth
-// @Router /auth/deleteFriend [delete]
+// @Router /auth/deleteFriend/{friendUsername} [delete]
 func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -185,7 +186,7 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 
 		username := user.ProfileUsername
 
-		friendUsername := c.PostForm("friendUsername")
+		friendUsername := c.Param("friendUsername")
 
 		if username == "" || friendUsername == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required"})
@@ -195,7 +196,7 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 		// Check if the friendship exists
 		var friendship postgres.Friendship
 		result := db.Where(
-			"(sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)",
+			"(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
 			username, friendUsername, friendUsername, username,
 		).First(&friendship)
 
@@ -218,7 +219,7 @@ func DeleteFriend(db *gorm.DB) gin.HandlerFunc {
 // @Summary Send a friend request
 // @Description Sends a friend request from the sender to another user
 // @Tags friends
-// @Accept json
+// @Accept x-www-form-urlencoded
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
@@ -267,7 +268,7 @@ func SendFriendRequest(db *gorm.DB) gin.HandlerFunc {
 		// Check if they are already friends
 		var existingFriendship postgres.Friendship
 		result = db.Where(
-			"(sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)",
+			"(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
 			senderUsername, receiverUsername, receiverUsername, senderUsername,
 		).First(&existingFriendship)
 

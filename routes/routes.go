@@ -70,7 +70,11 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient
 
 		authentication.GET("/friends", controllers.ListFriends(db))
 
+		authentication.POST("/sendFriendRequest", controllers.SendFriendRequest(db))
+
 		authentication.POST("/addFriend", controllers.AddFriend(db))
+
+		authentication.DELETE("/deleteFriend/:friendUsername", controllers.DeleteFriend(db))
 	}
 
 	// Routes that require authentication
