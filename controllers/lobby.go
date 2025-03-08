@@ -64,14 +64,13 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// @Summary Add a new friend
-// @Description Adds a new friend to the user's friend list
-// @Tags friends
+// @Summary Gives info of a lobby
+// @Description Given a lobby id, it will return its information
+// @Tags lobby
 // @Accept x-www-form-urlencoded
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Param friendUsername formData string true "Username of the friend to be added"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -80,56 +79,27 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		email, err := middleware.JWT_decoder(c)
-		if err != nil {
-			log.Print("Error en jwt...")
-			return
-		}
+		lobbyID := c.Param("lobby_id")
 
-		var user models.User
-		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
-			return
-		}
+		var lobby postgres.GameLobby
+		result := db.Where("id = ?", lobbyID).First(&lobby)
 
-		username := user.ProfileUsername
-		friendUsername := c.PostForm("friendUsername")
-
-		if username == "" || friendUsername == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required"})
-			return
-		}
-
-		if username == friendUsername {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "You cannot add yourself as a friend"})
-			return
-		}
-
-		// Check if friendship already exists
-		var existingFriendship postgres.Friendship
-		result := db.Where(
-			"(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
-			username, friendUsername, friendUsername, username,
-		).First(&existingFriendship)
-
-		if result.RowsAffected > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Friendship already exists"})
-			return
-		}
-
-		// Create and save new friendship
-		newFriendship := postgres.Friendship{
-			Username1: username,
-			Username2: friendUsername,
-		}
-
-		result = db.Create(&newFriendship)
 		if result.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding friend"})
+			if result.Error == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+			}
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Friend added successfully"})
+		c.JSON(http.StatusOK, gin.H{
+			"lobby_id":         lobby.ID,
+			"creator_username": lobby.CreatorUsername,
+			"number_rounds":    lobby.NumberOfRounds,
+			"total_points":     lobby.TotalPoints,
+			"created_at":       lobby.CreatedAt,
+		})
 	}
 }
 
@@ -164,94 +134,3 @@ func GetAllLobies(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, lobbies)
 	}
 }
-
-/*
-// @Summary Send a friend request
-// @Description Sends a friend request from the sender to another user
-// @Tags friends
-// @Accept x-www-form-urlencoded
-// @Produce json
-// @Param Authorization header string true "Bearer JWT token"
-// @in header
-// @Param friendUsername formData string true "Username of the recipient"
-// @Success 200 {object} object{message=string}
-// @Failure 400 {object} object{error=string}
-// @Failure 500 {object} object{error=string}
-// @Security ApiKeyAuth
-// @Router /auth/sendFriendshipRequest [post]
-func SendFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		email, err := middleware.JWT_decoder(c)
-		if err != nil {
-			log.Print("Error en jwt...")
-			return
-		}
-
-		var user models.User
-		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
-			return
-		}
-
-		senderUsername := user.ProfileUsername
-
-		receiverUsername := c.PostForm("friendUsername")
-
-		if senderUsername == "" || receiverUsername == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required", "senderUsername": senderUsername, "recieverUsername": receiverUsername})
-			return
-		}
-
-		if senderUsername == receiverUsername {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "You cannot send a friend request to yourself"})
-			return
-		}
-
-		// Check if recipient exists
-		var receiver postgres.GameProfile
-		result := db.Where("username = ?", receiverUsername).First(&receiver)
-		if result.Error != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Receiver user not found"})
-			return
-		}
-
-		// Check if they are already friends
-		var existingFriendship postgres.Friendship
-		result = db.Where(
-			"(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
-			senderUsername, receiverUsername, receiverUsername, senderUsername,
-		).First(&existingFriendship)
-
-		if result.RowsAffected > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "You are already friends"})
-			return
-		}
-
-		// Check if a friend request already exists
-		var existingRequest postgres.FriendshipRequest
-		result = db.Where(
-			"(sender = ? AND recipient = ?)",
-			senderUsername, receiverUsername,
-		).First(&existingRequest)
-
-		if result.RowsAffected > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Friend request already sent"})
-			return
-		}
-
-		// Create and save the new friend request
-		friendRequest := postgres.FriendshipRequest{
-			Sender:    senderUsername,
-			Recipient: receiverUsername,
-		}
-
-		result = db.Create(&friendRequest)
-		if result.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending friend request"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "Friend request sent successfully"})
-	}
-}
-*/

@@ -42,7 +42,7 @@ func generateLobbyID(length int) string {
 func (l *GameLobby) BeforeCreate(tx *gorm.DB) (err error) {
 	// Ensure the generated ID is unique
 	for {
-		newID := generateLobbyID(6) // Example: "aB3dE9"
+		newID := generateLobbyID(4) // Example: "aB3dE9"
 		var existing GameLobby
 		if err := tx.Where("id = ?", newID).First(&existing).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
