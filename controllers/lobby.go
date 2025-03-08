@@ -19,7 +19,7 @@ import (
 // @Tags lobby
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Success 200 {array} object{username=string,icon=integer}
+// @Success 200 {array} object{message=string,lobby_id=integer}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/CreateLobby [post]
 // @Security ApiKeyAuth
@@ -44,43 +44,23 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
 			return
 		}
+		// Here we already have the username for the creator of the lobby
 
-		var friendships []postgres.Friendship
-		result := db.Where("username1 = ? OR username2 = ?", username, username).Find(&friendships)
-		if result.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching friendships"})
+		// *There is a function on the models gamelobby "beforeCreate" for the id generation
+
+		NewLobby := postgres.GameLobby{
+			CreatorUsername: username,
+			NumberOfRounds:  0,
+			TotalPoints:     0,
+		}
+
+		if err := db.Create(&NewLobby).Error; err != nil {
+			log.Fatal("Failed to create lobby:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating lobby"})
 			return
 		}
 
-		friendsUsernames := []string{}
-		for _, friendship := range friendships {
-			if friendship.Username1 == username {
-				friendsUsernames = append(friendsUsernames, friendship.Username2)
-			} else {
-				friendsUsernames = append(friendsUsernames, friendship.Username1)
-			}
-		}
-
-		// Fetch friend profiles
-		var friends []postgres.GameProfile
-		if len(friendsUsernames) > 0 {
-			result = db.Where("username IN (?)", friendsUsernames).Find(&friends)
-			if result.Error != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching friends data"})
-				return
-			}
-		}
-
-		simplifiedFriends := make([]gin.H, len(friends))
-		for i, friend := range friends {
-			simplifiedFriends[i] = gin.H{
-				"username": friend.Username,
-				"icon":     friend.UserIcon,
-			}
-		}
-
-		c.JSON(http.StatusOK, simplifiedFriends)
-
+		c.JSON(http.StatusOK, gin.H{"message": "Lobby created sucessfully"})
 	}
 }
 
@@ -158,16 +138,17 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 // @Tags lobby
 // @Accept json
 // @Produce json
+// @Param Authorization header string true "Bearer JWT token"
 // @in header
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
+// @Security ApiKeyAuth
 // @Router /auth/getAllLobbies [get]
 func GetAllLobies(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		var game_lobbies []models.GameLobby
-		db.Preload("game_lobbies").Find(&game_lobbies)
 
 		// Create a slice of lobbies
 		lobbies := make([]gin.H, len(game_lobbies))
@@ -180,6 +161,7 @@ func GetAllLobies(db *gorm.DB) gin.HandlerFunc {
 				"created_at":       lobby.CreatedAt,
 			}
 		}
+		c.JSON(http.StatusOK, lobbies)
 	}
 }
 
