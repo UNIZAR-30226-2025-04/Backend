@@ -21,7 +21,6 @@ type FriendshipRequest struct {
 }
 
 // GORM hook to ensure that both user's usernames are different
-// TODO: check if they are actually working, are they translated into triggers, etc?
 func (fr *FriendshipRequest) BeforeSave(tx *gorm.DB) error {
 	if fr.Sender == fr.Recipient {
 		return errors.New("Cannot request friendship to oneself")
