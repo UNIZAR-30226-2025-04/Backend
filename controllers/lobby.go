@@ -167,6 +167,7 @@ func GetAllLobies(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		var game_lobbies []models.GameLobby
+		db.Preload("game_lobbies").Find(&game_lobbies)
 
 		// Create a slice of lobbies
 		lobbies := make([]gin.H, len(game_lobbies))
