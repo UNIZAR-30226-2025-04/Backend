@@ -60,7 +60,7 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Lobby created sucessfully"})
+		c.JSON(http.StatusOK, gin.H{"lobby_id": NewLobby.ID, "message": "Lobby created sucessfully"})
 	}
 }
 
@@ -71,10 +71,11 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
+// @Param lobby_id path string true "Id of the lobby wanted"
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
-// @Router /auth/lobbyInfo/:lobby_id [get]
+// @Router /auth/lobbyInfo/{lobby_id} [get]
 // @Security ApiKeyAuth
 func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
