@@ -151,3 +151,60 @@ func TestGetLobbyInfo(t *testing.T) {
         assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
     })
 }
+
+func TestGetAllLobbies(t *testing.T) {
+    SetupLobbyTestData(t)
+    client := &http.Client{
+        Timeout: time.Second * 10,
+    }
+    baseURL := "https://nogler.ddns.net:443"
+    token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJFbWFpbCI6ImpvcmRpQGdtYWlsLmNvbSJ9.ILJUkEuioZWRMkLADnERrO0JfGPiwhf5PQPpnIOEnps"
+
+    t.Run("Get all lobbies successfully", func(t *testing.T) {
+        req, err := http.NewRequest(http.MethodGet, baseURL+"/auth/getAllLobbies", nil)
+        assert.NoError(t, err)
+        req.Header.Set("Authorization", "Bearer "+token)
+        req.Header.Set("Accept", "application/json")
+
+        resp, err := client.Do(req)
+        assert.NoError(t, err)
+        defer resp.Body.Close()
+
+        assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+        var response []struct {
+            LobbyID         string    `json:"lobby_id"`
+            CreatorUsername string    `json:"creator_username"`
+            NumberRounds    int       `json:"number_rounds"`
+            TotalPoints     int       `json:"total_points"`
+            CreatedAt       time.Time `json:"created_at"`
+        }
+        err = json.NewDecoder(resp.Body).Decode(&response)
+        assert.NoError(t, err)
+    })
+
+    t.Run("Get all lobbies with invalid token", func(t *testing.T) {
+        req, err := http.NewRequest(http.MethodGet, baseURL+"/auth/getAllLobbies", nil)
+        assert.NoError(t, err)
+        req.Header.Set("Authorization", "Bearer invalid_token")
+        req.Header.Set("Accept", "application/json")
+
+        resp, err := client.Do(req)
+        assert.NoError(t, err)
+        defer resp.Body.Close()
+
+        assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+    })
+
+    t.Run("Get all lobbies without authorization", func(t *testing.T) {
+        req, err := http.NewRequest(http.MethodGet, baseURL+"/auth/getAllLobbies", nil)
+        assert.NoError(t, err)
+        req.Header.Set("Accept", "application/json")
+
+        resp, err := client.Do(req)
+        assert.NoError(t, err)
+        defer resp.Body.Close()
+
+        assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+    })
+}
