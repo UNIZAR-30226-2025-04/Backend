@@ -314,8 +314,6 @@
                 }
             }
         },
-<<<<<<< HEAD
-=======
         "/auth/getAllLobbies": {
             "get": {
                 "description": "Returns a list of all the lobbies",
@@ -437,7 +435,6 @@
                 }
             }
         },
->>>>>>> 111a65a4ff7361b16b74ae5aa47ef0eae3d8542a
         "/auth/logout": {
             "delete": {
                 "description": "Ends the user's session",
