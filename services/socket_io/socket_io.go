@@ -31,7 +31,7 @@ func (sio *SocketServer) Start(router *gin.Engine) {
 	c.SetPingTimeout(200 * time.Millisecond)
 	c.SetMaxHttpBufferSize(1000000)
 	c.SetConnectTimeout(1000 * time.Millisecond)
-	c.SetTransports(types.NewSet("polling", "webtransport"))
+	c.SetTransports(types.NewSet("polling", "websocket", "webtransport"))
 	c.SetCors(&types.Cors{
 		Origin:      "*",
 		Credentials: true,
@@ -41,9 +41,10 @@ func (sio *SocketServer) Start(router *gin.Engine) {
 	sio.sio_server.On("connection", func(clients ...interface{}) {
 		client := clients[0].(*socket.Socket)
 
-		fmt.Println("A ****** just connected!: ", client)
+		fmt.Println("A ****** just connected!: ", client.Handshake().Auth)
 
 		client.On("message", func(args ...interface{}) {
+			fmt.Println("A ****** message: ", args)
 			client.Emit("message-back", args...)
 		})
 		client.Emit("auth", client.Handshake().Auth)
@@ -66,14 +67,16 @@ func (sio *SocketServer) Start(router *gin.Engine) {
 	// WebTransport uses udp, so you need to enable the new service.
 	sio.webtransport_server = types.NewWebServer(nil)
 	// A certificate is required and cannot be a self-signed certificate.
-	wts := sio.webtransport_server.ListenWebTransportTLS(":443", "domain.cer", "domain.key", nil, nil)
+	wts := sio.webtransport_server.ListenWebTransportTLS(":443", os.Getenv("FULLCHAIN_PATH"), os.Getenv("KEY_PATH"), nil, nil)
 
 	// Here is the core logic of the WebTransport handshake.
 	sio.webtransport_server.HandleFunc(sio.sio_server.Path()+"/", func(w http.ResponseWriter, r *http.Request) {
 		if webtransport.IsWebTransportUpgrade(r) {
 			// You need to call socketio.ServeHandler(nil) before this, otherwise you cannot get the Engine instance.
 			sio.sio_server.Engine().(engine.Server).OnWebTransportSession(types.NewHttpContext(w, r), wts)
+			fmt.Println("Upgrade to WebTransport")
 		} else {
+			fmt.Println("Upgrade to WebTransport")
 			sio.webtransport_server.DefaultHandler.ServeHTTP(w, r)
 		}
 	})
@@ -91,4 +94,6 @@ func (sio *SocketServer) Start(router *gin.Engine) {
 			}
 		}
 	}()
+
+	fmt.Println("Socket server started")
 }

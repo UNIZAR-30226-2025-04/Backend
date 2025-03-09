@@ -86,8 +86,8 @@ func main() {
 	if os.Getenv("USE_HTTPS") == "true" {
 		log.Println("Using HTTPS on port 443")
 		//SSL certification configuration for HTTPS
-		certFile := "/etc/letsencrypt/live/nogler.ddns.net/fullchain.pem"
-		keyFile := "/etc/letsencrypt/live/nogler.ddns.net/privkey.pem"
+		certFile := os.Getenv("FULLCHAIN_PATH")
+		keyFile := os.Getenv("KEY_PATH")
 
 		// Start server
 		if err := r.RunTLS(":"+port, certFile, keyFile); err != nil {
