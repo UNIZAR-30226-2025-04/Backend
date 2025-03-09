@@ -1,5 +1,43 @@
 package controllers_test
 
+/*
+This test file contains integration tests for user-related functionality:
+
+TestSignUp:
+- Tests successful user registration
+- Tests registration with empty fields
+- Tests registration with existing user
+- Tests registration with invalid icon
+
+TestLogin:
+- Tests successful login
+- Tests login with empty fields
+- Tests login with invalid email
+- Tests login with invalid password
+
+TestLogout:
+- Tests successful logout
+- Tests logout without token
+- Tests logout with invalid token
+
+TestGetAllUsers:
+- Tests retrieving all users list with valid token
+
+TestGetUserPublicInfo:
+- Tests retrieving public user information successfully
+- Tests retrieving non-existent user information
+- Tests retrieving user info without authorization
+
+TestGetUserPrivateInfo:
+- Tests retrieving private user information successfully
+- Tests retrieving private info without authorization
+- Tests retrieving private info with invalid token
+
+Helper Functions:
+- CleanupTestData: Cleans up test data after tests
+- SetupTestUser: Sets up a test user and returns authentication token
+*/
+
 import (
 	"encoding/json"
 	"net/http"
@@ -11,6 +49,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// CleanupTestData deletes the test user account using the provided token
 func CleanupTestData(t *testing.T, token string) {
 	if token == "" {
 		return
@@ -502,6 +541,62 @@ func TestGetUserPublicInfo(t *testing.T) {
 		defer resp.Body.Close()
 
 		assert.NotEqual(t, http.StatusOK, resp.StatusCode)
+	})
+}
+
+func TestGetUserPrivateInfo(t *testing.T) {
+	token := SetupTestUser(t)
+	defer CleanupTestData(t, token)
+
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	baseURL := "https://nogler.ddns.net:443"
+
+	t.Run("Get user private info successfully", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, baseURL+"/auth/me", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var response struct {
+			Username string `json:"username"`
+			Email    string `json:"email"`
+			Icon     int    `json:"icon"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, response.Username)
+		assert.NotEmpty(t, response.Email)
+		assert.Equal(t, 1, response.Icon) // El icono por defecto es 1 según SetupTestUser
+	})
+
+	t.Run("Get private info without authorization", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, baseURL+"/auth/me", nil)
+		assert.NoError(t, err)
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.NotEqual(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("Get private info with invalid token", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, baseURL+"/auth/me", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer invalid_token")
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 }
 
