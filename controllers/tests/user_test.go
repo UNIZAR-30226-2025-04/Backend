@@ -84,6 +84,13 @@ func CleanupTestData(t *testing.T, token string) {
 
 // TestSignUp verifies user registration functionality
 func TestSignUp(t *testing.T) {
+	defer func() {
+		if err := recover(); err != nil {
+			cleanupAllTestUsers(t)
+			panic(err)
+		}
+	}()
+	defer cleanupAllTestUsers(t)
 	// Initialize HTTP client with timeout
 	client := &http.Client{
 		Timeout: time.Second * 10,
@@ -182,16 +189,16 @@ func TestSignUp(t *testing.T) {
 	})
 
 	t.Run("Sign up with existing user", func(t *testing.T) {
-		// First create a user
 		timestamp := time.Now().Format("20060102150405")
+		email := "test_existing_" + timestamp + "@example.com"
 		formData := url.Values{
 			"username": {"test_existing_user_" + timestamp},
-			"email":    {"test_existing_" + timestamp + "@example.com"},
+			"email":    {email},
 			"password": {"testpass123"},
 			"icono":    {"1"},
 		}
 
-		// Create the user for the first time
+		// Crear usuario y obtener token para limpieza
 		req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
 		assert.NoError(t, err)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -199,7 +206,15 @@ func TestSignUp(t *testing.T) {
 		assert.NoError(t, err)
 		resp.Body.Close()
 
-		// Try to create the same user again
+		// Login para obtener token
+		loginFormData := url.Values{
+			"email":    {email},
+			"password": {"testpass123"},
+		}
+		token := getTokenForCleanup(t, loginFormData)
+		defer CleanupTestData(t, token)
+
+		// Intentar crear el mismo usuario de nuevo
 		req, err = http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
 		assert.NoError(t, err)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -232,8 +247,44 @@ func TestSignUp(t *testing.T) {
 	})
 }
 
+// Función auxiliar para obtener token
+func getTokenForCleanup(t *testing.T, loginFormData url.Values) string {
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	baseURL := "https://nogler.ddns.net:443"
+
+	loginReq, err := http.NewRequest(http.MethodPost, baseURL+"/login", strings.NewReader(loginFormData.Encode()))
+	assert.NoError(t, err)
+	loginReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	loginResp, err := client.Do(loginReq)
+	assert.NoError(t, err)
+	defer loginResp.Body.Close()
+
+	var loginResponse struct {
+		Token string `json:"token"`
+	}
+	err = json.NewDecoder(loginResp.Body).Decode(&loginResponse)
+	assert.NoError(t, err)
+
+	return loginResponse.Token
+}
+
 // SetupTestUser creates a test user and returns its authentication token
 func SetupTestUser(t *testing.T) string {
+	timestamp := time.Now().Format("20060102150405")
+	email := "test_" + timestamp + "@example.com"
+	username := "testuser_" + timestamp
+	password := "testpass123"
+
+	formData := url.Values{
+		"username": {username},
+		"email":    {email},
+		"password": {password},
+		"icono":    {"1"},
+	}
+
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
@@ -241,8 +292,8 @@ func SetupTestUser(t *testing.T) string {
 
 	// First try to login to check if the user exists
 	loginFormData := url.Values{
-		"email":    {"test@example.com"},
-		"password": {"testpass123"},
+		"email":    {email},
+		"password": {password},
 	}
 
 	loginReq, err := http.NewRequest(http.MethodPost, baseURL+"/login", strings.NewReader(loginFormData.Encode()))
@@ -267,13 +318,6 @@ func SetupTestUser(t *testing.T) string {
 	}
 
 	// Now create the test user
-	formData := url.Values{
-		"username": {"testuser_" + time.Now().Format("20060102150405")},
-		"email":    {"test_" + time.Now().Format("20060102150405") + "@example.com"},
-		"password": {"testpass123"},
-		"icono":    {"1"},
-	}
-
 	req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -501,23 +545,32 @@ func TestGetUserPublicInfo(t *testing.T) {
 	baseURL := "https://nogler.ddns.net:443"
 
 	t.Run("Get user public info successfully", func(t *testing.T) {
-		// First create a test user
 		timestamp := time.Now().Format("20060102150405")
+		email := "test_public_" + timestamp + "@example.com"
 		username := "test_public_info_" + timestamp
 		
 		formData := url.Values{
 			"username": {username},
-			"email":    {"test_public_" + timestamp + "@example.com"},
+			"email":    {email},
 			"password": {"testpass123"},
 			"icono":    {"2"},
 		}
 
+		// Crear usuario y obtener token para limpieza
 		req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
 		assert.NoError(t, err)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		resp, err := client.Do(req)
 		assert.NoError(t, err)
 		resp.Body.Close()
+
+		// Obtener token para limpieza
+		loginFormData := url.Values{
+			"email":    {email},
+			"password": {"testpass123"},
+		}
+		newToken := getTokenForCleanup(t, loginFormData)
+		defer CleanupTestData(t, newToken)
 
 		// Now get the public information
 		req, err = http.NewRequest(http.MethodGet, baseURL+"/users/"+username, nil)
@@ -621,6 +674,7 @@ func TestGetUserPrivateInfo(t *testing.T) {
 }
 
 func TestUpdateUserInfo(t *testing.T) {
+	defer cleanupAllTestUsers(t)
 	// Crear usuario de prueba
 	timestamp := time.Now().Format("20060102150405")
 	testUsername := "test_update_" + timestamp
@@ -720,20 +774,32 @@ func TestUpdateUserInfo(t *testing.T) {
 
 	t.Run("Update with existing username", func(t *testing.T) {
 		// First create a user with a known username
-		existingUsername := "existing_user_" + time.Now().Format("20060102150405")
+		timestamp := time.Now().Format("20060102150405")
+		existingEmail := "existing_" + timestamp + "@example.com"
+		existingUsername := "existing_user_" + timestamp
+		
 		formData := url.Values{
 			"username": {existingUsername},
-			"email":    {"existing_" + time.Now().Format("20060102150405") + "@example.com"},
+			"email":    {existingEmail},
 			"password": {"testpass123"},
 			"icono":    {"1"},
 		}
 
+		// Create the user and get token for cleanup
 		req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
 		assert.NoError(t, err)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		resp, err := client.Do(req)
 		assert.NoError(t, err)
 		resp.Body.Close()
+
+		// Get token for cleanup
+		loginFormData := url.Values{
+			"email":    {existingEmail},
+			"password": {"testpass123"},
+		}
+		existingToken := getTokenForCleanup(t, loginFormData)
+		defer CleanupTestData(t, existingToken)
 
 		// Try to update our test user with the existing username
 		updateData := url.Values{
@@ -801,4 +867,43 @@ func TestUpdateUserInfo(t *testing.T) {
 
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
+}
+
+func cleanupAllTestUsers(t *testing.T) {
+	// Obtener lista de usuarios
+	client := &http.Client{Timeout: time.Second * 10}
+	resp, err := client.Get("https://nogler.ddns.net:443/users")
+	if err != nil {
+		t.Logf("Error getting users: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	var users []struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+	}
+	json.NewDecoder(resp.Body).Decode(&users)
+
+	// Limpiar usuarios de prueba
+	for _, user := range users {
+		if strings.HasPrefix(user.Username, "test_") ||
+		   strings.HasPrefix(user.Username, "testuser") ||  // Eliminar el "_" para capturar también "testuser1", "testuser2", etc
+		   strings.HasPrefix(user.Username, "existing_user_") ||
+		   strings.HasPrefix(user.Username, "updated_user_") ||
+		   strings.HasPrefix(user.Username, "test_signup_user") ||
+		   strings.HasPrefix(user.Username, "test_public_info_") ||
+		   strings.HasPrefix(user.Username, "test_existing_user_") ||
+		   strings.HasPrefix(user.Username, "test_update_") {
+			// Intentar login y eliminar
+			loginFormData := url.Values{
+				"email":    {user.Email},
+				"password": {"testpass123"},
+			}
+			token := getTokenForCleanup(t, loginFormData)
+			if token != "" {
+				CleanupTestData(t, token)
+			}
+		}
+	}
 }
