@@ -686,7 +686,7 @@ func TestUpdateUserInfo(t *testing.T) {
 		"username": {testUsername},
 		"email":    {testEmail},
 		"password": {testPassword},
-		"icono":    {"1"},
+		"icon":    {"1"},
 	}
 
 	client := &http.Client{
@@ -782,7 +782,7 @@ func TestUpdateUserInfo(t *testing.T) {
 			"username": {existingUsername},
 			"email":    {existingEmail},
 			"password": {"testpass123"},
-			"icono":    {"1"},
+			"icon":    {"1"},
 		}
 
 		// Create the user and get token for cleanup
@@ -820,7 +820,7 @@ func TestUpdateUserInfo(t *testing.T) {
 
 	t.Run("Update with invalid icon", func(t *testing.T) {
 		formData := url.Values{
-			"icono": {"icono_invalido"},
+			"icon": {"icon_invalido"},
 		}
 
 		req, err := http.NewRequest(http.MethodPatch, baseURL+"/auth/update", strings.NewReader(formData.Encode()))

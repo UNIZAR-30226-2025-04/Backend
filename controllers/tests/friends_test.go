@@ -43,6 +43,10 @@ type Friend struct {
 
 // SetupFriendsTestData ensures all necessary test users exist in the database
 func SetupFriendsTestData(t *testing.T) {
+	// Primero limpiar amistades existentes
+	cleanupFriendships(t)
+	
+	// Luego crear usuarios de prueba
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
@@ -80,6 +84,23 @@ func SetupFriendsTestData(t *testing.T) {
 			t.Fatalf("Failed to create test user %s: %d", user.username, resp.StatusCode)
 		}
 	}
+}
+
+func cleanupFriendships(t *testing.T) {
+	client := &http.Client{Timeout: time.Second * 10}
+	baseURL := "https://nogler.ddns.net:443"
+	
+	// Obtener token fresco
+	token := getNewToken(t)
+	
+	// Eliminar todas las amistades existentes
+	req, _ := http.NewRequest(http.MethodDelete, baseURL+"/auth/friends/all", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	client.Do(req)
+}
+
+func getNewToken(t *testing.T) string {
+	return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJFbWFpbCI6ImpvcmRpQGdtYWlsLmNvbSJ9.ILJUkEuioZWRMkLADnERrO0JfGPiwhf5PQPpnIOEnps"
 }
 
 // TestListFriends tests all friend listing scenarios
