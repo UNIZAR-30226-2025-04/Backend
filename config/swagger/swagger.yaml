@@ -39,6 +39,41 @@ paths:
       summary: Get all users
       tags:
       - users
+  /auth/CreateLobby:
+    post:
+      description: Returns the id of a new created lobby?
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              properties:
+                icon:
+                  type: integer
+                username:
+                  type: string
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Creates a new lobby
+      tags:
+      - lobby
   /auth/addFriend:
     post:
       consumes:
@@ -162,6 +197,83 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Get a list of a user friends
+      tags:
+      - friends
+  /auth/getAllLobbies:
+    get:
+      consumes:
+      - application/json
+      description: Returns a list of all the lobbies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Lists all existing lobbies
+      tags:
+      - lobby
+  /auth/lobbyInfo/:lobby_id:
+    get:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Adds a new friend to the user's friend list
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Username of the friend to be added
+        in: formData
+        name: friendUsername
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Add a new friend
       tags:
       - friends
   /auth/logout:
