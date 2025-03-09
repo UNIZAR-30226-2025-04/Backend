@@ -35,8 +35,50 @@ type Friend struct {
 	Icon     int    `json:"icon"`
 }
 
+// setupTestData ensures all necessary test users exist in the database
+func setupTestData(t *testing.T) {
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	baseURL := "https://nogler.ddns.net:443"
+
+	// Create test users if they don't exist
+	testUsers := []struct {
+		username string
+		email    string
+		password string
+		icon     string
+	}{
+		{"pepito", "pepito@test.com", "password123", "34"},
+		{"Nico", "nico@test.com", "password123", "0"},
+		{"yago", "yago@test.com", "password123", "999"},
+	}
+
+	for _, user := range testUsers {
+		formData := url.Values{}
+		formData.Set("username", user.username)
+		formData.Set("email", user.email)
+		formData.Set("password", user.password)
+		formData.Set("icono", user.icon)
+
+		req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		resp.Body.Close()
+
+		// Ignore error if user already exists (409 Conflict)
+		if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusConflict {
+			t.Fatalf("Failed to create test user %s: %d", user.username, resp.StatusCode)
+		}
+	}
+}
+
 // TestListFriends tests all friend listing scenarios
 func TestListFriends(t *testing.T) {
+	setupTestData(t)
 	// Setup HTTP client with timeout
 	client := &http.Client{
 		Timeout: time.Second * 10,
@@ -114,6 +156,7 @@ func TestListFriends(t *testing.T) {
 
 // TestAddFriend tests all friend addition scenarios
 func TestAddFriend(t *testing.T) {
+	setupTestData(t)
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
@@ -226,6 +269,7 @@ func TestAddFriend(t *testing.T) {
 
 // TestDeleteFriend tests all friend deletion scenarios
 func TestDeleteFriend(t *testing.T) {
+	setupTestData(t)
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
@@ -313,4 +357,3 @@ func TestDeleteFriend(t *testing.T) {
 		assert.Equal(t, "Friendship does not exist", response.Error)
 	})
 }
-
