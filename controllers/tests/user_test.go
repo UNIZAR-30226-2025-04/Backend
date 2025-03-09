@@ -33,6 +33,13 @@ TestGetUserPrivateInfo:
 - Tests retrieving private info without authorization
 - Tests retrieving private info with invalid token
 
+TestUpdateUserInfo:
+- Tests updating user information successfully
+- Tests updating with existing username
+- Tests updating with invalid icon
+- Tests updating without authorization
+- Tests updating with invalid token
+
 Helper Functions:
 - CleanupTestData: Cleans up test data after tests
 - SetupTestUser: Sets up a test user and returns authentication token
@@ -600,3 +607,138 @@ func TestGetUserPrivateInfo(t *testing.T) {
 	})
 }
 
+func TestUpdateUserInfo(t *testing.T) {
+	// Crear usuario de prueba
+	timestamp := time.Now().Format("20060102150405")
+	testUsername := "test_update_" + timestamp
+	testEmail := "test_update_" + timestamp + "@example.com"
+	testPassword := "testpass123"
+
+	// Registrar usuario con el parámetro correcto "icono"
+	formData := url.Values{
+		"username": {testUsername},
+		"email":    {testEmail},
+		"password": {testPassword},
+		"icono":    {"1"},
+	}
+
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	baseURL := "https://nogler.ddns.net:443"
+
+	// Crear usuario
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
+	assert.NoError(t, err)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	resp.Body.Close()
+
+	// Login para obtener token
+	loginFormData := url.Values{
+		"email":    {testEmail},
+		"password": {testPassword},
+	}
+
+	loginReq, err := http.NewRequest(http.MethodPost, baseURL+"/login", strings.NewReader(loginFormData.Encode()))
+	assert.NoError(t, err)
+	loginReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	loginResp, err := client.Do(loginReq)
+	assert.NoError(t, err)
+	
+	var loginResponse struct {
+		Token string `json:"token"`
+	}
+	err = json.NewDecoder(loginResp.Body).Decode(&loginResponse)
+	loginResp.Body.Close()
+	assert.NoError(t, err)
+	token := loginResponse.Token
+
+	defer CleanupTestData(t, token)
+
+	t.Run("Update with existing username", func(t *testing.T) {
+		// First create a user with a known username
+		existingUsername := "existing_user_" + time.Now().Format("20060102150405")
+		formData := url.Values{
+			"username": {existingUsername},
+			"email":    {"existing_" + time.Now().Format("20060102150405") + "@example.com"},
+			"password": {"testpass123"},
+			"icono":    {"1"},
+		}
+
+		req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		resp.Body.Close()
+
+		// Try to update our test user with the existing username
+		updateData := url.Values{
+			"username": {existingUsername},
+		}
+
+		req, err = http.NewRequest(http.MethodPatch, baseURL+"/auth/update", strings.NewReader(updateData.Encode()))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err = client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusConflict, resp.StatusCode)
+	})
+
+	t.Run("Update with invalid icon", func(t *testing.T) {
+		formData := url.Values{
+			"icon": {"invalid"},
+		}
+
+		req, err := http.NewRequest(http.MethodPatch, baseURL+"/auth/update", strings.NewReader(formData.Encode()))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("Update without authorization", func(t *testing.T) {
+		formData := url.Values{
+			"username": {"unauthorized_update"},
+		}
+
+		req, err := http.NewRequest(http.MethodPatch, baseURL+"/auth/update", strings.NewReader(formData.Encode()))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	t.Run("Update with invalid token", func(t *testing.T) {
+		formData := url.Values{
+			"username": {"invalid_token_update"},
+		}
+
+		req, err := http.NewRequest(http.MethodPatch, baseURL+"/auth/update", strings.NewReader(formData.Encode()))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Authorization", "Bearer invalid_token")
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+}
