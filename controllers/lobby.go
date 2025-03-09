@@ -62,6 +62,13 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{"lobby_id": NewLobby.ID, "message": "Lobby created sucessfully"})
 	}
+
+	// NOTE: after this endpoint returns the response to the client, the client should initiate the
+	// socket.io connection with the server. For example:
+	/*
+		const socket = io('http://localhost:8080');
+		socket.emit('joinLobby', { lobbyId: response.lobby_id });
+	*/
 }
 
 // @Summary Gives info of a lobby

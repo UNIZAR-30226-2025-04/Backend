@@ -7,6 +7,7 @@ import (
 	"Nogler/middleware"
 	"Nogler/routes"
 	"Nogler/services/redis"
+	"Nogler/services/socket_io"
 	"log"
 	"os"
 
@@ -67,6 +68,10 @@ func main() {
 	// TODO: pass in redisClient
 	/* routes.SetupRoutes(r, db, redisClient) */
 	routes.SetupRoutes(r, gormDB, redisClient)
+
+	// NEW: socket.io setup
+	var sio socket_io.SocketServer
+	sio.Start(r)
 
 	// Configure port
 	port := os.Getenv("PORT")
