@@ -10,6 +10,10 @@ TestAddFriend:
 - Tests adding a friend successfully
 - Tests adding a non-existent friend
 - Tests attempting to add yourself as a friend
+
+TestDeleteFriend:
+- Tests deleting a friend successfully
+- Tests deleting a non-existent friend
 */
 
 package controllers_test
@@ -219,3 +223,94 @@ func TestAddFriend(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 }
+
+// TestDeleteFriend tests all friend deletion scenarios
+func TestDeleteFriend(t *testing.T) {
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	baseURL := "https://nogler.ddns.net:443"
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJFbWFpbCI6ImpvcmRpQGdtYWlsLmNvbSJ9.ILJUkEuioZWRMkLADnERrO0JfGPiwhf5PQPpnIOEnps"
+
+	// Test successful friend deletion
+	t.Run("Delete friend successfully", func(t *testing.T) {
+		// First add a friend to ensure they exist
+		formData := url.Values{}
+		formData.Set("friendUsername", "pepito")
+
+		req, err := http.NewRequest(http.MethodPost, baseURL+"/auth/addFriend", strings.NewReader(formData.Encode()))
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		// Now delete the friend
+		req, err = http.NewRequest(http.MethodDelete, baseURL+"/auth/deleteFriend/pepito", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/json")
+
+		resp, err = client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var response struct {
+			Message string `json:"message"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		assert.NoError(t, err)
+		assert.Equal(t, "Friend removed successfully", response.Message)
+
+		// Verify friend no longer appears in friends list
+		req, err = http.NewRequest(http.MethodGet, baseURL+"/auth/friends", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/json")
+
+		resp, err = client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		var friends []Friend
+		err = json.NewDecoder(resp.Body).Decode(&friends)
+		assert.NoError(t, err)
+
+		// Check that deleted friend does not exist in list
+		found := false
+		for _, friend := range friends {
+			if friend.Username == "pepito" {
+				found = true
+				break
+			}
+		}
+		assert.False(t, found, "The deleted friend still appears in the list")
+	})
+
+	// Test deleting non-existent friend
+	t.Run("Delete non-existent friend", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodDelete, baseURL+"/auth/deleteFriend/usuario_inexistente", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+		var response struct {
+			Error string `json:"error"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		assert.NoError(t, err)
+		assert.Equal(t, "Friendship does not exist", response.Error)
+	})
+}
+
