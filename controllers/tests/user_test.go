@@ -59,6 +59,7 @@ import (
 
 // CleanupTestData deletes the test user account using the provided token
 func CleanupTestData(t *testing.T, token string) {
+	// Skip if no token provided
 	if token == "" {
 		return
 	}
@@ -76,12 +77,14 @@ func CleanupTestData(t *testing.T, token string) {
 	if err == nil {
 		body, err := io.ReadAll(deleteResp.Body)
 		assert.NoError(t, err)
-		t.Logf("Respuesta completa del servidor: %s", string(body))
+		t.Logf("Complete server response: %s", string(body))
 		deleteResp.Body.Close()
 	}
 }
 
+// TestSignUp verifies user registration functionality
 func TestSignUp(t *testing.T) {
+	// Initialize HTTP client with timeout
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
@@ -120,7 +123,7 @@ func TestSignUp(t *testing.T) {
 	}
 
 	t.Run("Sign up successfully", func(t *testing.T) {
-		// Generamos el timestamp una sola vez
+		// Generate unique timestamp for test data
 		timestamp := time.Now().Format("20060102150405")
 		username := "test_signup_user_" + timestamp
 		email := "test_signup_" + timestamp + "@example.com"
@@ -156,7 +159,7 @@ func TestSignUp(t *testing.T) {
 		assert.Equal(t, email, response.User.Email)
 
 		body, err := io.ReadAll(resp.Body)
-		t.Logf("Respuesta completa del servidor: %s", string(body))
+		t.Logf("Complete server response: %s", string(body))
 	})
 
 	t.Run("Sign up with empty fields", func(t *testing.T) {
@@ -179,7 +182,7 @@ func TestSignUp(t *testing.T) {
 	})
 
 	t.Run("Sign up with existing user", func(t *testing.T) {
-		// Primero creamos un usuario
+		// First create a user
 		timestamp := time.Now().Format("20060102150405")
 		formData := url.Values{
 			"username": {"test_existing_user_" + timestamp},
@@ -188,7 +191,7 @@ func TestSignUp(t *testing.T) {
 			"icono":    {"1"},
 		}
 
-		// Creamos el usuario por primera vez
+		// Create the user for the first time
 		req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
 		assert.NoError(t, err)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -196,7 +199,7 @@ func TestSignUp(t *testing.T) {
 		assert.NoError(t, err)
 		resp.Body.Close()
 
-		// Intentamos crear el mismo usuario de nuevo
+		// Try to create the same user again
 		req, err = http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
 		assert.NoError(t, err)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -224,18 +227,19 @@ func TestSignUp(t *testing.T) {
 		assert.NoError(t, err)
 		defer resp.Body.Close()
 
-		// Debería ser exitoso ya que el código maneja iconos inválidos asignando el valor por defecto 0
+		// Should be successful since the code handles invalid icons by assigning the default value 0
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	})
 }
 
+// SetupTestUser creates a test user and returns its authentication token
 func SetupTestUser(t *testing.T) string {
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
 	baseURL := "https://nogler.ddns.net:443"
 
-	// Primero intentamos hacer login para ver si el usuario existe
+	// First try to login to check if the user exists
 	loginFormData := url.Values{
 		"email":    {"test@example.com"},
 		"password": {"testpass123"},
@@ -248,7 +252,7 @@ func SetupTestUser(t *testing.T) string {
 	loginResp, err := client.Do(loginReq)
 	assert.NoError(t, err)
 	
-	// Si el usuario existe, lo eliminamos primero
+	// If the user exists, delete it first
 	if loginResp.StatusCode == http.StatusOK {
 		var loginResponse struct {
 			Token string `json:"token"`
@@ -262,7 +266,7 @@ func SetupTestUser(t *testing.T) string {
 		}
 	}
 
-	// Ahora creamos el usuario de prueba
+	// Now create the test user
 	formData := url.Values{
 		"username": {"testuser_" + time.Now().Format("20060102150405")},
 		"email":    {"test_" + time.Now().Format("20060102150405") + "@example.com"},
@@ -278,7 +282,7 @@ func SetupTestUser(t *testing.T) string {
 	assert.NoError(t, err)
 	resp.Body.Close()
 
-	// Hacemos login para obtener el token
+	// Login to get the token
 	loginReq, err = http.NewRequest(http.MethodPost, baseURL+"/login", strings.NewReader(loginFormData.Encode()))
 	assert.NoError(t, err)
 	loginReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -296,7 +300,9 @@ func SetupTestUser(t *testing.T) string {
 	return loginResponse.Token
 }
 
+// TestLogin verifies user authentication functionality
 func TestLogin(t *testing.T) {
+	// Setup test user and defer cleanup
 	token := SetupTestUser(t)
 	defer CleanupTestData(t, token)
 	client := &http.Client{
@@ -440,7 +446,7 @@ func TestGetAllUsers(t *testing.T) {
 	}
 	baseURL := "https://nogler.ddns.net:443"
 
-	// Primero necesitamos hacer login para obtener un token
+	// First we need to login to get a token
 	loginFormData := url.Values{
 		"email":    {"test@example.com"},
 		"password": {"testpass123"},
@@ -460,7 +466,7 @@ func TestGetAllUsers(t *testing.T) {
 	err = json.NewDecoder(loginResp.Body).Decode(&loginResponse)
 	assert.NoError(t, err)
 
-	// Ahora hacemos la petición a /allusers
+	// Now make the request to /allusers
 	req, err := http.NewRequest(http.MethodGet, baseURL+"/allusers", nil)
 	assert.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+loginResponse.Token)
@@ -478,8 +484,8 @@ func TestGetAllUsers(t *testing.T) {
 	err = json.NewDecoder(resp.Body).Decode(&users)
 	assert.NoError(t, err)
 
-	// Imprimir todos los usuarios
-	t.Log("Usuarios existentes:")
+	// Print all existing users
+	t.Log("Existing users:")
 	for _, user := range users {
 		t.Logf("Username: %s, Icon: %d", user.Username, user.Icon)
 	}
@@ -495,7 +501,7 @@ func TestGetUserPublicInfo(t *testing.T) {
 	baseURL := "https://nogler.ddns.net:443"
 
 	t.Run("Get user public info successfully", func(t *testing.T) {
-		// Primero creamos un usuario de prueba
+		// First create a test user
 		timestamp := time.Now().Format("20060102150405")
 		username := "test_public_info_" + timestamp
 		
@@ -513,7 +519,7 @@ func TestGetUserPublicInfo(t *testing.T) {
 		assert.NoError(t, err)
 		resp.Body.Close()
 
-		// Ahora obtenemos la información pública
+		// Now get the public information
 		req, err = http.NewRequest(http.MethodGet, baseURL+"/users/"+username, nil)
 		assert.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -666,7 +672,7 @@ func TestUpdateUserInfo(t *testing.T) {
 	defer CleanupTestData(t, token)
 
 	t.Run("Update user info successfully", func(t *testing.T) {
-		// Verificar usuario inicial
+		// Verify initial user
 		req, err := http.NewRequest(http.MethodGet, baseURL+"/auth/me", nil)
 		assert.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -676,11 +682,11 @@ func TestUpdateUserInfo(t *testing.T) {
 		t.Logf("Usuario inicial: %s", string(body))
 		resp.Body.Close()
 
-		// Solo actualizar los campos necesarios
+		// Only update the necessary fields
 		updateData := url.Values{}
 		newUsername := "updated_user_" + timestamp
 		updateData.Set("username", newUsername)
-		updateData.Set("icon", "2")  // Cambiar de "icono" a "icon" para coincidir con el frontend
+		updateData.Set("icon", "2")  // Change "icono" to "icon" to match the frontend
 
 		t.Logf("Datos a actualizar: %v", updateData)
 

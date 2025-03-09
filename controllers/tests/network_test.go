@@ -9,12 +9,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestPing verifies the server's ping endpoint
 func TestPing(t *testing.T) {
     client := &http.Client{
         Timeout: time.Second * 10,
     }
     baseURL := "https://nogler.ddns.net:443"
 
+	// Test ping server successfully
     t.Run("Ping server successfully", func(t *testing.T) {
         req, err := http.NewRequest(http.MethodGet, baseURL+"/ping", nil)
         assert.NoError(t, err)
