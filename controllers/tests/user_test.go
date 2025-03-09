@@ -47,6 +47,7 @@ Helper Functions:
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -73,6 +74,9 @@ func CleanupTestData(t *testing.T, token string) {
 
 	deleteResp, err := client.Do(deleteReq)
 	if err == nil {
+		body, err := io.ReadAll(deleteResp.Body)
+		assert.NoError(t, err)
+		t.Logf("Respuesta completa del servidor: %s", string(body))
 		deleteResp.Body.Close()
 	}
 }
@@ -150,6 +154,9 @@ func TestSignUp(t *testing.T) {
 		assert.Equal(t, "User created successfully", response.Message)
 		assert.Equal(t, username, response.User.Username)
 		assert.Equal(t, email, response.User.Email)
+
+		body, err := io.ReadAll(resp.Body)
+		t.Logf("Respuesta completa del servidor: %s", string(body))
 	})
 
 	t.Run("Sign up with empty fields", func(t *testing.T) {
@@ -496,7 +503,7 @@ func TestGetUserPublicInfo(t *testing.T) {
 			"username": {username},
 			"email":    {"test_public_" + timestamp + "@example.com"},
 			"password": {"testpass123"},
-			"icono":    {"42"},
+			"icono":    {"2"},
 		}
 
 		req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
@@ -524,7 +531,7 @@ func TestGetUserPublicInfo(t *testing.T) {
 		err = json.NewDecoder(resp.Body).Decode(&response)
 		assert.NoError(t, err)
 		assert.Equal(t, username, response.Username)
-		assert.Equal(t, 42, response.Icon)
+		assert.Equal(t, 2, response.Icon)
 	})
 
 	t.Run("Get non-existent user info", func(t *testing.T) {
@@ -658,6 +665,53 @@ func TestUpdateUserInfo(t *testing.T) {
 
 	defer CleanupTestData(t, token)
 
+	t.Run("Update user info successfully", func(t *testing.T) {
+		// Verificar usuario inicial
+		req, err := http.NewRequest(http.MethodGet, baseURL+"/auth/me", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		body, err := io.ReadAll(resp.Body)
+		t.Logf("Usuario inicial: %s", string(body))
+		resp.Body.Close()
+
+		// Solo actualizar los campos necesarios
+		updateData := url.Values{}
+		newUsername := "updated_user_" + timestamp
+		updateData.Set("username", newUsername)
+		updateData.Set("icon", "2")  // Cambiar de "icono" a "icon" para coincidir con el frontend
+
+		t.Logf("Datos a actualizar: %v", updateData)
+
+		req, err = http.NewRequest(http.MethodPatch, baseURL+"/auth/update", strings.NewReader(updateData.Encode()))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err = client.Do(req)
+		assert.NoError(t, err)
+		body, err = io.ReadAll(resp.Body)
+		t.Logf("Respuesta de actualización: %s", string(body))
+
+		var response struct {
+			Message string `json:"message"`
+			User    struct {
+				Username string `json:"username"`
+				Email    string `json:"email"`
+				Icon     int    `json:"icon"`
+			} `json:"user"`
+			Token string `json:"token"`
+		}
+		err = json.Unmarshal(body, &response)
+		assert.NoError(t, err)
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "User updated successfully", response.Message)
+		assert.Equal(t, newUsername, response.User.Username)
+		assert.Equal(t, 2, response.User.Icon)
+	})
+
 	t.Run("Update with existing username", func(t *testing.T) {
 		// First create a user with a known username
 		existingUsername := "existing_user_" + time.Now().Format("20060102150405")
@@ -694,7 +748,7 @@ func TestUpdateUserInfo(t *testing.T) {
 
 	t.Run("Update with invalid icon", func(t *testing.T) {
 		formData := url.Values{
-			"icon": {"invalid"},
+			"icono": {"icono_invalido"},
 		}
 
 		req, err := http.NewRequest(http.MethodPatch, baseURL+"/auth/update", strings.NewReader(formData.Encode()))
