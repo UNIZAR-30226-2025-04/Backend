@@ -432,3 +432,76 @@ func TestGetAllUsers(t *testing.T) {
 	}
 }
 
+func TestGetUserPublicInfo(t *testing.T) {
+	token := SetupTestUser(t)
+	defer CleanupTestData(t, token)
+
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	baseURL := "https://nogler.ddns.net:443"
+
+	t.Run("Get user public info successfully", func(t *testing.T) {
+		// Primero creamos un usuario de prueba
+		timestamp := time.Now().Format("20060102150405")
+		username := "test_public_info_" + timestamp
+		
+		formData := url.Values{
+			"username": {username},
+			"email":    {"test_public_" + timestamp + "@example.com"},
+			"password": {"testpass123"},
+			"icono":    {"42"},
+		}
+
+		req, err := http.NewRequest(http.MethodPost, baseURL+"/signup", strings.NewReader(formData.Encode()))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		resp.Body.Close()
+
+		// Ahora obtenemos la información pública
+		req, err = http.NewRequest(http.MethodGet, baseURL+"/users/"+username, nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err = client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var response struct {
+			Username string `json:"username"`
+			Icon     int    `json:"icon"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		assert.NoError(t, err)
+		assert.Equal(t, username, response.Username)
+		assert.Equal(t, 42, response.Icon)
+	})
+
+	t.Run("Get non-existent user info", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, baseURL+"/users/nonexistentuser", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+
+	t.Run("Get user info without authorization", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, baseURL+"/users/someuser", nil)
+		assert.NoError(t, err)
+
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.NotEqual(t, http.StatusOK, resp.StatusCode)
+	})
+}
+
