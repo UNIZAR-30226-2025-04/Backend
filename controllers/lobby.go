@@ -8,6 +8,7 @@ import (
 
 	// "errors"
 	"net/http"
+	"Nogler/utils"
 
 	"github.com/gin-gonic/gin"
 
@@ -89,14 +90,13 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 
 		lobbyID := c.Param("lobby_id")
 
-		var lobby postgres.GameLobby
-		result := db.Where("id = ?", lobbyID).First(&lobby)
+		lobby, err := utils.CheckLobbyExists(db, lobbyID)
 
-		if result.Error != nil {
-			if result.Error == gorm.ErrRecordNotFound {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
+		if err != nil {
+			if err.Error() == "lobby not found" {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			}
 			return
 		}
