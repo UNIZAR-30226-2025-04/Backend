@@ -169,6 +169,18 @@ func TestAddFriend(t *testing.T) {
 			}
 		}
 		assert.True(t, found, "The added friend does not appear in the list")
+
+		// Cleanup: Delete the friend we just added
+		req, err = http.NewRequest(http.MethodDelete, baseURL+"/auth/deleteFriend/pepito", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/json")
+
+		resp, err = client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	// Test adding non-existent friend
