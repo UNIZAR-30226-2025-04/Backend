@@ -1,5 +1,5 @@
 basePath: /
-host: nogler.ddns.net:443
+host: nogler.ddns.net:8080
 info:
   contact: {}
   description: Gin-Gonic server for the "Nogler" game API
@@ -56,9 +56,9 @@ paths:
           schema:
             items:
               properties:
-                icon:
+                lobby_id:
                   type: integer
-                username:
+                message:
                   type: string
               type: object
             type: array
@@ -204,47 +204,10 @@ paths:
       consumes:
       - application/json
       description: Returns a list of all the lobbies
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            properties:
-              message:
-                type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-      summary: Lists all existing lobbies
-      tags:
-      - lobby
-  /auth/lobbyInfo/:lobby_id:
-    get:
-      consumes:
-      - application/x-www-form-urlencoded
-      description: Adds a new friend to the user's friend list
       parameters:
       - description: Bearer JWT token
         in: header
         name: Authorization
-        required: true
-        type: string
-      - description: Username of the friend to be added
-        in: formData
-        name: friendUsername
         required: true
         type: string
       produces:
@@ -273,9 +236,54 @@ paths:
             type: object
       security:
       - ApiKeyAuth: []
-      summary: Add a new friend
+      summary: Lists all existing lobbies
       tags:
-      - friends
+      - lobby
+  /auth/lobbyInfo/{lobby_id}:
+    get:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Given a lobby id, it will return its information
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Id of the lobby wanted
+        in: path
+        name: lobby_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Gives info of a lobby
+      tags:
+      - lobby
   /auth/logout:
     delete:
       description: Ends the user's session

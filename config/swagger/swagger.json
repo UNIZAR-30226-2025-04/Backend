@@ -6,7 +6,7 @@
         "contact": {},
         "version": "1.0"
     },
-    "host": "nogler.ddns.net:443",
+    "host": "nogler.ddns.net:8080",
     "basePath": "/",
     "paths": {
         "/allusers": {
@@ -92,10 +92,10 @@
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "icon": {
+                                    "lobby_id": {
                                         "type": "integer"
                                     },
-                                    "username": {
+                                    "message": {
                                         "type": "string"
                                     }
                                 }
@@ -316,6 +316,11 @@
         },
         "/auth/getAllLobbies": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns a list of all the lobbies",
                 "consumes": [
                     "application/json"
@@ -327,6 +332,15 @@
                     "lobby"
                 ],
                 "summary": "Lists all existing lobbies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -364,14 +378,14 @@
                 }
             }
         },
-        "/auth/lobbyInfo/:lobby_id": {
+        "/auth/lobbyInfo/{lobby_id}": {
             "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Adds a new friend to the user's friend list",
+                "description": "Given a lobby id, it will return its information",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -379,9 +393,9 @@
                     "application/json"
                 ],
                 "tags": [
-                    "friends"
+                    "lobby"
                 ],
-                "summary": "Add a new friend",
+                "summary": "Gives info of a lobby",
                 "parameters": [
                     {
                         "type": "string",
@@ -392,9 +406,9 @@
                     },
                     {
                         "type": "string",
-                        "description": "Username of the friend to be added",
-                        "name": "friendUsername",
-                        "in": "formData",
+                        "description": "Id of the lobby wanted",
+                        "name": "lobby_id",
+                        "in": "path",
                         "required": true
                     }
                 ],

@@ -62,7 +62,7 @@ func (sio *SocketServer) Start(router *gin.Engine, db *gorm.DB) {
 		// TODO: check if user is a user?
 
 		// log oki
-		fmt.Println("A ****** just connected!: ", username)
+		fmt.Println("A individual just connected!: ", username)
 
 		client.On("join_lobby", func(args ...interface{}) {
 			lobbyID := args[0].(string) // needed string sanitize?

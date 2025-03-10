@@ -98,10 +98,10 @@ const docTemplate = `{
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "icon": {
+                                    "lobby_id": {
                                         "type": "integer"
                                     },
-                                    "username": {
+                                    "message": {
                                         "type": "string"
                                     }
                                 }
@@ -320,10 +320,13 @@ const docTemplate = `{
                 }
             }
         },
-<<<<<<< HEAD
-=======
         "/auth/getAllLobbies": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns a list of all the lobbies",
                 "consumes": [
                     "application/json"
@@ -335,6 +338,15 @@ const docTemplate = `{
                     "lobby"
                 ],
                 "summary": "Lists all existing lobbies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -372,14 +384,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/lobbyInfo/:lobby_id": {
+        "/auth/lobbyInfo/{lobby_id}": {
             "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Adds a new friend to the user's friend list",
+                "description": "Given a lobby id, it will return its information",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -387,9 +399,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "friends"
+                    "lobby"
                 ],
-                "summary": "Add a new friend",
+                "summary": "Gives info of a lobby",
                 "parameters": [
                     {
                         "type": "string",
@@ -400,9 +412,9 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Username of the friend to be added",
-                        "name": "friendUsername",
-                        "in": "formData",
+                        "description": "Id of the lobby wanted",
+                        "name": "lobby_id",
+                        "in": "path",
                         "required": true
                     }
                 ],
@@ -443,7 +455,6 @@ const docTemplate = `{
                 }
             }
         },
->>>>>>> 111a65a4ff7361b16b74ae5aa47ef0eae3d8542a
         "/auth/logout": {
             "delete": {
                 "description": "Ends the user's session",
@@ -1615,7 +1626,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "nogler.ddns.net:443",
+	Host:             "nogler.ddns.net:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Nogler API",
