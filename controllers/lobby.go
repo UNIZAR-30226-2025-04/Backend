@@ -143,12 +143,13 @@ func GetAllLobies(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
+// @Param lobby_id path string true "lobby_id"
 // @in header
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Security ApiKeyAuth
-// @Router /auth/joinLobby/:lobby_id [get]
+// @Router /auth/joinLobby/{lobby_id} [post]
 func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -187,7 +188,7 @@ func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 
 		// Check if the user in lobby exists
 		var userInLobby postgres.InGamePlayer
-		result := db.Where(
+		result = db.Where(
 			"lobby_id = ? AND username = ?",
 			lobbyID, username,
 		).First(&userInLobby)
@@ -199,10 +200,10 @@ func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 
 		gamePlayer := postgres.InGamePlayer{
 			LobbyID:    lobbyID,
-			username: 	Username,
+			Username: 	username,
 		}
 
-		result = db.Create(&)
+		result = db.Create(&gamePlayer)
 		if result.Error != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to lobby"})
 			return
@@ -219,12 +220,13 @@ func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
+// @Param lobby_id path string true "lobby_id"
 // @in header
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Security ApiKeyAuth
-// @Router /auth/joinLobby/:lobby_id [get]
+// @Router /auth/exitLobby/{lobby_id} [post]
 func ExitLobby(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -263,7 +265,7 @@ func ExitLobby(db *gorm.DB) gin.HandlerFunc {
 
 		// Check if the user in lobby exists
 		var userInLobby postgres.InGamePlayer
-		result := db.Where(
+		result = db.Where(
 			"lobby_id = ? AND username = ?",
 			lobbyID, username,
 		).First(&userInLobby)
@@ -279,6 +281,6 @@ func ExitLobby(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting user from lobby"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "joined lobby successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Exited lobby successfully"})
 	}
 }

@@ -98,10 +98,10 @@ const docTemplate = `{
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "icon": {
+                                    "lobby_id": {
                                         "type": "integer"
                                     },
-                                    "username": {
+                                    "message": {
                                         "type": "string"
                                     }
                                 }
@@ -264,6 +264,77 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/exitLobby/{lobby_id}": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Removes the user to the relation user-lobby",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lobby"
+                ],
+                "summary": "Removes the user from the lobby",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "lobby_id",
+                        "name": "lobby_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/friends": {
             "get": {
                 "security": [
@@ -322,6 +393,11 @@ const docTemplate = `{
         },
         "/auth/getAllLobbies": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns a list of all the lobbies",
                 "consumes": [
                     "application/json"
@@ -333,6 +409,15 @@ const docTemplate = `{
                     "lobby"
                 ],
                 "summary": "Lists all existing lobbies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -370,24 +455,24 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/lobbyInfo/:lobby_id": {
-            "get": {
+        "/auth/joinLobby/{lobby_id}": {
+            "post": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Adds a new friend to the user's friend list",
+                "description": "Adds the user to the relation user-lobby",
                 "consumes": [
-                    "application/x-www-form-urlencoded"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "friends"
+                    "lobby"
                 ],
-                "summary": "Add a new friend",
+                "summary": "Inserts a user into a lobby",
                 "parameters": [
                     {
                         "type": "string",
@@ -398,9 +483,80 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Username of the friend to be added",
-                        "name": "friendUsername",
-                        "in": "formData",
+                        "description": "lobby_id",
+                        "name": "lobby_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/lobbyInfo/{lobby_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Given a lobby id, it will return its information",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lobby"
+                ],
+                "summary": "Gives info of a lobby",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Id of the lobby wanted",
+                        "name": "lobby_id",
+                        "in": "path",
                         "required": true
                     }
                 ],
