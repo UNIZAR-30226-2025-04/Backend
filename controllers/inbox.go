@@ -16,8 +16,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @in header
-// @Success 200 {object} object{received_friendship_requests=array}
+// @Success 200 {object} object{received_friendship_requests=array[object{username=string,icon=integer}]}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -71,8 +70,7 @@ func GetAllReceivedFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @in header
-// @Success 200 {object} object{sent_friendship_requests=array}
+// @Success 200 {object} object{sent_friendship_requests=array[object{username=string,icon=integer}]}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -126,8 +124,7 @@ func GetAllSentFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @in header
-// @Success 200 {object} object{received_game_lobby_invitations=array}
+// @Success 200 {object} object{received_game_lobby_invitations=array[object{username=string,icon=integer,lobby_id=string}]}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -179,8 +176,7 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @in header
-// @Success 200 {object} object{sent_game_lobby_invitations=array}
+// @Success 200 {object} object{sent_game_lobby_invitations=array[object{username=string,icon=integer,lobby_id=string}]}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -225,14 +221,13 @@ func GetAllSentGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// DeleteFriendshipRequest godoc
+// DeleteSentFriendshipRequest godoc
 // @Summary Delete a friendship request from a user
 // @Description Delete a friendship request where the authenticated user is the sender and the specified username is the recipient.
 // @Tags friends
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @in header
 // @Param username path string true "Recipient's username"
 // @Success 200 {object} object{message=string}
 // @Failure 401 {object} object{error=string}
@@ -284,7 +279,6 @@ func DeleteSentFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @in header
 // @Param username path string true "Sender's username"
 // @Success 200 {object} object{message=string}
 // @Failure 401 {object} object{error=string}
@@ -336,7 +330,6 @@ func DeleteReceivedFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @in header
 // @Param lobby_id path string true "Lobby ID"
 // @Param username path string true "Sender's username"
 // @Success 200 {object} object{message=string}
@@ -391,7 +384,6 @@ func DeleteReceivedGameLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @in header
 // @Param lobby_id path string true "Lobby ID"
 // @Param username path string true "Recipient's username"
 // @Success 200 {object} object{message=string}

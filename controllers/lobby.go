@@ -119,11 +119,11 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Success 200 {object} object{message=string}
+// @Success 200 {array} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string}
 // @Failure 401 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
-// @Security ApiKeyAuth
 // @Router /auth/getAllLobbies [get]
+// @Security ApiKeyAuth
 func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Validate JWT token
