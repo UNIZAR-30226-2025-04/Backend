@@ -12,15 +12,15 @@ import (
 // GetAllReceivedFriendshipRequests godoc
 // @Summary Get all friendship requests for the authenticated user
 // @Description Retrieve all friendship requests where the authenticated user is the recipient. Each request includes the sender's public information: username and icon.
-// @Tags Friendship
+// @Tags friends
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Success 200 {object} map[string]interface{} "friendship_requests"
-// @Failure 401 {object} map[string]string "error: User not authenticated"
-// @Failure 404 {object} map[string]string "error: User not found"
-// @Failure 500 {object} map[string]string "error: Error retrieving friendship requests"
+// @Success 200 {object} object{received_friendship_requests=array}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
 // @Router /auth/received_friendship_requests [get]
 // @Security ApiKeyAuth
 func GetAllReceivedFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
@@ -67,15 +67,15 @@ func GetAllReceivedFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // GetAllSentFriendshipRequests godoc
 // @Summary Get all friendship requests sent by the authenticated user
 // @Description Retrieve all friendship requests where the authenticated user is the sender. Each request includes the recipient's public information: username and icon.
-// @Tags Friendship
+// @Tags friends
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Success 200 {object} map[string]interface{} "sent_friendship_requests"
-// @Failure 401 {object} map[string]string "error: User not authenticated"
-// @Failure 404 {object} map[string]string "error: User not found"
-// @Failure 500 {object} map[string]string "error: Error retrieving friendship requests"
+// @Success 200 {object} object{sent_friendship_requests=array}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
 // @Router /auth/sent_friendship_requests [get]
 // @Security ApiKeyAuth
 func GetAllSentFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
@@ -122,15 +122,15 @@ func GetAllSentFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // GetAllReceivedGameLobbyInvitations godoc
 // @Summary Get all game lobby invitations for the authenticated user
 // @Description Retrieve all game lobby invitations where the authenticated user is the recipient. Each invitation includes the sender's public information: username, icon, and the lobby ID.
-// @Tags GameLobby
+// @Tags lobby
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Success 200 {object} map[string]interface{} "game_lobby_invitations"
-// @Failure 401 {object} map[string]string "error: User not authenticated"
-// @Failure 404 {object} map[string]string "error: User not found"
-// @Failure 500 {object} map[string]string "error: Error retrieving game lobby invitations"
+// @Success 200 {object} object{received_game_lobby_invitations=array}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
 // @Router /auth/received_lobby_invitations [get]
 // @Security ApiKeyAuth
 func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
@@ -175,15 +175,15 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // GetAllSentGameLobbyInvitations godoc
 // @Summary Get all game lobby invitations sent by the authenticated user
 // @Description Retrieve all game lobby invitations where the authenticated user is the sender. Each invitation includes the recipient's public information: username, icon, and the lobby ID.
-// @Tags GameLobby
+// @Tags lobby
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Success 200 {object} map[string]interface{} "sent_game_lobby_invitations"
-// @Failure 401 {object} map[string]string "error: User not authenticated"
-// @Failure 404 {object} map[string]string "error: User not found"
-// @Failure 500 {object} map[string]string "error: Error retrieving game lobby invitations"
+// @Success 200 {object} object{sent_game_lobby_invitations=array}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
 // @Router /auth/sent_lobby_invitations [get]
 // @Security ApiKeyAuth
 func GetAllSentGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
@@ -228,16 +228,16 @@ func GetAllSentGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // DeleteFriendshipRequest godoc
 // @Summary Delete a friendship request from a user
 // @Description Delete a friendship request where the authenticated user is the sender and the specified username is the recipient.
-// @Tags Friendship
+// @Tags friends
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
 // @Param username path string true "Recipient's username"
-// @Success 200 {object} map[string]string "message: Friendship request deleted successfully"
-// @Failure 401 {object} map[string]string "error: User not authenticated"
-// @Failure 404 {object} map[string]string "error: Friendship request not found"
-// @Failure 500 {object} map[string]string "error: Error deleting friendship request"
+// @Success 200 {object} object{message=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
 // @Router /auth/sent_friendship_request/{username} [delete]
 // @Security ApiKeyAuth
 func DeleteSentFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
@@ -280,16 +280,16 @@ func DeleteSentFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 // DeleteReceivedFriendshipRequest godoc
 // @Summary Delete a friendship request received by the authenticated user
 // @Description Delete a friendship request where the authenticated user is the recipient and the specified username is the sender.
-// @Tags Friendship
+// @Tags friends
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
 // @Param username path string true "Sender's username"
-// @Success 200 {object} map[string]string "message: Friendship request deleted successfully"
-// @Failure 401 {object} map[string]string "error: User not authenticated"
-// @Failure 404 {object} map[string]string "error: Friendship request not found"
-// @Failure 500 {object} map[string]string "error: Error deleting friendship request"
+// @Success 200 {object} object{message=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
 // @Router /auth/received_friendship_request/{username} [delete]
 // @Security ApiKeyAuth
 func DeleteReceivedFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
@@ -332,17 +332,17 @@ func DeleteReceivedFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 // DeleteReceivedGameLobbyInvitation godoc
 // @Summary Delete a game lobby invitation received by the authenticated user
 // @Description Delete a game lobby invitation where the authenticated user is the recipient and the specified lobby ID and sender username are the targets.
-// @Tags GameLobby
+// @Tags lobby
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
 // @Param lobby_id path string true "Lobby ID"
 // @Param username path string true "Sender's username"
-// @Success 200 {object} map[string]string "message: Game lobby invitation deleted successfully"
-// @Failure 401 {object} map[string]string "error: User not authenticated"
-// @Failure 404 {object} map[string]string "error: Game lobby invitation not found"
-// @Failure 500 {object} map[string]string "error: Error deleting game lobby invitation"
+// @Success 200 {object} object{message=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
 // @Router /auth/received_lobby_invitation/{lobby_id}/{username} [delete]
 // @Security ApiKeyAuth
 func DeleteReceivedGameLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
@@ -387,17 +387,17 @@ func DeleteReceivedGameLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 // DeleteSentGameLobbyInvitation godoc
 // @Summary Delete a game lobby invitation sent by the authenticated user
 // @Description Delete a game lobby invitation where the authenticated user is the sender and the specified lobby ID and recipient username are the targets.
-// @Tags GameLobby
+// @Tags lobby
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
 // @Param lobby_id path string true "Lobby ID"
 // @Param username path string true "Recipient's username"
-// @Success 200 {object} map[string]string "message: Game lobby invitation deleted successfully"
-// @Failure 401 {object} map[string]string "error: User not authenticated"
-// @Failure 404 {object} map[string]string "error: Game lobby invitation not found"
-// @Failure 500 {object} map[string]string "error: Error deleting game lobby invitation"
+// @Success 200 {object} object{message=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
 // @Router /auth/sent_lobby_invitation/{lobby_id}/{username} [delete]
 // @Security ApiKeyAuth
 func DeleteSentGameLobbyInvitation(db *gorm.DB) gin.HandlerFunc {

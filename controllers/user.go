@@ -18,13 +18,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// @title Nogler API
-// @version 1.0
-// @description Gin-Gonic server for the "Nogler" game API
-// @host https://nogler.ddns.net:443
-// @BasePath /
-// @paths
-
 // @Summary Login user
 // @Description Authenticates a user and creates a session
 // @Tags auth
@@ -32,9 +25,10 @@ import (
 // @Produce json
 // @Param email formData string true "User email"
 // @Param password formData string true "User password"
-// @Success 200 {object} object{message=string}
+// @Success 200 {object} object{message=string,token=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 401 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
 // @Router /login [post]
 func Login(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -305,7 +299,7 @@ func GetUserPrivateInfo(db *gorm.DB) gin.HandlerFunc {
 // @Param email formData string false "New email"
 // @Param password formData string false "New password"
 // @Param icon formData string false "New icon number"
-// @Success 200 {object} object{message=string,user=object{username=string,email=string,icon=integer}}
+// @Success 200 {object} object{message=string,token=string,user=object{username=string,email=string,icon=integer}}
 // @Failure 400 {object} object{error=string}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}

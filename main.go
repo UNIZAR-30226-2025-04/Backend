@@ -7,6 +7,7 @@ import (
 	"Nogler/middleware"
 	"Nogler/routes"
 	"Nogler/services/redis"
+	"Nogler/services/socket_io"
 	"log"
 	"os"
 
@@ -18,7 +19,7 @@ import (
 // @title Nogler API
 // @version 1.0
 // @description Gin-Gonic server for the "Nogler" game API
-// @host nogler.ddns.net:443
+// @host nogler.ddns.net:8080
 // @BasePath /
 // @paths
 func main() {
@@ -68,6 +69,10 @@ func main() {
 	/* routes.SetupRoutes(r, db, redisClient) */
 	routes.SetupRoutes(r, gormDB, redisClient)
 
+	// NEW: socket.io setup
+	var sio socket_io.SocketServer
+	sio.Start(r, gormDB)
+
 	// Configure port
 	port := os.Getenv("PORT")
 	log.Println("Puerto leido: ", port)
@@ -81,8 +86,8 @@ func main() {
 	if os.Getenv("USE_HTTPS") == "true" {
 		log.Println("Using HTTPS on port 443")
 		//SSL certification configuration for HTTPS
-		certFile := "/etc/letsencrypt/live/nogler.ddns.net/fullchain.pem"
-		keyFile := "/etc/letsencrypt/live/nogler.ddns.net/privkey.pem"
+		certFile := os.Getenv("FULLCHAIN_PATH")
+		keyFile := os.Getenv("KEY_PATH")
 
 		// Start server
 		if err := r.RunTLS(":"+port, certFile, keyFile); err != nil {

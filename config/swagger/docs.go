@@ -108,6 +108,28 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -321,6 +343,28 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -430,8 +474,8 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -512,6 +556,28 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -566,14 +632,37 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "message": {
+                                "created_at": {
                                     "type": "string"
+                                },
+                                "creator_username": {
+                                    "type": "string"
+                                },
+                                "lobby_id": {
+                                    "type": "string"
+                                },
+                                "number_rounds": {
+                                    "type": "integer"
+                                },
+                                "total_points": {
+                                    "type": "integer"
                                 }
                             }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -741,7 +830,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Friendship"
+                    "friends"
                 ],
                 "summary": "Delete a friendship request received by the authenticated user",
                 "parameters": [
@@ -762,38 +851,46 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "message: Friendship request deleted successfully",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "401": {
-                        "description": "error: User not authenticated",
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "404": {
-                        "description": "error: Friendship request not found",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "500": {
-                        "description": "error: Error deleting friendship request",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -815,7 +912,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Friendship"
+                    "friends"
                 ],
                 "summary": "Get all friendship requests for the authenticated user",
                 "parameters": [
@@ -829,36 +926,46 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "friendship_requests",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
+                            "properties": {
+                                "received_friendship_requests": {
+                                    "type": "array"
+                                }
+                            }
                         }
                     },
                     "401": {
-                        "description": "error: User not authenticated",
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "404": {
-                        "description": "error: User not found",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "500": {
-                        "description": "error: Error retrieving friendship requests",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -880,7 +987,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "GameLobby"
+                    "lobby"
                 ],
                 "summary": "Delete a game lobby invitation received by the authenticated user",
                 "parameters": [
@@ -908,38 +1015,46 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "message: Game lobby invitation deleted successfully",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "401": {
-                        "description": "error: User not authenticated",
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "404": {
-                        "description": "error: Game lobby invitation not found",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "500": {
-                        "description": "error: Error deleting game lobby invitation",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -961,7 +1076,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "GameLobby"
+                    "lobby"
                 ],
                 "summary": "Get all game lobby invitations for the authenticated user",
                 "parameters": [
@@ -975,36 +1090,46 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "game_lobby_invitations",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
+                            "properties": {
+                                "received_game_lobby_invitations": {
+                                    "type": "array"
+                                }
+                            }
                         }
                     },
                     "401": {
-                        "description": "error: User not authenticated",
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "404": {
-                        "description": "error: User not found",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "500": {
-                        "description": "error: Error retrieving game lobby invitations",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -1097,7 +1222,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Friendship"
+                    "friends"
                 ],
                 "summary": "Delete a friendship request from a user",
                 "parameters": [
@@ -1118,38 +1243,46 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "message: Friendship request deleted successfully",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "401": {
-                        "description": "error: User not authenticated",
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "404": {
-                        "description": "error: Friendship request not found",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "500": {
-                        "description": "error: Error deleting friendship request",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -1171,7 +1304,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Friendship"
+                    "friends"
                 ],
                 "summary": "Get all friendship requests sent by the authenticated user",
                 "parameters": [
@@ -1185,36 +1318,46 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "sent_friendship_requests",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
+                            "properties": {
+                                "sent_friendship_requests": {
+                                    "type": "array"
+                                }
+                            }
                         }
                     },
                     "401": {
-                        "description": "error: User not authenticated",
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "404": {
-                        "description": "error: User not found",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "500": {
-                        "description": "error: Error retrieving friendship requests",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -1236,7 +1379,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "GameLobby"
+                    "lobby"
                 ],
                 "summary": "Delete a game lobby invitation sent by the authenticated user",
                 "parameters": [
@@ -1264,38 +1407,46 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "message: Game lobby invitation deleted successfully",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "401": {
-                        "description": "error: User not authenticated",
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "404": {
-                        "description": "error: Game lobby invitation not found",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "500": {
-                        "description": "error: Error deleting game lobby invitation",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -1317,7 +1468,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "GameLobby"
+                    "lobby"
                 ],
                 "summary": "Get all game lobby invitations sent by the authenticated user",
                 "parameters": [
@@ -1331,36 +1482,46 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "sent_game_lobby_invitations",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
+                            "properties": {
+                                "sent_game_lobby_invitations": {
+                                    "type": "array"
+                                }
+                            }
                         }
                     },
                     "401": {
-                        "description": "error: User not authenticated",
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "404": {
-                        "description": "error: User not found",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     },
                     "500": {
-                        "description": "error: Error retrieving game lobby invitations",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -1420,6 +1581,9 @@ const docTemplate = `{
                             "type": "object",
                             "properties": {
                                 "message": {
+                                    "type": "string"
+                                },
+                                "token": {
                                     "type": "string"
                                 },
                                 "user": {
@@ -1534,6 +1698,9 @@ const docTemplate = `{
                             "properties": {
                                 "message": {
                                     "type": "string"
+                                },
+                                "token": {
+                                    "type": "string"
                                 }
                             }
                         }
@@ -1551,6 +1718,17 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -1577,7 +1755,12 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
                         }
                     }
                 }
@@ -1768,7 +1951,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "nogler.ddns.net:443",
+	Host:             "nogler.ddns.net:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Nogler API",

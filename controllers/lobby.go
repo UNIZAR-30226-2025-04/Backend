@@ -8,9 +8,8 @@ import (
 
 	// "errors"
 	"net/http"
-
+	"Nogler/utils"
 	"github.com/gin-gonic/gin"
-
 	"gorm.io/gorm"
 )
 
@@ -20,6 +19,8 @@ import (
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @Success 200 {array} object{message=string,lobby_id=integer}
+// @Failure 400 {object} object{error=string}
+// @Failure 401 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/CreateLobby [post]
 // @Security ApiKeyAuth
@@ -62,6 +63,13 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{"lobby_id": NewLobby.ID, "message": "Lobby created sucessfully"})
 	}
+
+	// NOTE: after this endpoint returns the response to the client, the client should initiate the
+	// socket.io connection with the server. For example:
+	/*
+		const socket = io('http://nogler.ddns.net:8080');
+		socket.emit('joinLobby', { lobbyId: response.lobby_id });
+	*/
 }
 
 // @Summary Gives info of a lobby
@@ -72,8 +80,9 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
 // @Param lobby_id path string true "Id of the lobby wanted"
-// @Success 200 {object} object{message=string}
+// @Success 200 {object} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string}
 // @Failure 400 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/lobbyInfo/{lobby_id} [get]
 // @Security ApiKeyAuth
@@ -82,14 +91,13 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 
 		lobbyID := c.Param("lobby_id")
 
-		var lobby postgres.GameLobby
-		result := db.Where("id = ?", lobbyID).First(&lobby)
+		lobby, err := utils.CheckLobbyExists(db, lobbyID)
 
-		if result.Error != nil {
-			if result.Error == gorm.ErrRecordNotFound {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
+		if err != nil {
+			if err.Error() == "lobby not found" {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			}
 			return
 		}
@@ -112,14 +120,34 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
 // @Success 200 {object} object{message=string}
-// @Failure 400 {object} object{error=string}
+// @Failure 401 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Security ApiKeyAuth
 // @Router /auth/getAllLobbies [get]
-func GetAllLobies(db *gorm.DB) gin.HandlerFunc {
+func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Validate JWT token
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
+
+		// Verify user exists
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
 
 		var game_lobbies []models.GameLobby
+		
+		// Get all lobbies from database
+		if err := db.Find(&game_lobbies).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve lobbies"})
+			return
+		}
 
 		// Create a slice of lobbies
 		lobbies := make([]gin.H, len(game_lobbies))
@@ -147,6 +175,8 @@ func GetAllLobies(db *gorm.DB) gin.HandlerFunc {
 // @in header
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Security ApiKeyAuth
 // @Router /auth/joinLobby/{lobby_id} [post]
@@ -224,6 +254,8 @@ func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 // @in header
 // @Success 200 {object} object{message=string}
 // @Failure 400 {object} object{error=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Security ApiKeyAuth
 // @Router /auth/exitLobby/{lobby_id} [post]
