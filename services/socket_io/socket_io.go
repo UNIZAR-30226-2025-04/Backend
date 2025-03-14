@@ -9,6 +9,7 @@ import (
 	"time"
 	"gorm.io/gorm"
 	"Nogler/utils"
+	"Nogler/constants/socket_io"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/engine.io/v2/engine"
@@ -69,13 +70,8 @@ func (sio *SocketServer) Start(router *gin.Engine, db *gorm.DB) {
 		client.On("join_lobby", func(args ...interface{}) {
 			lobbyID := args[0].(string) // needed string sanitize?
 
-			// Check if lobby is indeed a real lobby
-			lobby, err := utils.CheckLobbyExists(db, lobbyID)
-			if err != nil {
-				fmt.Println("Lobby does not exist:", lobbyID)
-				client.Emit("error", gin.H{"error": "Lobby does not exist"})
-				return
-			}				
+			err := userExists(db, lobbyID, username, client);
+			if userExists(db, lobbyID, username, client) != nil { return }
 
 			// TODO: check if user is indeed in lobby (ON POSTGRES AND REDDIS). 
 			// Comment: creator is always in lobby by design,
