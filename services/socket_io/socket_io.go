@@ -9,7 +9,6 @@ import (
 	"time"
 	"gorm.io/gorm"
 	"Nogler/utils"
-	"Nogler/constants/socket_io"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/engine.io/v2/engine"
@@ -97,8 +96,8 @@ func (sio *SocketServer) Start(router *gin.Engine, db *gorm.DB) {
 
 			
 			client.Join(socket.Room(args[0].(string)))
-			fmt.Println("Client joined lobby:", lobby)
-        	client.Emit("lobby_joined", gin.H{"lobby_id": lobby, "message": "Welcome to the lobby!"})
+			fmt.Println("Client joined lobby:", lobbyID)
+        	client.Emit("lobby_joined", gin.H{"lobby_id": lobbyID, "message": "Welcome to the lobby!"})
 		})
 
 		// Broadcast a message to all clients in a specific lobby
