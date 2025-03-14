@@ -298,6 +298,6 @@ func SendFriendshipRequest(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Friend request sent successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Friendship request sent successfully to " + receiverUsername})
 	}
 }

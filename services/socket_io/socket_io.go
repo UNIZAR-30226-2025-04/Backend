@@ -64,6 +64,8 @@ func (sio *SocketServer) Start(router *gin.Engine, db *gorm.DB) {
 		// log oki
 		fmt.Println("A individual just connected!: ", username)
 
+		// TODO: separate events in multiple files
+		// TODO: ws token authentication?
 		client.On("join_lobby", func(args ...interface{}) {
 			lobbyID := args[0].(string) // needed string sanitize?
 
