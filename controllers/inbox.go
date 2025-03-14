@@ -10,13 +10,13 @@ import (
 )
 
 // GetAllReceivedFriendshipRequests godoc
-// @Summary Get all friendship requests for the authenticated user
+// @Summary Get all received friendship requests for the authenticated user
 // @Description Retrieve all friendship requests where the authenticated user is the recipient. Each request includes the sender's public information: username and icon.
 // @Tags friends
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Success 200 {object} object{received_friendship_requests=array[object{username=string,icon=integer}]}
+// @Success 200 {object} object{received_friendship_requests=[]object{username=string,icon=integer}}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -70,7 +70,7 @@ func GetAllReceivedFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Success 200 {object} object{sent_friendship_requests=array[object{username=string,icon=integer}]}
+// @Success 200 {object} object{sent_friendship_requests=[]object{username=string,icon=integer}}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -118,13 +118,13 @@ func GetAllSentFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 }
 
 // GetAllReceivedGameLobbyInvitations godoc
-// @Summary Get all game lobby invitations for the authenticated user
+// @Summary Get all received game lobby invitations for the authenticated user
 // @Description Retrieve all game lobby invitations where the authenticated user is the recipient. Each invitation includes the sender's public information: username, icon, and the lobby ID.
 // @Tags lobby
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Success 200 {object} object{received_game_lobby_invitations=array[object{username=string,icon=integer,lobby_id=string}]}
+// @Success 200 {object} object{received_game_lobby_invitations=[]object{username=string,icon=integer,lobby_id=string}}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -176,7 +176,7 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Success 200 {object} object{sent_game_lobby_invitations=array[object{username=string,icon=integer,lobby_id=string}]}
+// @Success 200 {object} object{sent_game_lobby_invitations=[]object{username=string,icon=integer,lobby_id=string}}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}

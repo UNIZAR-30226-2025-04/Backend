@@ -466,10 +466,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string"
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "created_at": {
+                                        "type": "string"
+                                    },
+                                    "creator_username": {
+                                        "type": "string"
+                                    },
+                                    "lobby_id": {
+                                        "type": "string"
+                                    },
+                                    "number_rounds": {
+                                        "type": "integer"
+                                    },
+                                    "total_points": {
+                                        "type": "integer"
+                                    }
                                 }
                             }
                         }
@@ -914,7 +929,7 @@ const docTemplate = `{
                 "tags": [
                     "friends"
                 ],
-                "summary": "Get all friendship requests for the authenticated user",
+                "summary": "Get all received friendship requests for the authenticated user",
                 "parameters": [
                     {
                         "type": "string",
@@ -931,7 +946,18 @@ const docTemplate = `{
                             "type": "object",
                             "properties": {
                                 "received_friendship_requests": {
-                                    "type": "array"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "icon": {
+                                                "type": "integer"
+                                            },
+                                            "username": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1078,7 +1104,7 @@ const docTemplate = `{
                 "tags": [
                     "lobby"
                 ],
-                "summary": "Get all game lobby invitations for the authenticated user",
+                "summary": "Get all received game lobby invitations for the authenticated user",
                 "parameters": [
                     {
                         "type": "string",
@@ -1095,7 +1121,21 @@ const docTemplate = `{
                             "type": "object",
                             "properties": {
                                 "received_game_lobby_invitations": {
-                                    "type": "array"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "icon": {
+                                                "type": "integer"
+                                            },
+                                            "lobby_id": {
+                                                "type": "string"
+                                            },
+                                            "username": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1323,7 +1363,18 @@ const docTemplate = `{
                             "type": "object",
                             "properties": {
                                 "sent_friendship_requests": {
-                                    "type": "array"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "icon": {
+                                                "type": "integer"
+                                            },
+                                            "username": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1487,7 +1538,21 @@ const docTemplate = `{
                             "type": "object",
                             "properties": {
                                 "sent_game_lobby_invitations": {
-                                    "type": "array"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "icon": {
+                                                "type": "integer"
+                                            },
+                                            "lobby_id": {
+                                                "type": "string"
+                                            },
+                                            "username": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

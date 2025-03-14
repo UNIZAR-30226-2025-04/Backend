@@ -289,10 +289,20 @@ paths:
         "200":
           description: OK
           schema:
-            properties:
-              message:
-                type: string
-            type: object
+            items:
+              properties:
+                created_at:
+                  type: string
+                creator_username:
+                  type: string
+                lobby_id:
+                  type: string
+                number_rounds:
+                  type: integer
+                total_points:
+                  type: integer
+              type: object
+            type: array
         "401":
           description: Unauthorized
           schema:
@@ -588,6 +598,13 @@ paths:
           schema:
             properties:
               received_friendship_requests:
+                items:
+                  properties:
+                    icon:
+                      type: integer
+                    username:
+                      type: string
+                  type: object
                 type: array
             type: object
         "401":
@@ -613,7 +630,7 @@ paths:
             type: object
       security:
       - ApiKeyAuth: []
-      summary: Get all friendship requests for the authenticated user
+      summary: Get all received friendship requests for the authenticated user
       tags:
       - friends
   /auth/received_lobby_invitation/{lobby_id}/{username}:
@@ -695,6 +712,15 @@ paths:
           schema:
             properties:
               received_game_lobby_invitations:
+                items:
+                  properties:
+                    icon:
+                      type: integer
+                    lobby_id:
+                      type: string
+                    username:
+                      type: string
+                  type: object
                 type: array
             type: object
         "401":
@@ -720,7 +746,7 @@ paths:
             type: object
       security:
       - ApiKeyAuth: []
-      summary: Get all game lobby invitations for the authenticated user
+      summary: Get all received game lobby invitations for the authenticated user
       tags:
       - lobby
   /auth/sendFriendshipRequest:
@@ -842,6 +868,13 @@ paths:
           schema:
             properties:
               sent_friendship_requests:
+                items:
+                  properties:
+                    icon:
+                      type: integer
+                    username:
+                      type: string
+                  type: object
                 type: array
             type: object
         "401":
@@ -949,6 +982,15 @@ paths:
           schema:
             properties:
               sent_game_lobby_invitations:
+                items:
+                  properties:
+                    icon:
+                      type: integer
+                    lobby_id:
+                      type: string
+                    username:
+                      type: string
+                  type: object
                 type: array
             type: object
         "401":
