@@ -56,9 +56,9 @@ paths:
           schema:
             items:
               properties:
-                icon:
+                lobby_id:
                   type: integer
-                username:
+                message:
                   type: string
               type: object
             type: array
@@ -164,6 +164,51 @@ paths:
       summary: Remove a friend
       tags:
       - friends
+  /auth/exitLobby/{lobby_id}:
+    post:
+      consumes:
+      - application/json
+      description: Removes the user to the relation user-lobby
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: lobby_id
+        in: path
+        name: lobby_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Removes the user from the lobby
+      tags:
+      - lobby
   /auth/friends:
     get:
       description: Returns a list of the user's friends
@@ -204,47 +249,10 @@ paths:
       consumes:
       - application/json
       description: Returns a list of all the lobbies
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            properties:
-              message:
-                type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-      summary: Lists all existing lobbies
-      tags:
-      - lobby
-  /auth/lobbyInfo/:lobby_id:
-    get:
-      consumes:
-      - application/x-www-form-urlencoded
-      description: Adds a new friend to the user's friend list
       parameters:
       - description: Bearer JWT token
         in: header
         name: Authorization
-        required: true
-        type: string
-      - description: Username of the friend to be added
-        in: formData
-        name: friendUsername
         required: true
         type: string
       produces:
@@ -273,9 +281,99 @@ paths:
             type: object
       security:
       - ApiKeyAuth: []
-      summary: Add a new friend
+      summary: Lists all existing lobbies
       tags:
-      - friends
+      - lobby
+  /auth/joinLobby/{lobby_id}:
+    post:
+      consumes:
+      - application/json
+      description: Adds the user to the relation user-lobby
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: lobby_id
+        in: path
+        name: lobby_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Inserts a user into a lobby
+      tags:
+      - lobby
+  /auth/lobbyInfo/{lobby_id}:
+    get:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Given a lobby id, it will return its information
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Id of the lobby wanted
+        in: path
+        name: lobby_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Gives info of a lobby
+      tags:
+      - lobby
   /auth/logout:
     delete:
       description: Ends the user's session
