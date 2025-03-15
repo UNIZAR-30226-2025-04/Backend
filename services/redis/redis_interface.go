@@ -38,29 +38,29 @@ type GameLobby struct {
 
 // RedisClient handles Redis operations
 type RedisClient struct {
-	client *redis.Client
-	ctx    context.Context
+	Client *redis.Client
+	Ctx    context.Context
 }
 
-// NewRedisClient creates a new Redis client instance
+// NewRedisClient creates a new Redis Client instance
 func NewRedisClient(Addr string, DB int) *RedisClient {
-	var client *redis.Client
+	var Client *redis.Client
 	if Addr != "localhost:6379" {
 		log.Println("Connecting to remote Redis...")
 		opt, err := redis.ParseURL(Addr)
 		if err != nil {
 			panic("Error parsing Redis URL")
 		}
-		client = redis.NewClient(opt)
+		Client = redis.NewClient(opt)
 	} else {
-		client = redis.NewClient(&redis.Options{
+		Client = redis.NewClient(&redis.Options{
 			Addr: Addr,
 			DB:   DB,
 		})
 	}
 	return &RedisClient{
-		client: client,
-		ctx:    context.Background(),
+		Client: Client,
+		Ctx:    context.Background(),
 	}
 }
 
@@ -75,10 +75,10 @@ func (rc *RedisClient) SaveInGamePlayer(player *InGamePlayer) error {
 	}
 
 	playerLobbyKey := fmt.Sprintf("player:%s:current_lobby", player.Username)
-	pipe := rc.client.Pipeline()
-	pipe.Set(rc.ctx, key, data, 24*time.Hour)
-	pipe.Set(rc.ctx, playerLobbyKey, player.LobbyId, 24*time.Hour)
-	_, err = pipe.Exec(rc.ctx)
+	pipe := rc.Client.Pipeline()
+	pipe.Set(rc.Ctx, key, data, 24*time.Hour)
+	pipe.Set(rc.Ctx, playerLobbyKey, player.LobbyId, 24*time.Hour)
+	_, err = pipe.Exec(rc.Ctx)
 	return err
 }
 
@@ -87,7 +87,7 @@ func (rc *RedisClient) SaveInGamePlayer(player *InGamePlayer) error {
 // Returns: InGamePlayer struct or error
 func (rc *RedisClient) GetInGamePlayer(username string) (*InGamePlayer, error) {
 	key := fmt.Sprintf("player:%s:game", username)
-	data, err := rc.client.Get(rc.ctx, key).Bytes()
+	data, err := rc.Client.Get(rc.Ctx, key).Bytes()
 	if err != nil {
 		return nil, fmt.Errorf("error getting player data: %v", err)
 	}
@@ -102,7 +102,7 @@ func (rc *RedisClient) GetInGamePlayer(username string) (*InGamePlayer, error) {
 // GetPlayerCurrentLobby retrieves the current lobby of a player
 func (rc *RedisClient) GetPlayerCurrentLobby(playerName string) (string, error) {
 	key := fmt.Sprintf("player:%s:current_lobby", playerName)
-	lobbyID, err := rc.client.Get(rc.ctx, key).Result()
+	lobbyID, err := rc.Client.Get(rc.Ctx, key).Result()
 	if err != nil {
 		return "", fmt.Errorf("error getting player's current lobby: %v", err)
 	}
@@ -118,7 +118,7 @@ func (rc *RedisClient) SaveGameLobby(lobby *GameLobby) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling lobby data: %v", err)
 	}
-	return rc.client.Set(rc.ctx, key, data, 24*time.Hour).Err()
+	return rc.Client.Set(rc.Ctx, key, data, 24*time.Hour).Err()
 }
 
 // GetGameLobby retrieves a game lobby state from Redis
@@ -126,7 +126,7 @@ func (rc *RedisClient) SaveGameLobby(lobby *GameLobby) error {
 // Returns: GameLobby struct or error
 func (rc *RedisClient) GetGameLobby(lobbyId string) (*GameLobby, error) {
 	key := fmt.Sprintf("lobby:%s", lobbyId)
-	data, err := rc.client.Get(rc.ctx, key).Bytes()
+	data, err := rc.Client.Get(rc.Ctx, key).Bytes()
 	if err != nil {
 		return nil, fmt.Errorf("error getting lobby data: %v", err)
 	}

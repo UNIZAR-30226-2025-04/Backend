@@ -2,196 +2,131 @@ package socket_io
 
 import (
 	"fmt"
-	"net/http"
+	"io"
+	"log"
 	"os"
-	"os/signal"
-	"syscall"
+	"path/filepath"
 	"time"
+
 	"gorm.io/gorm"
-	"Nogler/utils"
 
 	"github.com/gin-gonic/gin"
-	"github.com/zishang520/engine.io/v2/engine"
-	"github.com/zishang520/engine.io/v2/log"
 	"github.com/zishang520/engine.io/v2/types"
-	"github.com/zishang520/engine.io/v2/webtransport"
 	"github.com/zishang520/socket.io/v2/socket"
+
+	"Nogler/services/redis"
 )
 
-type SocketServer struct {
-	sio_server          *socket.Server
-	webtransport_server *types.HttpServer
+var (
+	isTestMode bool = false
+	logFile    *os.File
+	logger     *log.Logger
+)
+
+func initLogger() error {
+	// Crear directorio logs si no existe
+	logDir := "logs"
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return fmt.Errorf("error creando directorio de logs: %v", err)
+	}
+
+	// Crear o abrir archivo de log con timestamp
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	logPath := filepath.Join(logDir, fmt.Sprintf("socket_io_%s.log", timestamp))
+	
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return fmt.Errorf("error abriendo archivo de log: %v", err)
+	}
+
+	logFile = file
+	// Configurar logger para escribir tanto en archivo como en stdout
+	multiWriter := io.MultiWriter(os.Stdout, file)
+	logger = log.New(multiWriter, "", log.LstdFlags)
+	return nil
 }
 
-func (sio *SocketServer) Start(router *gin.Engine, db *gorm.DB) {
-	log.DEBUG = true
+type SocketServer struct {
+	sio_server  *socket.Server
+	redisClient *redis.RedisClient
+}
+
+func (sio *SocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient) {
+	// Inicializar logger
+	if err := initLogger(); err != nil {
+		log.Fatalf("[SOCKET-ERROR] Error inicializando logger: %v", err)
+	}
+	// No cerramos el archivo de log aquí para evitar problemas
+
+	if db == nil {
+		logger.Println("[SOCKET-CONFIG] Modo test activado")
+		isTestMode = true
+	}
+	sio.redisClient = redisClient
+
+	logger.Println("[SOCKET-CONFIG] Configurando opciones del servidor...")
 	c := socket.DefaultServerOptions()
 	c.SetServeClient(true)
-	// c.SetConnectionStateRecovery(&socket.ConnectionStateRecovery{})
-	// c.SetAllowEIO3(true)
-	c.SetPingInterval(300 * time.Millisecond)
-	c.SetPingTimeout(200 * time.Millisecond)
+	c.SetPingInterval(25000 * time.Millisecond)
+	c.SetPingTimeout(20000 * time.Millisecond)
 	c.SetMaxHttpBufferSize(1000000)
-	c.SetConnectTimeout(1000 * time.Millisecond)
-	c.SetTransports(types.NewSet("polling", "websocket", "webtransport"))
+	c.SetConnectTimeout(45000 * time.Millisecond)
+	c.SetTransports(types.NewSet("polling", "websocket"))
+	c.SetAllowUpgrades(true)
 	c.SetCors(&types.Cors{
 		Origin:      "*",
 		Credentials: true,
 	})
 
-	sio.sio_server = socket.NewServer(nil, nil)
+	sio.sio_server = socket.NewServer(nil, c)
+	
+	// Añadir log para eventos del servidor
+	sio.sio_server.On("error", func(err ...interface{}) {
+		logger.Printf("[SOCKET-ERROR] Error en el servidor: %v", err)
+	})
+
+	// Manejar conexiones
 	sio.sio_server.On("connection", func(clients ...interface{}) {
 		client := clients[0].(*socket.Socket)
-
-		// Checks if we have auth data in the connection. (need username)
-		authData, ok := client.Handshake().Auth.(map[string]interface{})
-		if !ok {
-		    fmt.Println("No username provided in handshake!")
-		    client.Emit("error", gin.H{"error": "Authentication failed: missing username"})
-		    return
-		}
-
-		// Check if the data in auth is indeed a username
-		username, exists := authData["username"].(string)
-		if !exists {
-		    fmt.Println("No username provided in handshake!")
-		    client.Emit("error", gin.H{"error": "Authentication failed: missing username"})
-		    return
-		}
-
-		// TODO: check if user is a user?
-
-		// log oki
-		fmt.Println("A individual just connected!: ", username)
-
-		// TODO: separate events in multiple files
-		// TODO: ws token authentication?
+		
+		// Simplemente usar el ID del cliente para identificarlo
+		logger.Printf("[SOCKET-INFO] Nueva conexión: ID: %s", client.Id())
+		
+		// Manejar evento join_lobby
 		client.On("join_lobby", func(args ...interface{}) {
-			lobbyID := args[0].(string) // needed string sanitize?
-
-			err := userExists(db, lobbyID, username, client);
-			if userExists(db, lobbyID, username, client) != nil { return }
-
-			// TODO: check if user is indeed in lobby (ON POSTGRES AND REDDIS). 
-			// Comment: creator is always in lobby by design,
-			// but right now we don't add other users to lobby. 
-
-			// Was tested by adding manually to db, and we have a function
-			// in utils to check if the user is on a lobby on postgres
-			// therefore this check passes with Nico and yago
-
-			// Check if user is in lobby
-			isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
-    		if err != nil {
-        		fmt.Println("Database error:", err)
-        		client.Emit("error", gin.H{"error": "Database error"})
-        		return
-    		}
-
-    		if !isInLobby {
-    		    fmt.Println("User is NOT in lobby:", username, "Lobby:", lobbyID)
-     		   	client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
-     		   	return
-    		}
-
+			logger.Printf("[SOCKET-DEBUG] join_lobby recibido: %+v", args)
 			
-			client.Join(socket.Room(args[0].(string)))
-			fmt.Println("Client joined lobby:", lobbyID)
-        	client.Emit("lobby_joined", gin.H{"lobby_id": lobbyID, "message": "Welcome to the lobby!"})
-		})
-
-		// Broadcast a message to all clients in a specific lobby
-    	client.On("broadcast_to_lobby", func(args ...interface{}) {
-			lobbyID := args[0].(string)
-
-			// check if lobby exists. We could maby have a "global" lobby check,
-			// so that a connection is associated with a valid lobby only checked once
-			_, err := utils.CheckLobbyExists(db, lobbyID)
-			if err != nil {
-				fmt.Println("Lobby does not exist:", lobbyID)
-				client.Emit("error", gin.H{"error": "Lobby does not exist"})
+			if len(args) < 1 {
+				logger.Printf("[SOCKET-ERROR] Faltan argumentos para join_lobby")
+				client.Emit("error", gin.H{"error": "Falta el ID del lobby"})
 				return
 			}
-			
-			// same as above, it might be better to check this on a higher level to 
-			// avoid repeated check. It isn't really that bad to check twice tho.
-			authData, ok := client.Handshake().Auth.(map[string]interface{})
-    		if !ok {
-    		    fmt.Println("Handshake auth data is missing or invalid!")
-    		    client.Emit("error", gin.H{"error": "Authentication failed: missing auth data"})
-    		    return
-    		}
-		
-    		username, exists := authData["username"].(string)
-    		if !exists {
-    		    fmt.Println("No username provided in handshake!")
-    		    client.Emit("error", gin.H{"error": "Authentication failed: missing username"})
-    		    return
-    		}
 
-			message := args[1].(string) // sanitize string?
-
-			// Check if user is in lobby
-			isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
-    		if err != nil {
-        		fmt.Println("Database error:", err)
-        		client.Emit("error", gin.H{"error": "Database error"})
-        		return
-    		}
-
-    		if !isInLobby {
-    		    fmt.Println("User is NOT in lobby:", username, "Lobby:", lobbyID)
-     		   	client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
-     		   	return
-    		}
-
-       	 	fmt.Println("Broadcasting to lobby:", lobbyID, "Message:", message)
-
-	        // Send the message to all clients in the lobby
-    		sio.sio_server.To(socket.Room(lobbyID)).Emit("new_lobby_message", gin.H{"lobby_id": lobbyID, "message": message})
-  	  	})
-	})
-
-	sio.sio_server.Of("/custom", nil).On("connection", func(clients ...interface{}) {
-		client := clients[0].(*socket.Socket)
-		client.Emit("auth", client.Handshake().Auth)
-	})
-
-	router.POST("/socket.io/*f", gin.WrapH(sio.sio_server.ServeHandler(c)))
-	router.GET("/socket.io/*f", gin.WrapH(sio.sio_server.ServeHandler(c)))
-
-	// WebTransport start
-	// WebTransport uses udp, so you need to enable the new service.
-	sio.webtransport_server = types.NewWebServer(nil)
-	// A certificate is required and cannot be a self-signed certificate.
-	wts := sio.webtransport_server.ListenWebTransportTLS(":443", os.Getenv("FULLCHAIN_PATH"), os.Getenv("KEY_PATH"), nil, nil)
-
-
-	// Here is the core logic of the WebTransport handshake.
-	sio.webtransport_server.HandleFunc(sio.sio_server.Path()+"/", func(w http.ResponseWriter, r *http.Request) {
-		if webtransport.IsWebTransportUpgrade(r) {
-			// You need to call socketio.ServeHandler(nil) before this, otherwise you cannot get the Engine instance.
-			sio.sio_server.Engine().(engine.Server).OnWebTransportSession(types.NewHttpContext(w, r), wts)
-			fmt.Println("Upgrade to WebTransport")
-		} else {
-			fmt.Println("Upgrade to WebTransport")
-			sio.webtransport_server.DefaultHandler.ServeHTTP(w, r)
-		}
-	})
-	// WebTransport end
-
-	SignalC := make(chan os.Signal)
-
-	signal.Notify(SignalC, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	go func() {
-		for s := range SignalC {
-			switch s {
-			case syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT:
-				sio.sio_server.Close(nil)
-				os.Exit(0)
+			lobbyID, ok := args[0].(string)
+			if !ok {
+				logger.Printf("[SOCKET-ERROR] Tipo de argumento inválido: %T", args[0])
+				client.Emit("error", gin.H{"error": "Formato de lobby_id inválido"})
+				return
 			}
-		}
-	}()
 
-	fmt.Println("Socket server started")
+			// Emitir respuesta simple
+			logger.Printf("[SOCKET-DEBUG] Emitiendo lobby_joined para lobby %s", lobbyID)
+			client.Emit("lobby_joined", gin.H{
+				"lobby_id": lobbyID,
+				"message": "¡Bienvenido al lobby!",
+			})
+			logger.Printf("[SOCKET-DEBUG] Respuesta enviada correctamente")
+		})
+
+		// Manejar desconexión
+		client.On("disconnect", func(reason ...interface{}) {
+			logger.Printf("[SOCKET-DEBUG] Cliente desconectado: %v", reason)
+		})
+	})
+
+	logger.Println("[SOCKET-CONFIG] Configurando rutas HTTP...")
+	router.POST("/socket.io/*f", gin.WrapH(sio.sio_server.ServeHandler(nil)))
+	router.GET("/socket.io/*f", gin.WrapH(sio.sio_server.ServeHandler(nil)))
+
+	logger.Println("[SOCKET] Servidor Socket.IO iniciado exitosamente")
 }

@@ -23,7 +23,7 @@ func TestRedisOperations(t *testing.T) {
 			"chat_history:test_lobby_123",
 		}
 		for _, key := range keys {
-			if err := rc.client.Del(rc.ctx, key).Err(); err != nil {
+			if err := rc.Client.Del(rc.Ctx, key).Err(); err != nil {
 				t.Fatalf("Failed to cleanup Redis key %s: %v", key, err)
 			}
 		}
