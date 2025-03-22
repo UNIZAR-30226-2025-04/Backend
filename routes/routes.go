@@ -81,7 +81,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient
 
 		authentication.GET("/getAllLobbies", controllers.GetAllLobies(db))
 
-		authentication.POST("/sendLobbyInvitation", controllers.sendLobbyInvitation(db))
+		authentication.POST("/sendLobbyInvitation", controllers.SendLobbyInvitation(db))
 	}
 
 	// Routes that require authentication
