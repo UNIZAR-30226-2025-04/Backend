@@ -64,6 +64,84 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+// @Summary Sends a lobby invitation
+// @Description Sends a lobby invitation from the sender to another user
+// @Tags lobby
+// @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @Param lobby_id formData int true "Lobby ID"
+// @Param friendUsername formData string true "Username of the recipient"
+// @Success 200 {object} object{message=string} "Lobby invitation sent successfully"
+// @Failure 400 {object} object{error=string} "Friendship does not exist"
+// @Failure 401 {object} object{error=string} "User not authenticated"
+// @Failure 500 {object} object{error=string} "Error sending invitation"
+// @Router /auth/sendLobbyInvitation [post]
+// @Security ApiKeyAuth
+func SendLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error in jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			return
+		}
+
+		username := user.ProfileUsername
+		friendUsername := c.PostForm("friendUsername")
+
+		if username == "" || friendUsername == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Both usernames are required"})
+			return
+		}
+
+		// Check if the friendship exists
+		var friendship postgres.Friendship
+		if err := db.Where("(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",username, friendUsername, friendUsername, username,).First(&friendship).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Friendship does not exist"})
+			return
+		}
+
+		// Get the lobby ID from the URL parameters
+		lobbyID := c.PostForm("lobby_id")
+
+		// Check if lobby exists
+		var lobby postgres.GameLobby
+		if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Lobby does not exist"})
+			return
+		}
+
+		// Check if the invitation already exists
+		var existingInvitation postgres.GameInvitation
+		if err := db.Where("lobby_id = ? AND sender_username = ? AND invited_username = ?", lobbyID, username, friendUsername).First(&existingInvitation).Error; err == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invitation already sent to this user"})
+			return
+		}
+
+		// Create and save new friendship
+		newLobbyInvitation := postgres.GameInvitation{
+			LobbyID:         lobbyID,
+			SenderUsername:  username,
+			InvitedUsername: friendUsername,
+		}
+
+		result = db.Create(&newLobbyInvitation)
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending invitation"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Lobby invitation sent successfully"})
+	}
+}
+
+
 // @Summary Gives info of a lobby
 // @Description Given a lobby id, it will return its information
 // @Tags lobby
