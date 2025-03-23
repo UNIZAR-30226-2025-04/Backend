@@ -131,8 +131,8 @@ func SendLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 			InvitedUsername: friendUsername,
 		}
 
-		result = db.Create(&newLobbyInvitation)
-		if result.Error != nil {
+		if err := db.Create(&newLobbyInvitation).Error; err != nil {
+			log.Fatal("Failed to send lobby invitation:", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending invitation"})
 			return
 		}
