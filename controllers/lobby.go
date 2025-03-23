@@ -322,7 +322,7 @@ func ExitLobby(db *gorm.DB) gin.HandlerFunc {
 // @Tags lobby
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Param lobby_id formData int true "Lobby ID"
+// @Param lobby_id formData string true "Lobby ID"
 // @Param friendUsername formData string true "Username of the recipient"
 // @Success 200 {object} object{message=string} "Lobby invitation sent successfully"
 // @Failure 400 {object} object{error=string} "Friendship does not exist"
