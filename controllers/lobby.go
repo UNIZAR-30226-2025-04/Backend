@@ -80,7 +80,7 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
 // @Param lobby_id path string true "Id of the lobby wanted"
-// @Success 200 {object} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string}
+// @Success 200 {object} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string, number_players=integer, players=[]string}
 // @Failure 400 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
