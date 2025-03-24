@@ -381,6 +381,77 @@ paths:
       summary: Inserts a user into a lobby
       tags:
       - lobby
+  /auth/kickFromLobby/{lobby_id}/{username}:
+    post:
+      consumes:
+      - application/json
+      description: Host can remove another user from their lobby
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: lobby_id
+        in: path
+        name: lobby_id
+        required: true
+        type: string
+      - description: username to kick
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Kicks a user from a lobby
+      tags:
+      - lobby
   /auth/lobbyInfo/{lobby_id}:
     get:
       consumes:
@@ -794,6 +865,61 @@ paths:
       summary: Send a friend request
       tags:
       - friends
+  /auth/sendLobbyInvitation:
+    post:
+      description: Sends a lobby invitation from the sender to another user
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Lobby ID
+        in: formData
+        name: lobby_id
+        required: true
+        type: string
+      - description: Username of the recipient
+        in: formData
+        name: friendUsername
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lobby invitation sent successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Friendship does not exist
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Error sending invitation
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Sends a lobby invitation
+      tags:
+      - lobby
   /auth/sent_friendship_request/{username}:
     delete:
       consumes:
