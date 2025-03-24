@@ -475,20 +475,20 @@ paths:
           description: OK
           schema:
             properties:
-              ' number_players':
-                type: integer
-              ' players':
-                items:
-                  type: string
-                type: array
               created_at:
                 type: string
               creator_username:
                 type: string
               lobby_id:
                 type: string
+              number_players:
+                type: integer
               number_rounds:
                 type: integer
+              players:
+                items:
+                  type: string
+                type: array
               total_points:
                 type: integer
             type: object

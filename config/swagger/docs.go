@@ -758,15 +758,6 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "properties": {
-                                " number_players": {
-                                    "type": "integer"
-                                },
-                                " players": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                },
                                 "created_at": {
                                     "type": "string"
                                 },
@@ -776,8 +767,17 @@ const docTemplate = `{
                                 "lobby_id": {
                                     "type": "string"
                                 },
+                                "number_players": {
+                                    "type": "integer"
+                                },
                                 "number_rounds": {
                                     "type": "integer"
+                                },
+                                "players": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 },
                                 "total_points": {
                                     "type": "integer"
