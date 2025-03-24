@@ -164,7 +164,11 @@ func (sio *SocketServer) Start(router *gin.Engine, db *gorm.DB) {
 	// WebTransport uses udp, so you need to enable the new service.
 	sio.webtransport_server = types.NewWebServer(nil)
 	// A certificate is required and cannot be a self-signed certificate.
-	wts := sio.webtransport_server.ListenWebTransportTLS(":443", os.Getenv("FULLCHAIN_PATH"), os.Getenv("KEY_PATH"), nil, nil)
+	sio_port := os.Getenv("SOCKETIO_PORT")
+	if sio_port == "" {
+		sio_port = "443"
+	}
+	wts := sio.webtransport_server.ListenWebTransportTLS(":"+sio_port, os.Getenv("FULLCHAIN_PATH"), os.Getenv("KEY_PATH"), nil, nil)
 
 
 	// Here is the core logic of the WebTransport handshake.

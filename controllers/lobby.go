@@ -393,3 +393,85 @@ func SendLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "Lobby invitation sent successfully"})
 	}
 }
+
+// TODO: ver cómo integramos la Redis aquí
+// @Summary Kicks a user from a lobby
+// @Description Host can remove another user from their lobby
+// @Tags lobby
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @Param lobby_id path string true "lobby_id"
+// @Param username path string true "username to kick"
+// @in header
+// @Success 200 {object} object{message=string}
+// @Failure 400 {object} object{error=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 403 {object} object{error=string}
+// @Failure 404 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
+// @Security ApiKeyAuth
+// @Router /auth/kickFromLobby/{lobby_id}/{username} [post]
+func KickFromLobby(db *gorm.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // Get lobby ID and username to kick from parameters
+        lobbyID := c.Param("lobby_id")
+        usernameToKick := c.Param("username")
+
+        // Find the lobby
+        var lobby postgres.GameLobby
+        if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
+            if err == gorm.ErrRecordNotFound {
+                c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
+            } else {
+                c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+            }
+            return
+        }
+
+        // Get the requesting user's info from JWT
+        email, err := middleware.JWT_decoder(c)
+        if err != nil {
+            log.Print("Error in jwt...")
+            return
+        }
+
+        var user models.User
+        if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+            return
+        }
+
+        // Check if the requesting user is the host
+        if user.ProfileUsername != lobby.CreatorUsername {
+            c.JSON(http.StatusForbidden, gin.H{"error": "Only the host can kick players"})
+            return
+        }
+
+        // Check if the user to kick exists in the lobby
+        var userInLobby postgres.InGamePlayer
+        result := db.Where(
+            "lobby_id = ? AND username = ?",
+            lobbyID, usernameToKick,
+        ).First(&userInLobby)
+
+        if result.RowsAffected == 0 {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "User is not in the lobby"})
+            return
+        }
+
+        // Cannot kick yourself (the host)
+        if usernameToKick == user.ProfileUsername {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Host cannot kick themselves"})
+            return
+        }
+
+        // Delete the player from lobby
+        if err := db.Delete(&userInLobby).Error; err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Error kicking user from lobby"})
+            return
+        }
+
+        c.JSON(http.StatusOK, gin.H{"message": "Player kicked successfully"})
+    }
+}

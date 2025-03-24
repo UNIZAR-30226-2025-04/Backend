@@ -85,6 +85,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient
 
 		authentication.POST("/exitLobby/:lobby_id", controllers.ExitLobby(db))
 
+		authentication.POST("/kickFromLobby/:lobby_id/:username", controllers.KickFromLobby(db))
+
 		authentication.POST("/sendLobbyInvitation", controllers.SendLobbyInvitation(db))
 	}
 
