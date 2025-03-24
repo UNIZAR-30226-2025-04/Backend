@@ -102,12 +102,22 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		var usersInLobby []string
+		if err := db.Model(&postgres.InGamePlayer{}).Where("lobby_id = ?", lobbyID).Pluck("username", &usersInLobby).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve users in lobby"})
+			return
+		}
+
+		number := len(usersInLobby)
+
 		c.JSON(http.StatusOK, gin.H{
 			"lobby_id":         lobby.ID,
 			"creator_username": lobby.CreatorUsername,
 			"number_rounds":    lobby.NumberOfRounds,
 			"total_points":     lobby.TotalPoints,
 			"created_at":       lobby.CreatedAt,
+			"number_players":   number,
+			"players":			usersInLobby,
 		})
 	}
 }
