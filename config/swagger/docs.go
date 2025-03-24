@@ -758,6 +758,15 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "properties": {
+                                " number_players": {
+                                    "type": "integer"
+                                },
+                                " players": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
                                 "created_at": {
                                     "type": "string"
                                 },
