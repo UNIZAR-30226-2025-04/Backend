@@ -1,13 +1,15 @@
 package utils
 
 import (
+	"Nogler/models/postgres"
+	"fmt"
 	"net/http"
 	"time"
+
 	"gorm.io/gorm"
-	"fmt"
-	"Nogler/models/postgres"
 
 	"github.com/gin-gonic/gin"
+	"github.com/zishang520/socket.io/v2/socket"
 )
 
 // LoggerMiddleware logs information about each request
@@ -73,4 +75,14 @@ func IsPlayerInLobby(db *gorm.DB, lobbyID string, username string) (bool, error)
 	}
 
 	return count > 0, nil
+}
+
+// Check if user is in lobby
+func UserExists(db *gorm.DB, lobbyID string, username string, client *socket.Socket) error {
+	_, err := IsPlayerInLobby(db, lobbyID, username)
+	if err != nil {
+		fmt.Println("Database error:", err)
+		client.Emit("error", gin.H{"error": "Database error"})
+	}
+	return err
 }
