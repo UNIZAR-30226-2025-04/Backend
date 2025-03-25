@@ -129,7 +129,7 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Success 200 {array} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string}
+// @Success 200 {array} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string,host_icon=integer}
 // @Failure 401 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/getAllLobbies [get]
@@ -159,6 +159,28 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Extract all creator usernames
+		var usernames []string
+		for _, lobby := range game_lobbies {
+			usernames = append(usernames, lobby.CreatorUsername)
+		}
+		
+		// Get host icons
+		hostIcons := make(map[string]int)
+		var profiles []struct{
+			Username string
+			UserIcon int
+		}
+		
+		if err := db.Model(&postgres.GameProfile{}).Where("username IN ?", usernames).Select("username, user_icon").Find(&profiles).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve host icons"})
+			return
+		}
+
+		for _, profile := range profiles {
+			hostIcons[profile.Username] = profile.UserIcon
+		}
+
 		// Create a slice of lobbies
 		lobbies := make([]gin.H, len(game_lobbies))
 		for i, lobby := range game_lobbies {
@@ -168,6 +190,7 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 				"number_rounds":    lobby.NumberOfRounds,
 				"total_points":     lobby.TotalPoints,
 				"created_at":       lobby.CreatedAt,
+				"host_icon":		hostIcons[lobby.CreatorUsername],
 			}
 		}
 		c.JSON(http.StatusOK, lobbies)

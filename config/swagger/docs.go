@@ -476,6 +476,9 @@ const docTemplate = `{
                                     "creator_username": {
                                         "type": "string"
                                     },
+                                    "host_icon": {
+                                        "type": "integer"
+                                    },
                                     "lobby_id": {
                                         "type": "string"
                                     },
