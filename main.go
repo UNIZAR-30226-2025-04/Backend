@@ -70,7 +70,7 @@ func main() {
 	routes.SetupRoutes(r, gormDB, redisClient)
 
 	// NEW: socket.io setup
-	var sio socket_io.SocketServer
+	var sio socket_io.MySocketServer
 	sio.Start(r, gormDB)
 
 	// Configure port
