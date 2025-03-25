@@ -2,13 +2,13 @@ package controllers
 
 import (
 	"Nogler/middleware"
-	"Nogler/models/postgres"
 	models "Nogler/models/postgres"
 	"log"
 
 	// "errors"
-	"net/http"
 	"Nogler/utils"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -49,7 +49,7 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 
 		// *There is a function on the models gamelobby "beforeCreate" for the id generation
 
-		NewLobby := postgres.GameLobby{
+		NewLobby := models.GameLobby{
 			CreatorUsername: username,
 			NumberOfRounds:  0,
 			TotalPoints:     0,
@@ -63,6 +63,8 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{"lobby_id": NewLobby.ID, "message": "Lobby created sucessfully"})
 	}
+
+	// TODO: create the lobby on Redis too
 
 	// NOTE: after this endpoint returns the response to the client, the client should initiate the
 	// socket.io connection with the server. For example:
@@ -103,7 +105,7 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		var usersInLobby []string
-		if err := db.Model(&postgres.InGamePlayer{}).Where("lobby_id = ?", lobbyID).Pluck("username", &usersInLobby).Error; err != nil {
+		if err := db.Model(&models.InGamePlayer{}).Where("lobby_id = ?", lobbyID).Pluck("username", &usersInLobby).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve users in lobby"})
 			return
 		}
@@ -117,7 +119,7 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 			"total_points":     lobby.TotalPoints,
 			"created_at":       lobby.CreatedAt,
 			"number_players":   number,
-			"players":			usersInLobby,
+			"players":          usersInLobby,
 		})
 	}
 }
@@ -152,7 +154,7 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		var game_lobbies []models.GameLobby
-		
+
 		// Get all lobbies from database
 		if err := db.Find(&game_lobbies).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve lobbies"})
@@ -164,15 +166,15 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 		for _, lobby := range game_lobbies {
 			usernames = append(usernames, lobby.CreatorUsername)
 		}
-		
+
 		// Get host icons
 		hostIcons := make(map[string]int)
-		var profiles []struct{
+		var profiles []struct {
 			Username string
 			UserIcon int
 		}
-		
-		if err := db.Model(&postgres.GameProfile{}).Where("username IN ?", usernames).Select("username, user_icon").Find(&profiles).Error; err != nil {
+
+		if err := db.Model(&models.GameProfile{}).Where("username IN ?", usernames).Select("username, user_icon").Find(&profiles).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve host icons"})
 			return
 		}
@@ -190,13 +192,12 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 				"number_rounds":    lobby.NumberOfRounds,
 				"total_points":     lobby.TotalPoints,
 				"created_at":       lobby.CreatedAt,
-				"host_icon":		hostIcons[lobby.CreatorUsername],
+				"host_icon":        hostIcons[lobby.CreatorUsername],
 			}
 		}
 		c.JSON(http.StatusOK, lobbies)
 	}
 }
-
 
 // @Summary Inserts a user into a lobby
 // @Description Adds the user to the relation user-lobby
@@ -218,7 +219,7 @@ func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 
 		lobbyID := c.Param("lobby_id")
 
-		var lobby postgres.GameLobby
+		var lobby models.GameLobby
 		result := db.Where("id = ?", lobbyID).First(&lobby)
 
 		if result.Error != nil {
@@ -250,7 +251,7 @@ func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Check if the user in lobby exists
-		var userInLobby postgres.InGamePlayer
+		var userInLobby models.InGamePlayer
 		result = db.Where(
 			"lobby_id = ? AND username = ?",
 			lobbyID, username,
@@ -261,9 +262,9 @@ func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		gamePlayer := postgres.InGamePlayer{
-			LobbyID:    lobbyID,
-			Username: 	username,
+		gamePlayer := models.InGamePlayer{
+			LobbyID:  lobbyID,
+			Username: username,
 		}
 
 		result = db.Create(&gamePlayer)
@@ -274,8 +275,9 @@ func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{"message": "joined lobby successfully"})
 	}
-}
 
+	// TODO: usar la Redis
+}
 
 // @Summary Removes the user from the lobby
 // @Description Removes the user to the relation user-lobby
@@ -297,7 +299,7 @@ func ExitLobby(db *gorm.DB) gin.HandlerFunc {
 
 		lobbyID := c.Param("lobby_id")
 
-		var lobby postgres.GameLobby
+		var lobby models.GameLobby
 		result := db.Where("id = ?", lobbyID).First(&lobby)
 
 		if result.Error != nil {
@@ -329,7 +331,7 @@ func ExitLobby(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Check if the user in lobby exists
-		var userInLobby postgres.InGamePlayer
+		var userInLobby models.InGamePlayer
 		result = db.Where(
 			"lobby_id = ? AND username = ?",
 			lobbyID, username,
@@ -348,6 +350,10 @@ func ExitLobby(db *gorm.DB) gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "Exited lobby successfully"})
 	}
+
+	// TODO: usar la redis, hacer que esto sea un método de socketio?
+	// Si no, igual es un poco lío tener que pillar la conexión del socket
+	// aquí y llamar a socket.Leave(roomId)
 }
 
 // @Summary Sends a lobby invitation
@@ -387,8 +393,8 @@ func SendLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Check if the friendship exists
-		var friendship postgres.Friendship
-		if err := db.Where("(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",username, friendUsername, friendUsername, username,).First(&friendship).Error; err != nil {
+		var friendship models.Friendship
+		if err := db.Where("(username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)", username, friendUsername, friendUsername, username).First(&friendship).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Friendship does not exist"})
 			return
 		}
@@ -397,21 +403,21 @@ func SendLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 		lobbyID := c.PostForm("lobby_id")
 
 		// Check if lobby exists
-		var lobby postgres.GameLobby
+		var lobby models.GameLobby
 		if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Lobby does not exist"})
 			return
 		}
 
 		// Check if the invitation already exists
-		var existingInvitation postgres.GameInvitation
+		var existingInvitation models.GameInvitation
 		if err := db.Where("lobby_id = ? AND sender_username = ? AND invited_username = ?", lobbyID, username, friendUsername).First(&existingInvitation).Error; err == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invitation already sent to this user"})
 			return
 		}
 
 		// Create and save new friendship
-		newLobbyInvitation := postgres.GameInvitation{
+		newLobbyInvitation := models.GameInvitation{
 			LobbyID:         lobbyID,
 			SenderUsername:  username,
 			InvitedUsername: friendUsername,
@@ -446,65 +452,69 @@ func SendLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 // @Security ApiKeyAuth
 // @Router /auth/kickFromLobby/{lobby_id}/{username} [post]
 func KickFromLobby(db *gorm.DB) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        // Get lobby ID and username to kick from parameters
-        lobbyID := c.Param("lobby_id")
-        usernameToKick := c.Param("username")
+	return func(c *gin.Context) {
+		// Get lobby ID and username to kick from parameters
+		lobbyID := c.Param("lobby_id")
+		usernameToKick := c.Param("username")
 
-        // Find the lobby
-        var lobby postgres.GameLobby
-        if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
-            if err == gorm.ErrRecordNotFound {
-                c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
-            } else {
-                c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-            }
-            return
-        }
+		// Find the lobby
+		var lobby models.GameLobby
+		if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
+			return
+		}
 
-        // Get the requesting user's info from JWT
-        email, err := middleware.JWT_decoder(c)
-        if err != nil {
-            log.Print("Error in jwt...")
-            return
-        }
+		// Get the requesting user's info from JWT
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error in jwt...")
+			return
+		}
 
-        var user models.User
-        if err := db.Where("email = ?", email).First(&user).Error; err != nil {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
-            return
-        }
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
 
-        // Check if the requesting user is the host
-        if user.ProfileUsername != lobby.CreatorUsername {
-            c.JSON(http.StatusForbidden, gin.H{"error": "Only the host can kick players"})
-            return
-        }
+		// Check if the requesting user is the host
+		if user.ProfileUsername != lobby.CreatorUsername {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only the host can kick players"})
+			return
+		}
 
-        // Check if the user to kick exists in the lobby
-        var userInLobby postgres.InGamePlayer
-        result := db.Where(
-            "lobby_id = ? AND username = ?",
-            lobbyID, usernameToKick,
-        ).First(&userInLobby)
+		// Check if the user to kick exists in the lobby
+		var userInLobby models.InGamePlayer
+		result := db.Where(
+			"lobby_id = ? AND username = ?",
+			lobbyID, usernameToKick,
+		).First(&userInLobby)
 
-        if result.RowsAffected == 0 {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "User is not in the lobby"})
-            return
-        }
+		if result.RowsAffected == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "User is not in the lobby"})
+			return
+		}
 
-        // Cannot kick yourself (the host)
-        if usernameToKick == user.ProfileUsername {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "Host cannot kick themselves"})
-            return
-        }
+		// Cannot kick yourself (the host)
+		if usernameToKick == user.ProfileUsername {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Host cannot kick themselves"})
+			return
+		}
 
-        // Delete the player from lobby
-        if err := db.Delete(&userInLobby).Error; err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "Error kicking user from lobby"})
-            return
-        }
+		// Delete the player from lobby
+		if err := db.Delete(&userInLobby).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error kicking user from lobby"})
+			return
+		}
 
-        c.JSON(http.StatusOK, gin.H{"message": "Player kicked successfully"})
-    }
+		c.JSON(http.StatusOK, gin.H{"message": "Player kicked successfully"})
+	}
+
+	// TODO: quitar este método y hacer que sea una funcionalidad directamente
+	// de socketio, más fácil porque si no habría que pillar aquí la conexión del
+	// socket y llamar a socket.Leave(roomId)
 }

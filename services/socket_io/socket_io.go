@@ -58,8 +58,6 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB) {
 			return
 		}
 
-		// TODO: check if user is a user?
-
 		// log oki
 		fmt.Println("A individual just connected!: ", username)
 

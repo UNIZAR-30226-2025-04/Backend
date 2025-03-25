@@ -51,6 +51,7 @@ func HandleJoinLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// TODO: integrar el uso de la redis
 		// A VER QUE NARICES HACEMOS CON ESTO NIÑO
 		// 1. Verificar si existe el lobby en Redis
 		/*lobby, err := redisClient.GetGameLobby(lobbyID)
