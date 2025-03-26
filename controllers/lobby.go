@@ -160,7 +160,7 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Success 200 {array} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string,host_icon=integer}
+// @Success 200 {array} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string,host_icon=integer,player_count=integer}
 // @Failure 401 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/getAllLobbies [get]
@@ -184,8 +184,14 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 
 		var game_lobbies []models.GameLobby
 
-		// Get all lobbies from database
-		if err := db.Find(&game_lobbies).Error; err != nil {
+	
+
+		// Get all lobbies from database along with the number of players
+		if err := db.Table("game_lobbies").
+			Select("game_lobbies.*, COUNT(in_game_players.id) AS player_count").
+			Joins("LEFT JOIN in_game_players ON in_game_players.lobby_id = game_lobbies.id").
+			Group("game_lobbies.id").
+			Find(&game_lobbies).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve lobbies"})
 			return
 		}
@@ -222,6 +228,7 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 				"total_points":     lobby.TotalPoints,
 				"created_at":       lobby.CreatedAt,
 				"host_icon":        hostIcons[lobby.CreatorUsername],
+				"player_count":     lobby.PlayerCount,  // The number of players in the lobby
 			}
 		}
 		c.JSON(http.StatusOK, lobbies)
