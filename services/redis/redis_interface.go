@@ -26,6 +26,7 @@ type InGamePlayer struct {
 	Modifiers      json.RawMessage `json:"modifiers"`        // Temporary Redis field
 	CurrentJokers  json.RawMessage `json:"current_jokers"`   // Temporary Redis field
 	MostPlayedHand json.RawMessage `json:"most_played_hand"` // Matches in_game_players.most_played_hand
+	Winner         bool            `json:"winner"`           // Matches in_game_players.winner
 }
 
 // GameLobby represents a game lobby state

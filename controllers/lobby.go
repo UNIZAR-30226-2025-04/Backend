@@ -54,6 +54,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			CreatorUsername: username,
 			NumberOfRounds:  0,
 			TotalPoints:     0,
+			// NOTE: GameHasBegun has false value by default
 		}
 
 		if err := db.Create(&NewLobby).Error; err != nil {
@@ -88,8 +89,6 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			"message":  "Lobby created sucessfully",
 		})
 	}
-
-	// TODO: create the lobby on Redis too
 
 	// NOTE: after this endpoint returns the response to the client, the client should initiate the
 	// socket.io connection with the server. For example:
@@ -239,7 +238,7 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 // @Failure 500 {object} object{error=string}
 // @Security ApiKeyAuth
 // @Router /auth/joinLobby/{lobby_id} [post]
-func JoinLobby(db *gorm.DB) gin.HandlerFunc {
+func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		lobbyID := c.Param("lobby_id")
@@ -292,16 +291,56 @@ func JoinLobby(db *gorm.DB) gin.HandlerFunc {
 			Username: username,
 		}
 
-		result = db.Create(&gamePlayer)
-		if result.Error != nil {
+		// Start transaction
+		tx := db.Begin()
+		if err := tx.Create(&gamePlayer).Error; err != nil {
+			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to lobby"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "joined lobby successfully"})
-	}
+		// Create Redis InGamePlayer entry
+		redisPlayer := &redis.InGamePlayer{
+			Username:       username,
+			LobbyId:        lobbyID,
+			PlayersMoney:   0,   // Initial money --> TODO: ver cuánto es la cifra inicial
+			CurrentDeck:    nil, // Will be initialized when game starts
+			Modifiers:      nil, // Will be initialized when game starts
+			CurrentJokers:  nil, // Will be initialized when game starts
+			MostPlayedHand: nil, // Will be initialized during game
+		}
 
-	// TODO: usar la Redis
+		if err := redisClient.SaveInGamePlayer(redisPlayer); err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to Redis lobby"})
+			return
+		}
+
+		// Get Redis lobby to update
+		redisLobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving Redis lobby"})
+			return
+		}
+
+		// Commit PostgreSQL transaction
+		if err := tx.Commit().Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error committing transaction"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "joined lobby successfully",
+			"lobby_info": gin.H{
+				"id":             redisLobby.Id,
+				"creator":        redisLobby.CreatorUsername,
+				"number_rounds":  redisLobby.NumberOfRounds,
+				"total_points":   redisLobby.TotalPoints,
+				"game_has_begun": redisLobby.GameHasBegun,
+			},
+		})
+	}
 }
 
 // @Summary Removes the user from the lobby
