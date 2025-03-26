@@ -66,6 +66,9 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB) {
 
 		// Broadcast a message to all clients in a specific lobby
 		client.On("broadcast_to_lobby", handlers.BroadcastMessageToLobby(nil, client, db, (*socketio_types.SocketServer)(sio)))
+
+		// Play a hand and recieve the type of hand and the points scored
+		client.On("play_hand", handlers.PlayHand())
 	})
 
 	sio.Sio_server.Of("/custom", nil).On("connection", func(clients ...interface{}) {
