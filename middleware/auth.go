@@ -67,10 +67,12 @@ func JWT_decoder(c *gin.Context) (string, error) {
 
 func Socketio_JWT_decoder(authData map[string]interface{}) (string, error) {
 	// Obtener el token del authData
-	tokenString, ok := authData["authorization"].(string)
+	tokenStringRaw, ok := authData["authorization"].(string)
 	if !ok {
 		return "", nil
 	}
+
+	tokenString := strings.TrimPrefix(tokenStringRaw, "Bearer ")
 
 	// Parsear el JWT
 	secret := os.Getenv("KEY")

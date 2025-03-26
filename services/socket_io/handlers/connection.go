@@ -11,5 +11,6 @@ func HandleDisconnecting(username string, sio *socketio_types.SocketServer) func
 		// Remove connection from map
 		sio.RemoveConnection(username)
 		fmt.Println("A user just disconnected: ", username)
+		fmt.Println("Current connections: ", sio.UserConnections)
 	}
 }

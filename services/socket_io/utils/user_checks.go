@@ -45,10 +45,13 @@ func VerifyUserConnection(client *socket.Socket) (success bool, username, email 
 	}
 
 	// NUEVO: autenticación mediante JWT
+	fmt.Println("Provided JWT: ", authData["authorization"].(string))
 	email, err := middleware.Socketio_JWT_decoder(authData)
 	if err != nil {
 		fmt.Println("Error decoding JWT:", err)
-		client.Emit("error", gin.H{"error": "Authentication failed: invalid JWT. Remember to set in on the 'Authorization' field and with the 'Bearer ' prefix"})
+		client.Emit("error", gin.H{
+			"error": "Authentication failed: invalid JWT. Remember to set in on the 'Authorization' field and with the 'Bearer ' prefix. Provided JWT: " + authData["authorization"].(string),
+		})
 		return false, username, ""
 	}
 

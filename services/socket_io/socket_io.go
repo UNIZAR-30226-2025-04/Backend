@@ -37,6 +37,9 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		Credentials: true,
 	})
 
+	// KEY: inicializar el map, sino panikea
+	sio.UserConnections = make(map[string]*socket.Socket)
+
 	sio.Sio_server = socket.NewServer(nil, nil)
 	sio.Sio_server.On("connection", func(clients ...interface{}) {
 		client := clients[0].(*socket.Socket)
@@ -54,7 +57,8 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		fmt.Println("Email: ", email)
 
 		// log oki
-		fmt.Println("A individual just connected!: ", username)
+		fmt.Println("An individual just connected!: ", username)
+		fmt.Println("Current connections: ", sio.UserConnections)
 
 		// Join the user to a room corresponding to a Nogler game lobby
 		client.On("join_lobby", handlers.HandleJoinLobby(redisClient, client, db, username))

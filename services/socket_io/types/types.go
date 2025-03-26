@@ -12,7 +12,7 @@ type SocketServer struct {
 	Sio_server *socket.Server
 	// Map to track username -> socket connections
 	UserConnections map[string]*socket.Socket
-	mutex           sync.RWMutex
+	Mutex           sync.RWMutex
 }
 
 func NewSocketServer() *SocketServer {
@@ -23,20 +23,20 @@ func NewSocketServer() *SocketServer {
 
 // Add methods to manage connections
 func (s *SocketServer) AddConnection(username string, socket *socket.Socket) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Mutex.Lock()
+	defer s.Mutex.Unlock()
 	s.UserConnections[username] = socket
 }
 
 func (s *SocketServer) RemoveConnection(username string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Mutex.Lock()
+	defer s.Mutex.Unlock()
 	delete(s.UserConnections, username)
 }
 
 func (s *SocketServer) GetConnection(username string) (*socket.Socket, bool) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
 	socket, exists := s.UserConnections[username]
 	return socket, exists
 }

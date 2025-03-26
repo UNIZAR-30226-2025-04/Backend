@@ -263,6 +263,11 @@ func HandleKickFromLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		playerLobby, err := redisClient.GetPlayerCurrentLobby(usernameToKick)
+		if err == nil {
+			fmt.Println("Current player lobby: ", playerLobby)
+		}
+
 		// Remove player from Redis if exists
 		if redisClient != nil {
 			if err := redisClient.DeleteInGamePlayer(usernameToKick, lobbyID); err != nil {
@@ -270,6 +275,11 @@ func HandleKickFromLobby(redisClient *redis.RedisClient, client *socket.Socket,
 				client.Emit("error", gin.H{"error": "Error removing user from Redis"})
 				return
 			}
+		}
+
+		playerLobby2, err := redisClient.GetPlayerCurrentLobby(usernameToKick)
+		if err == nil {
+			fmt.Println("Current player lobby: ", playerLobby2)
 		}
 
 		// Commit transaction
@@ -304,6 +314,8 @@ func HandleKickFromLobby(redisClient *redis.RedisClient, client *socket.Socket,
 
 		log.Printf("[KICK-SUCCESS] Usuario %s expulsado exitosamente del lobby %s por %s",
 			usernameToKick, lobbyID, username)
+		// NOTE: no cerramos forzosamente la conexión, así que no eliminamos el
+		// objeto del map de conexiones
 	}
 }
 
