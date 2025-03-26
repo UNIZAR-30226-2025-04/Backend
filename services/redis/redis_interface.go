@@ -72,6 +72,7 @@ func NewRedisClient(Addr string, DB int) *RedisClient {
 // Key format: "player:{username}:game"
 // TTL: 24 hours
 func (rc *RedisClient) SaveInGamePlayer(player *InGamePlayer) error {
+	// TODO: make the Redis keys format public / put them in a config or constants file
 	key := fmt.Sprintf("player:%s:game", player.Username)
 	data, err := json.Marshal(player)
 	if err != nil {
@@ -101,6 +102,29 @@ func (rc *RedisClient) GetInGamePlayer(username string) (*InGamePlayer, error) {
 		return nil, fmt.Errorf("error unmarshaling player data: %v", err)
 	}
 	return &player, nil
+}
+
+// DeleteInGamePlayer removes a player's game state from Redis
+// Deletes both "player:{username}:game" and "player:{username}:current_lobby" keys
+func (rc *RedisClient) DeleteInGamePlayer(username string, lobbyId string) error {
+	// Create pipeline for atomic operation
+	pipe := rc.client.Pipeline()
+
+	// Delete player game state
+	gameKey := fmt.Sprintf("player:%s:game", username)
+	pipe.Del(rc.ctx, gameKey)
+
+	// Delete player's current lobby reference
+	lobbyKey := fmt.Sprintf("player:%s:current_lobby", username)
+	pipe.Del(rc.ctx, lobbyKey)
+
+	// Execute pipeline
+	_, err := pipe.Exec(rc.ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting player data: %v", err)
+	}
+
+	return nil
 }
 
 // GetPlayerCurrentLobby retrieves the current lobby of a player

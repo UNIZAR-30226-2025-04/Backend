@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	models "Nogler/models/postgres"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	"Nogler/utils"
@@ -103,9 +104,212 @@ func HandleJoinLobby(redisClient *redis.RedisClient, client *socket.Socket,
 	}
 }
 
+func HandleExitLobby(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("[EXIT] HandleExitLobby iniciado - Usuario: %s, Args: %v", username, args)
+
+		// Validate arguments
+		if len(args) < 1 {
+			log.Printf("[EXIT-ERROR] Faltan argumentos para usuario %s", username)
+			client.Emit("error", gin.H{"error": "Falta el ID del lobby"})
+			return
+		}
+
+		lobbyID := args[0].(string)
+		log.Printf("[EXIT] Procesando salida del lobby ID: %s para usuario: %s", lobbyID, username)
+
+		// Check if lobby exists
+		var lobby models.GameLobby
+		result := db.Where("id = ?", lobbyID).First(&lobby)
+		if result.Error != nil {
+			if result.Error == gorm.ErrRecordNotFound {
+				client.Emit("error", gin.H{"error": "Lobby not found"})
+			} else {
+				client.Emit("error", gin.H{"error": "Database error"})
+			}
+			return
+		}
+
+		// Check if user is in lobby
+		var userInLobby models.InGamePlayer
+		result = db.Where(
+			"lobby_id = ? AND username = ?",
+			lobbyID, username,
+		).First(&userInLobby)
+
+		if result.RowsAffected == 0 {
+			client.Emit("error", gin.H{"error": "User is not in that lobby"})
+			return
+		}
+
+		// Start transaction
+		tx := db.Begin()
+		if tx.Error != nil {
+			client.Emit("error", gin.H{"error": "Database error starting transaction"})
+			return
+		}
+
+		// Delete the player from lobby in PostgreSQL
+		if err := tx.Delete(&userInLobby).Error; err != nil {
+			tx.Rollback()
+			client.Emit("error", gin.H{"error": "Error removing user from lobby"})
+			return
+		}
+
+		// Remove player from Redis if exists
+		if redisClient != nil {
+			if err := redisClient.DeleteInGamePlayer(username, lobbyID); err != nil {
+				tx.Rollback()
+				client.Emit("error", gin.H{"error": "Error removing user from Redis"})
+				return
+			}
+		}
+
+		// Commit transaction
+		if err := tx.Commit().Error; err != nil {
+			client.Emit("error", gin.H{"error": "Error committing transaction"})
+			return
+		}
+
+		// Leave the socket.io room
+		client.Leave(socket.Room(lobbyID))
+
+		// Notify success
+		log.Printf("[EXIT-SUCCESS] Usuario %s ha salido exitosamente del lobby %s", username, lobbyID)
+		client.Emit("exited_lobby", gin.H{
+			"lobby_id": lobbyID,
+			"message":  "Has salido del lobby exitosamente",
+		})
+
+		// Broadcast to other players in the lobby that this player left
+		client.To(socket.Room(lobbyID)).Emit("player_left", gin.H{
+			"username": username,
+			"lobby_id": lobbyID,
+		})
+	}
+}
+
+func HandleKickFromLobby(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("[KICK] HandleKickFromLobby iniciado - Usuario: %s, Args: %v", username, args)
+
+		// Validate arguments
+		if len(args) < 2 {
+			log.Printf("[KICK-ERROR] Faltan argumentos para usuario %s", username)
+			client.Emit("error", gin.H{"error": "Falta el ID del lobby o el usuario a expulsar"})
+			return
+		}
+
+		lobbyID := args[0].(string)
+		usernameToKick := args[1].(string)
+		log.Printf("[KICK] Procesando expulsión del usuario %s del lobby %s por %s",
+			usernameToKick, lobbyID, username)
+
+		// Find the lobby
+		var lobby models.GameLobby
+		if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				client.Emit("error", gin.H{"error": "Lobby not found"})
+			} else {
+				client.Emit("error", gin.H{"error": "Database error"})
+			}
+			return
+		}
+
+		// Check if the requesting user is the host
+		if username != lobby.CreatorUsername {
+			client.Emit("error", gin.H{"error": "Only the host can kick players"})
+			return
+		}
+
+		// Check if the user to kick exists in the lobby
+		var userInLobby models.InGamePlayer
+		result := db.Where(
+			"lobby_id = ? AND username = ?",
+			lobbyID, usernameToKick,
+		).First(&userInLobby)
+
+		if result.RowsAffected == 0 {
+			client.Emit("error", gin.H{"error": "User is not in the lobby"})
+			return
+		}
+
+		// Cannot kick yourself (the host)
+		if usernameToKick == username {
+			client.Emit("error", gin.H{"error": "Host cannot kick themselves"})
+			return
+		}
+
+		// Get kicked user's socket connection
+		kickedUserSocket, exists := sio.GetConnection(usernameToKick)
+		if !exists {
+			log.Printf("[KICK-WARNING] No active socket connection found for user %s", usernameToKick)
+			// Continue with kick process even if user isn't connected
+		}
+
+		// Start transaction
+		tx := db.Begin()
+		if tx.Error != nil {
+			client.Emit("error", gin.H{"error": "Database error starting transaction"})
+			return
+		}
+
+		// Delete the player from lobby in PostgreSQL
+		if err := tx.Delete(&userInLobby).Error; err != nil {
+			tx.Rollback()
+			client.Emit("error", gin.H{"error": "Error kicking user from lobby"})
+			return
+		}
+
+		// Remove player from Redis if exists
+		if redisClient != nil {
+			if err := redisClient.DeleteInGamePlayer(usernameToKick, lobbyID); err != nil {
+				tx.Rollback()
+				client.Emit("error", gin.H{"error": "Error removing user from Redis"})
+				return
+			}
+		}
+
+		// Commit transaction
+		if err := tx.Commit().Error; err != nil {
+			client.Emit("error", gin.H{"error": "Error committing transaction"})
+			return
+		}
+
+		// Make kicked user leave the room if they're connected
+		if exists {
+			kickedUserSocket.Leave(socket.Room(lobbyID))
+			// Send direct message to kicked user's socket
+			kickedUserSocket.Emit("you_were_kicked", gin.H{
+				"lobby_id": lobbyID,
+				"by_user":  username,
+			})
+		}
+
+		// Emit success event to the kicker
+		client.Emit("kick_success", gin.H{
+			"message":     "Player kicked successfully",
+			"kicked_user": usernameToKick,
+			"lobby_id":    lobbyID,
+		})
+
+		// Broadcast to all users in the lobby that a player was kicked
+		client.To(socket.Room(lobbyID)).Emit("player_kicked", gin.H{
+			"kicked_user": usernameToKick,
+			"by_user":     username,
+			"lobby_id":    lobbyID,
+		})
+
+		log.Printf("[KICK-SUCCESS] Usuario %s expulsado exitosamente del lobby %s por %s",
+			usernameToKick, lobbyID, username)
+	}
+}
+
 // Function to broadcast a message to all clients in a specific lobby.
 func BroadcastMessageToLobby(redisClient *redis.RedisClient, client *socket.Socket,
-	db *gorm.DB, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
 		lobbyID := args[0].(string)
 
@@ -118,21 +322,7 @@ func BroadcastMessageToLobby(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		// same as above, it might be better to check this on a higher level to
-		// avoid repeated check. It isn't really that bad to check twice tho.
-		authData, ok := client.Handshake().Auth.(map[string]interface{})
-		if !ok {
-			fmt.Println("Handshake auth data is missing or invalid!")
-			client.Emit("error", gin.H{"error": "Authentication failed: missing auth data"})
-			return
-		}
-
-		username, exists := authData["username"].(string)
-		if !exists {
-			fmt.Println("No username provided in handshake!")
-			client.Emit("error", gin.H{"error": "Authentication failed: missing username"})
-			return
-		}
+		// NOTE: now decoding username at top level (when connection is established, just once)
 
 		message := args[1].(string) // sanitize string?
 

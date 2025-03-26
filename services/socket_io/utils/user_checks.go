@@ -1,6 +1,7 @@
 package socketio_utils
 
 import (
+	"Nogler/middleware"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -26,13 +27,13 @@ func lobbyExists() {
 // conditions is not met, the connection is rejected and an error message is sent
 // to the client. If both conditions are met, the function returns true and the
 // username of the client (connection accepted).
-func VerifyUserConnection(client *socket.Socket) (success bool, username string) {
+func VerifyUserConnection(client *socket.Socket) (success bool, username, email string) {
 	// Checks if we have auth data in the connection. (need username)
 	authData, ok := client.Handshake().Auth.(map[string]interface{})
 	if !ok {
 		fmt.Println("No username provided in handshake!")
 		client.Emit("error", gin.H{"error": "Authentication failed: missing username"})
-		return false, ""
+		return false, "", ""
 	}
 
 	// Check if the data in auth is indeed a username
@@ -40,8 +41,16 @@ func VerifyUserConnection(client *socket.Socket) (success bool, username string)
 	if !exists {
 		fmt.Println("No username provided in handshake!")
 		client.Emit("error", gin.H{"error": "Authentication failed: missing username"})
-		return false, username
+		return false, username, ""
 	}
 
-	return true, username
+	// NUEVO: autenticación mediante JWT
+	email, err := middleware.Socketio_JWT_decoder(authData)
+	if err != nil {
+		fmt.Println("Error decoding JWT:", err)
+		client.Emit("error", gin.H{"error": "Authentication failed: invalid JWT. Remember to set in on the 'Authorization' field and with the 'Bearer ' prefix"})
+		return false, username, ""
+	}
+
+	return true, username, email
 }

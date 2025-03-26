@@ -1,6 +1,7 @@
 package socket_io
 
 import (
+	"Nogler/services/redis"
 	"Nogler/services/socket_io/handlers"
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
@@ -20,7 +21,7 @@ import (
 
 type MySocketServer socketio_types.SocketServer
 
-func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB) {
+func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient) {
 	log.DEBUG = true
 	c := socket.DefaultServerOptions()
 	c.SetServeClient(true)
@@ -40,19 +41,35 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB) {
 	sio.Sio_server.On("connection", func(clients ...interface{}) {
 		client := clients[0].(*socket.Socket)
 
-		success, username := socketio_utils.VerifyUserConnection(client)
+		// Check if the client is authenticated
+		success, username, email := socketio_utils.VerifyUserConnection(client)
 		if !success {
 			return
 		}
+
+		// Add connection to map
+		(*socketio_types.SocketServer)(sio).AddConnection(username, client)
+
+		fmt.Println("Username: ", username)
+		fmt.Println("Email: ", email)
 
 		// log oki
 		fmt.Println("A individual just connected!: ", username)
 
 		// Join the user to a room corresponding to a Nogler game lobby
-		client.On("join_lobby", handlers.HandleJoinLobby(nil, client, db, username))
+		client.On("join_lobby", handlers.HandleJoinLobby(redisClient, client, db, username))
+
+		// Exit a lobby voluntarily
+		client.On("exit_lobby", handlers.HandleExitLobby(redisClient, client, db, username))
+
+		// Kick a user from a lobby (only for hosts)
+		client.On("kick_from_lobby", handlers.HandleKickFromLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 
 		// Broadcast a message to all clients in a specific lobby
-		client.On("broadcast_to_lobby", handlers.BroadcastMessageToLobby(nil, client, db, (*socketio_types.SocketServer)(sio)))
+		client.On("broadcast_to_lobby", handlers.BroadcastMessageToLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+
+		// NOTE: will remove sio connection from map
+		client.On("disconnecting", handlers.HandleDisconnecting(username, (*socketio_types.SocketServer)(sio)))
 	})
 
 	// NOTE: igual lo usamos en algún momento
