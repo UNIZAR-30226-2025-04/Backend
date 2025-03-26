@@ -1,5 +1,5 @@
 basePath: /
-host: nogler.ddns.net:443
+host: nogler.ddns.net:8080
 info:
   contact: {}
   description: Gin-Gonic server for the "Nogler" game API

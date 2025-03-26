@@ -75,13 +75,13 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisClient *redis.RedisClient
 
 		authentication.DELETE("/deleteFriend/:friendUsername", controllers.DeleteFriend(db))
 
-		authentication.POST("/CreateLobby", controllers.CreateLobby(db))
+		authentication.POST("/CreateLobby", controllers.CreateLobby(db, redisClient))
 
 		authentication.GET("/lobbyInfo/:lobby_id", controllers.GetLobbyInfo(db))
 
 		authentication.GET("/getAllLobbies", controllers.GetAllLobbies(db))
 
-		authentication.POST("/joinLobby/:lobby_id", controllers.JoinLobby(db))
+		authentication.POST("/joinLobby/:lobby_id", controllers.JoinLobby(db, redisClient))
 
 		authentication.POST("/exitLobby/:lobby_id", controllers.ExitLobby(db))
 

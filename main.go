@@ -71,7 +71,7 @@ func main() {
 
 	// NEW: socket.io setup
 	var sio socket_io.MySocketServer
-	sio.Start(r, gormDB)
+	sio.Start(r, gormDB, redisClient)
 
 	// Configure port
 	port := os.Getenv("PORT")

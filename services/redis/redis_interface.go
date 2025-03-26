@@ -26,14 +26,18 @@ type InGamePlayer struct {
 	Modifiers      json.RawMessage `json:"modifiers"`        // Temporary Redis field
 	CurrentJokers  json.RawMessage `json:"current_jokers"`   // Temporary Redis field
 	MostPlayedHand json.RawMessage `json:"most_played_hand"` // Matches in_game_players.most_played_hand
+	Winner         bool            `json:"winner"`           // Matches in_game_players.winner
 }
 
 // GameLobby represents a game lobby state
 type GameLobby struct {
-	Id             string        `json:"id"`               // Matches game_lobbies.id
-	NumberOfRounds int           `json:"number_of_rounds"` // Matches game_lobbies.number_of_rounds
-	TotalPoints    int           `json:"total_points"`     // Matches game_lobbies.total_points
-	ChatHistory    []ChatMessage `json:"chat_history"`     // Chat history for the lobby
+	Id              string        `json:"id"`               // Matches game_lobbies.id
+	CreatorUsername string        `json:"creator_username"` // Matches game_lobbies.creator_username
+	NumberOfRounds  int           `json:"number_of_rounds"` // Matches game_lobbies.number_of_rounds
+	TotalPoints     int           `json:"total_points"`     // Matches game_lobbies.total_points
+	CreatedAt       time.Time     `json:"created_at"`       // Matches game_lobbies.created_at
+	GameHasBegun    bool          `json:"game_has_begun"`   // Matches game_lobbies.game_has_begun
+	ChatHistory     []ChatMessage `json:"chat_history"`     // Redis-specific field for real-time chat
 }
 
 // RedisClient handles Redis operations
@@ -68,6 +72,7 @@ func NewRedisClient(Addr string, DB int) *RedisClient {
 // Key format: "player:{username}:game"
 // TTL: 24 hours
 func (rc *RedisClient) SaveInGamePlayer(player *InGamePlayer) error {
+	// TODO: make the Redis keys format public / put them in a config or constants file
 	key := fmt.Sprintf("player:%s:game", player.Username)
 	data, err := json.Marshal(player)
 	if err != nil {
@@ -97,6 +102,29 @@ func (rc *RedisClient) GetInGamePlayer(username string) (*InGamePlayer, error) {
 		return nil, fmt.Errorf("error unmarshaling player data: %v", err)
 	}
 	return &player, nil
+}
+
+// DeleteInGamePlayer removes a player's game state from Redis
+// Deletes both "player:{username}:game" and "player:{username}:current_lobby" keys
+func (rc *RedisClient) DeleteInGamePlayer(username string, lobbyId string) error {
+	// Create pipeline for atomic operation
+	pipe := rc.client.Pipeline()
+
+	// Delete player game state
+	gameKey := fmt.Sprintf("player:%s:game", username)
+	pipe.Del(rc.ctx, gameKey)
+
+	// Delete player's current lobby reference
+	lobbyKey := fmt.Sprintf("player:%s:current_lobby", username)
+	pipe.Del(rc.ctx, lobbyKey)
+
+	// Execute pipeline
+	_, err := pipe.Exec(rc.ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting player data: %v", err)
+	}
+
+	return nil
 }
 
 // GetPlayerCurrentLobby retrieves the current lobby of a player

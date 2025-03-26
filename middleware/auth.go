@@ -65,6 +65,37 @@ func JWT_decoder(c *gin.Context) (string, error) {
 
 }
 
+func Socketio_JWT_decoder(authData map[string]interface{}) (string, error) {
+	// Obtener el token del authData
+	tokenStringRaw, ok := authData["authorization"].(string)
+	if !ok {
+		return "", nil
+	}
+
+	tokenString := strings.TrimPrefix(tokenStringRaw, "Bearer ")
+
+	// Parsear el JWT
+	secret := os.Getenv("KEY")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	// Obtener los datos del token
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", err
+	}
+
+	email := claims[auth.Email].(string)
+
+	return email, nil
+
+}
+
 // me is the handler that will return the user information stored in the
 // session.
 func me(c *gin.Context) {

@@ -168,7 +168,7 @@ func flushFive(h Hand) bool {
 	return fiveOfAKind(h) && flush(h)
 }
 
-func BestHand(h Hand) string {
+func BestHand(h Hand) (int, int) {
 	// Sort the hand by rank to help with evaluating hands like straight or full house
 	sortCards(h)
 
@@ -176,38 +176,39 @@ func BestHand(h Hand) string {
 
 	// TODO!!!!!!
 	if royalFlush(h) {
-		return RoyalFlush
+		//return RoyalFlush
 	}
 	if straightFlush(h) {
-		return StraightFlush
+		//return StraightFlush
 	}
 	if fiveOfAKind(h) {
-		return FiveOfAKind
+		//return FiveOfAKind
 	}
 	if flushFive(h) {
-		return FlushFive
+		//return FlushFive
 	}
 	if fourOfAKind(h) {
-		return FourOfAKind
+		//return FourOfAKind
 	}
 	if fullHouse(h) {
-		return FullHouse
+		//return FullHouse
 	}
 	if flush(h) {
-		return Flush
+		//return Flush
 	}
 	if straight(h) {
-		return Straight
+		//return Straight
 	}
 	if threeOfAKind(h) {
-		return ThreeOfAKind
+		//return ThreeOfAKind
 	}
 	if twoPair(h) {
-		return TwoPair
+		//return TwoPair
 	}
 	if isPair(h) {
-		return Pair
+		//return Pair
 	}
 	// If no other hand matches, return High Card
-	return HighCard
+	//return HighCard
+	return 1, 1
 }

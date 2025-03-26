@@ -17,6 +17,7 @@ type GameLobby struct {
 	NumberOfRounds  int       `gorm:"default:0"`
 	TotalPoints     int       `gorm:"default:0"`
 	CreatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	GameHasBegun    bool      `gorm:"default:false"` // Indicates if the game has started
 
 	// Relationships
 	Creator GameProfile `gorm:"foreignKey:CreatorUsername"`
