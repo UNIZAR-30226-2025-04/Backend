@@ -3,6 +3,7 @@ package socket_io
 import (
 	"Nogler/services/redis"
 	"Nogler/services/socket_io/handlers"
+
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
 	"fmt"
@@ -76,7 +77,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("disconnecting", handlers.HandleDisconnecting(username, (*socketio_types.SocketServer)(sio)))
 
 		// Play a hand and recieve the type of hand and the points scored
-		client.On("play_hand", handlers.PlayHand())
+		client.On("play_hand", handlers.PlayHand(redisClient, client, db, username))
 	})
 
 	// NOTE: igual lo usamos en algún momento
