@@ -3,6 +3,7 @@ package controllers
 import (
 	"Nogler/middleware"
 	models "Nogler/models/postgres"
+	"Nogler/services/redis"
 	"log"
 
 	// "errors"
@@ -24,7 +25,7 @@ import (
 // @Failure 500 {object} object{error=string}
 // @Router /auth/CreateLobby [post]
 // @Security ApiKeyAuth
-func CreateLobby(db *gorm.DB) gin.HandlerFunc {
+func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		email, err := middleware.JWT_decoder(c)
@@ -61,7 +62,31 @@ func CreateLobby(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"lobby_id": NewLobby.ID, "message": "Lobby created sucessfully"})
+		// Create corresponding Redis lobby
+		redisLobby := &redis.GameLobby{
+			Id:              NewLobby.ID,
+			CreatorUsername: username,
+			NumberOfRounds:  0,
+			TotalPoints:     0,
+			CreatedAt:       NewLobby.CreatedAt,
+			GameHasBegun:    false,
+			ChatHistory:     []redis.ChatMessage{}, // Initialize empty chat
+		}
+
+		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
+			log.Printf("Failed to create lobby in Redis: %v", err)
+			// Rollback PostgreSQL creation on Redis failure
+			if err := db.Delete(&NewLobby).Error; err != nil {
+				log.Printf("Failed to rollback PostgreSQL lobby creation: %v", err)
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating lobby in Redis"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"lobby_id": NewLobby.ID,
+			"message":  "Lobby created sucessfully",
+		})
 	}
 
 	// TODO: create the lobby on Redis too
