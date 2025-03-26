@@ -84,6 +84,11 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			return
 		}
 
+		rLobby, err := redisClient.GetGameLobby(NewLobby.ID)
+		if err == nil {
+			log.Println("Created lobby on Redis: ", rLobby)
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"lobby_id": NewLobby.ID,
 			"message":  "Lobby created sucessfully",

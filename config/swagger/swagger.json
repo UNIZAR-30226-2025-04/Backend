@@ -6,7 +6,7 @@
         "contact": {},
         "version": "1.0"
     },
-    "host": "nogler.ddns.net:443",
+    "host": "nogler.ddns.net:8080",
     "basePath": "/",
     "paths": {
         "/allusers": {

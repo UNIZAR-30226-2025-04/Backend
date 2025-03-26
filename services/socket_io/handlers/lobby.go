@@ -30,6 +30,8 @@ func HandleJoinLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// TODO: y si el mismo usuario vuelve a intentar conectarse otra vez sin haberse desconectado?
+
 		lobbyID := args[0].(string)
 		log.Printf("[JOIN] Procesando lobby ID: %s para usuario: %s", lobbyID, username)
 
