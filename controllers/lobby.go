@@ -154,7 +154,7 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 }
 
 // @Summary Lists all existing lobbies
-// @Description Returns a list of all the lobbies
+// @Description Returns a list of all the lobbies with player count
 // @Tags lobby
 // @Accept json
 // @Produce json
@@ -182,27 +182,21 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		var game_lobbies []models.GameLobby
+		var gameLobbies []models.GameLobby
 
-	
-
-		// Get all lobbies from database along with the number of players
-		if err := db.Table("game_lobbies").
-			Select("game_lobbies.*, COUNT(in_game_players.id) AS player_count").
-			Joins("LEFT JOIN in_game_players ON in_game_players.lobby_id = game_lobbies.id").
-			Group("game_lobbies.id").
-			Find(&game_lobbies).Error; err != nil {
+		// Get all lobbies from database
+		if err := db.Find(&gameLobbies).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve lobbies"})
 			return
 		}
 
 		// Extract all creator usernames
 		var usernames []string
-		for _, lobby := range game_lobbies {
+		for _, lobby := range gameLobbies {
 			usernames = append(usernames, lobby.CreatorUsername)
 		}
 
-		// Get host icons
+		// Get host icons (same logic as before)
 		hostIcons := make(map[string]int)
 		var profiles []struct {
 			Username string
@@ -218,9 +212,31 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 			hostIcons[profile.Username] = profile.UserIcon
 		}
 
-		// Create a slice of lobbies
-		lobbies := make([]gin.H, len(game_lobbies))
-		for i, lobby := range game_lobbies {
+		// Initialize a map to store player counts by lobby_id
+		playerCounts := make(map[string]int)
+
+		// Count players for each lobby
+		var playerCountResult []struct {
+			LobbyID     string
+			PlayerCount int64
+		}
+
+		if err := db.Model(&models.InGamePlayer{}).
+			Select("lobby_id, COUNT(*) AS player_count").
+			Group("lobby_id").
+			Find(&playerCountResult).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count players"})
+			return
+		}
+
+		// Populate the playerCounts map
+		for _, result := range playerCountResult {
+			playerCounts[result.LobbyID] = int(result.PlayerCount)
+		}
+
+		// Prepare the lobbies slice with player count and other information
+		lobbies := make([]gin.H, len(gameLobbies))
+		for i, lobby := range gameLobbies {
 			lobbies[i] = gin.H{
 				"lobby_id":         lobby.ID,
 				"creator_username": lobby.CreatorUsername,
@@ -228,9 +244,11 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 				"total_points":     lobby.TotalPoints,
 				"created_at":       lobby.CreatedAt,
 				"host_icon":        hostIcons[lobby.CreatorUsername],
-				"player_count":     lobby.PlayerCount,  // The number of players in the lobby
+				"player_count":     playerCounts[lobby.ID], // Add player count from the map
 			}
 		}
+
+		// Return the lobbies with player count
 		c.JSON(http.StatusOK, lobbies)
 	}
 }

@@ -25,13 +25,36 @@ const (
 	Flush         = "Flush"
 	Straight      = "Straight"
 	ThreeOfAKind  = "Three of a Kind"
-	TwoPair       = "Two Pair"
+	twoPair       = "Two Pair"
 	Pair          = "Pair"
 	HighCard      = "High Card"
 )
 
+type Multiplier struct {
+	First  int
+	Second int
+}
+
+// Temporal table of fichas - mult for testing. will be fetched eventually
+var TypeMap = map[string]Multiplier{
+	"RoyalFlush":    {65, 50},
+	"StraightFlush": {50, 40},
+	"FlushFive":     {35, 25},
+	"FlushHouse":    {32, 22},
+	"FiveOfAKind":   {30, 20},
+	"FourOfAKind":   {25, 15},
+	"FullHouse":     {20, 12},
+	"Flush":         {15, 8},
+	"Straight":      {12, 5},
+	"ThreeOfAKind":  {10, 4},
+	"TwoPair":       {8, 3},
+	"Pair":          {4, 2},
+	"HighCard":      {1, 1},
+}
+
 type Hand struct {
-	Cards []Card
+	Cards  []Card `json:"cards"`
+	Jokers Jokers `json:"jokers"`
 }
 
 func grade(c1 Card) int {
@@ -79,7 +102,7 @@ func isPair(h Hand) bool {
 	return false
 }
 
-func twoPair(h Hand) bool {
+func TwoPair(h Hand) bool {
 	// Create a map to count the occurrences of each rank
 	cardCount := make(map[string]int)
 	for _, card := range h.Cards {
@@ -176,39 +199,67 @@ func BestHand(h Hand) (int, int) {
 
 	// TODO!!!!!!
 	if royalFlush(h) {
-		//return RoyalFlush
+		val := TypeMap["RoyalFlush"]
+		return val.First, val.Second
 	}
 	if straightFlush(h) {
+		val := TypeMap["StraightFlush"]
+		return val.First, val.Second
 		//return StraightFlush
 	}
 	if fiveOfAKind(h) {
+		val := TypeMap["FiveOfAKind"]
+		return val.First, val.Second
 		//return FiveOfAKind
 	}
 	if flushFive(h) {
+		val := TypeMap["FlushFive"]
+		return val.First, val.Second
 		//return FlushFive
 	}
+	if flushHouse(h) {
+		val := TypeMap["FlushHouse"]
+		return val.First, val.Second
+	}
 	if fourOfAKind(h) {
+		val := TypeMap["FourOfAKind"]
+		return val.First, val.Second
 		//return FourOfAKind
 	}
 	if fullHouse(h) {
+		val := TypeMap["FullHouse"]
+		return val.First, val.Second
 		//return FullHouse
 	}
 	if flush(h) {
+		val := TypeMap["Flush"]
+		return val.First, val.Second
 		//return Flush
 	}
 	if straight(h) {
-		//return Straight
+
+		val := TypeMap["Straight"]
+		return val.First, val.Second //return Straight
 	}
 	if threeOfAKind(h) {
+		val := TypeMap["ThreeOfAKind"]
+		return val.First, val.Second
 		//return ThreeOfAKind
 	}
-	if twoPair(h) {
+	if TwoPair(h) {
+
+		val := TypeMap["twoPair"]
+		return val.First, val.Second
 		//return TwoPair
 	}
 	if isPair(h) {
+
+		val := TypeMap["Pair"]
+		return val.First, val.Second
 		//return Pair
 	}
 	// If no other hand matches, return High Card
-	//return HighCard
-	return 1, 1
+
+	val := TypeMap["HighCard"]
+	return val.First, val.Second
 }

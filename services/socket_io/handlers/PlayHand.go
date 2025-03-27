@@ -40,16 +40,19 @@ func PlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// Parse the JSON into the poker.Hand struct
 		var hand poker.Hand
-		err = json.Unmarshal(handJson, &hand) // Convert JSON string to poker.Hand
+		err = json.Unmarshal(handJson, &hand)
 		if err != nil {
 			log.Printf("[HAND-ERROR] Error al parsear la mano: %v", err)
 			client.Emit("error", gin.H{"error": "Error al procesar la mano"})
 			return
 		}
 
-		// Calculate fichas and multiplier
+		// Calculate base points
 		fichas, mult := poker.BestHand(hand)
-		valorFinal := ApplyJokers(hand, fichas, mult)
+
+		// Apply jokers (passing the hand which contains the jokers)
+		finalFichas, finalMult := poker.ApplyJokers(hand, hand.Jokers, fichas, mult)
+		valorFinal := finalFichas * finalMult
 
 		// Log the result
 		log.Println("Jugador ha puntuado la friolera de:", valorFinal)
