@@ -86,3 +86,17 @@ func UserExists(db *gorm.DB, lobbyID string, username string, client *socket.Soc
 	}
 	return err
 }
+
+// Returns the icon of the user
+func UserIcon(db *gorm.DB, username string) int {
+	var icon int
+	err := db.Model(&postgres.GameProfile{}).
+		Select("user_icon").
+		Where("username = ?", username).
+		Find(&icon).Error
+	if err != nil {
+		return 1
+	}
+
+	return icon
+}

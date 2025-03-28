@@ -95,9 +95,17 @@ func HandleJoinLobby(redisClient *redis.RedisClient, client *socket.Socket,
 		log.Println("Jugador unido al room:", lobbyID)
 		// 6. Notificar éxito
 		log.Printf("[JOIN-SUCCESS] Usuario %s unido exitosamente al lobby %s", username, lobbyID)
+
+		// Get user icon from PostgreSQL
+		icon := utils.UserIcon(db, username)
+
+		// 6. Notificar éxito
+		log.Printf("[JOIN-SUCCESS] Usuario %s unido exitosamente al lobby %s", username, lobbyID)
 		client.Emit("joined_lobby", gin.H{
-			"lobby_id": lobbyID,
-			"message":  "¡Bienvenido al lobby!",
+			"lobby_id":  lobbyID,
+			"username":  username,
+			"user_icon": icon,
+			"message":   "¡Bienvenido al lobby!",
 			// Pero vamos a ver, como que TotalPoints y NumberOfRounds si
 			// ni ha empezado la partida tio???
 			/*"total_points":     lobby.TotalPoints,
@@ -356,7 +364,10 @@ func BroadcastMessageToLobby(redisClient *redis.RedisClient, client *socket.Sock
 
 		fmt.Println("Broadcasting to lobby:", lobbyID, "Message:", message)
 
+		// Get user icon from PostgreSQL
+		icon := utils.UserIcon(db, username)
+
 		// Send the message to all clients in the lobby
-		sio.Sio_server.To(socket.Room(lobbyID)).Emit("new_lobby_message", gin.H{"lobby_id": lobbyID, "message": message})
+		sio.Sio_server.To(socket.Room(lobbyID)).Emit("new_lobby_message", gin.H{"lobby_id": lobbyID, "username": username, "user_icon": icon, "message": message})
 	}
 }
