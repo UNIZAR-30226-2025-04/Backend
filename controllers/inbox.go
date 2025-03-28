@@ -164,7 +164,7 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 		playersCount := make(map[string]int)
 		var gameLobbies []models.GameLobby
 
-		if err := db.Model(&models.GameLobby{}).Where("lobby_id IN ?", lobbies).Find(&gameLobbies).Error; err != nil {
+		if err := db.Model(&models.GameLobby{}).Where("id IN ?", lobbies).Find(&gameLobbies).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve host icons"})
 			return
 		}
