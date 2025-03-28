@@ -442,7 +442,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns a list of all the lobbies",
+                "description": "Returns a list of all the lobbies with player count",
                 "consumes": [
                     "application/json"
                 ],
@@ -483,6 +483,9 @@ const docTemplate = `{
                                         "type": "string"
                                     },
                                     "number_rounds": {
+                                        "type": "integer"
+                                    },
+                                    "player_count": {
                                         "type": "integer"
                                     },
                                     "total_points": {
@@ -1253,6 +1256,9 @@ const docTemplate = `{
                                             },
                                             "lobby_id": {
                                                 "type": "string"
+                                            },
+                                            "player_count": {
+                                                "type": "integer"
                                             },
                                             "username": {
                                                 "type": "string"
@@ -2225,7 +2231,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "nogler.ddns.net:8080",
+	Host:             "nogler.ddns.net:443",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Nogler API",

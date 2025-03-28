@@ -156,13 +156,13 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 
 		// Extract all lobbies from the invitations
 		var lobbies []string
-		for _, lobby := range gameLobbies {
+		for _, lobby := range gameInvitations {
 			lobbies = append(lobbies, lobby.LobbyID)
 		}
 
 		// Get number of players in each lobby
 		playersCount := make(map[string]int)
-		var gameLobbies []GameLobby 
+		var gameLobbies []models.GameLobby
 
 		if err := db.Model(&models.GameLobby{}).Where("lobby_id IN ?", lobbies).Find(&gameLobbies).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve host icons"})
@@ -170,16 +170,16 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		for _, lobby := range gameLobbies {
-			playersCount[lobby.LobbyID] = len(lobby.InGamePlayer)
+			playersCount[lobby.ID] = len(lobby.InGamePlayers)
 		}
 
 		// Collect the public information of the sender and the lobby ID
 		var invitationsInfo []gin.H
 		for _, invitation := range gameInvitations {
 			invitationsInfo = append(invitationsInfo, gin.H{
-				"username": invitation.SenderUsername,
-				"icon":     invitation.SenderGameProfile.UserIcon,
-				"lobby_id": invitation.LobbyID,
+				"username":     invitation.SenderUsername,
+				"icon":         invitation.SenderGameProfile.UserIcon,
+				"lobby_id":     invitation.LobbyID,
 				"player_count": playersCount[invitation.LobbyID],
 			})
 		}

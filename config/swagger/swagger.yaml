@@ -1,5 +1,5 @@
 basePath: /
-host: nogler.ddns.net:8080
+host: nogler.ddns.net:443
 info:
   contact: {}
   description: Gin-Gonic server for the "Nogler" game API
@@ -276,7 +276,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Returns a list of all the lobbies
+      description: Returns a list of all the lobbies with player count
       parameters:
       - description: Bearer JWT token
         in: header
@@ -300,6 +300,8 @@ paths:
                 lobby_id:
                   type: string
                 number_rounds:
+                  type: integer
+                player_count:
                   type: integer
                 total_points:
                   type: integer
@@ -797,6 +799,8 @@ paths:
                       type: integer
                     lobby_id:
                       type: string
+                    player_count:
+                      type: integer
                     username:
                       type: string
                   type: object
