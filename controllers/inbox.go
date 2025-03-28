@@ -170,8 +170,10 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		if err := db.Model(&models.InGamePlayer{}).
-			Select("id, COUNT(*) AS player_count").
-			Where("id IN ?", lobbies).Find(&playerCountResult).Error; err != nil {
+			Select("lobby_id, COUNT(*) AS player_count").
+			Where("lobby_id IN ?", lobbies).
+			Group("lobby_id").
+			Find(&playerCountResult).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count players"})
 			return
 		}
