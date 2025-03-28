@@ -124,7 +124,7 @@ func GetAllSentFriendshipRequests(db *gorm.DB) gin.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Success 200 {object} object{received_game_lobby_invitations=[]object{username=string,icon=integer,lobby_id=string}}
+// @Success 200 {object} object{received_game_lobby_invitations=[]object{username=string,icon=integer,lobby_id=string,player_count=integer}}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -154,6 +154,25 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Extract all lobbies from the invitations
+		var lobbies []string
+		for _, lobby := range gameLobbies {
+			lobbies = append(lobbies, lobby.LobbyID)
+		}
+
+		// Get number of players in each lobby
+		playersCount := make(map[string]int)
+		var gameLobbies []GameLobby 
+
+		if err := db.Model(&models.GameLobby{}).Where("lobby_id IN ?", lobbies).Find(&gameLobbies).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve host icons"})
+			return
+		}
+
+		for _, lobby := range gameLobbies {
+			playersCount[lobby.LobbyID] = len(lobby.InGamePlayer)
+		}
+
 		// Collect the public information of the sender and the lobby ID
 		var invitationsInfo []gin.H
 		for _, invitation := range gameInvitations {
@@ -161,6 +180,7 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 				"username": invitation.SenderUsername,
 				"icon":     invitation.SenderGameProfile.UserIcon,
 				"lobby_id": invitation.LobbyID,
+				"player_count": playersCount[invitation.LobbyID],
 			})
 		}
 
