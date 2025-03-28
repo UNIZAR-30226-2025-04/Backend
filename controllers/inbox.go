@@ -160,17 +160,25 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 			lobbies = append(lobbies, lobby.LobbyID)
 		}
 
-		// Get number of players in each lobby
-		playersCount := make(map[string]int)
-		var gameLobbies []models.GameLobby
+		// Initialize a map to store player counts by lobby_id
+		playerCounts := make(map[string]int)
 
-		if err := db.Model(&models.GameLobby{}).Where("lobby_id IN ?", lobbies).Find(&gameLobbies).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve host icons"})
+		// Count players for each lobby
+		var playerCountResult []struct {
+			LobbyID     string
+			PlayerCount int64
+		}
+
+		if err := db.Model(&models.InGamePlayer{}).
+			Select("lobby_id, COUNT(*) AS player_count").
+			Where("id IN ?", lobbies).Find(&gameLobbies).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count players"})
 			return
 		}
 
-		for _, lobby := range gameLobbies {
-			playersCount[lobby.ID] = len(lobby.InGamePlayers)
+		// Populate the playerCounts map
+		for _, result := range playerCountResult {
+			playerCounts[result.LobbyID] = int(result.PlayerCount)
 		}
 
 		// Collect the public information of the sender and the lobby ID
@@ -180,7 +188,7 @@ func GetAllReceivedGameLobbyInvitations(db *gorm.DB) gin.HandlerFunc {
 				"username":     invitation.SenderUsername,
 				"icon":         invitation.SenderGameProfile.UserIcon,
 				"lobby_id":     invitation.LobbyID,
-				"player_count": playersCount[invitation.LobbyID],
+				"player_count": playerCounts[invitation.LobbyID],
 			})
 		}
 
