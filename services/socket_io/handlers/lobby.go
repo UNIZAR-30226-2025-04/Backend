@@ -13,6 +13,12 @@ import (
 	"gorm.io/gorm"
 )
 
+/*
+ * IMPORTANT NOTE: all the checks on whether a lobby exists, a user is in a lobby or not, etc
+ * must be made through requests to the Postgres database, NOT to the redis database.
+ * The redis database is used specifically to store the state of the game.
+ */
+
 // Function to handle the act of joining a lobby. The code will check whether the user has
 // requested to join the lobby via the API (querying the Postgres database) and if the lobby
 // exists in Redis. If both checks are positive, the client will be automatically joined to the
@@ -30,86 +36,42 @@ func HandleJoinLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// TODO: y si el mismo usuario vuelve a intentar conectarse otra vez sin haberse desconectado?
-
+		// 1. Parse lobby ID from arguments
 		lobbyID := args[0].(string)
 		log.Printf("[JOIN] Procesando lobby ID: %s para usuario: %s", lobbyID, username)
 
-		err := utils.UserExists(db, lobbyID, username, client)
+		// 2. Check if lobby exists in Postgres
+		isInLobby, err := utils.UserExistsInLobby(db, lobbyID, username, client)
 		if err != nil {
 			return
 		}
 
-		// 0. Check if user is in lobby (Postgres)
-		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
-		if err != nil {
-			fmt.Println("Database error:", err)
-			client.Emit("error", gin.H{"error": "Database error"})
-			return
-		}
-
+		// NOTE: si el mismo usuario vuelve a intentar conectarse otra vez sin haberse desconectado
+		// se llamará otra vez a client.Join(socket.Room(lobbyID)) y en principio no habrá problema
+		// (la llamada no tendrá ningún efecto, idempotencia)
 		if !isInLobby {
 			fmt.Println("User is NOT in lobby:", username, "Lobby:", lobbyID)
 			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
 			return
 		}
 
-		// TODO: integrar el uso de la redis
-		// A VER QUE NARICES HACEMOS CON ESTO NIÑO
-		// 1. Verificar si existe el lobby en Redis
-		/*lobby, err := redisClient.GetGameLobby(lobbyID)
-		if err != nil {
-			log.Println("Error al buscar lobby:", err)
-			client.Emit("error", gin.H{"error": "Lobby no encontrado en Redis"})
-			return
-		}
-		log.Println("Lobby encontrado:", lobby)
-
-		// 2. Verificar si el jugador ya está en el lobby
-		currentLobby, err := redisClient.GetPlayerCurrentLobby(username)
-		if err == nil && currentLobby == lobbyID {
-			client.Emit("error", gin.H{"error": "Ya estás en este lobby"})
-			return
-		}
-		log.Println("Jugador no está en el lobby:", username, currentLobby)
-		// 3. Crear objeto InGamePlayer con valores iniciales
-		player := &redis.InGamePlayer{
-			Username:       username,
-			LobbyId:        lobbyID,
-			PlayersMoney:   1000,
-			CurrentDeck:    json.RawMessage(`{"cards":[]}`),
-			Modifiers:      json.RawMessage(`{}`),
-			CurrentJokers:  json.RawMessage(`{}`),
-			MostPlayedHand: json.RawMessage(`{}`),
-		}
-		log.Println("Jugador creado:", player)
-		// 4. Guardar estado del jugador en Redis
-		if err := redisClient.SaveInGamePlayer(player); err != nil {
-			log.Println("Error al guardar jugador en Redis:", err)
-			client.Emit("error", gin.H{"error": "Error al unirse al lobby"})
-			return
-		}
-		log.Println("Jugador guardado en Redis")*/
-		// 5. Unir al socket room
+		// 3. Join the socket to the room corresponding to the lobby id
 		client.Join(socket.Room(lobbyID))
 		log.Println("Jugador unido al room:", lobbyID)
-		// 6. Notificar éxito
+
+		// 4. Notify success
 		log.Printf("[JOIN-SUCCESS] Usuario %s unido exitosamente al lobby %s", username, lobbyID)
 
-		// Get user icon from PostgreSQL
+		// 5. Get user icon from PostgreSQL
 		icon := utils.UserIcon(db, username)
 
-		// 6. Notificar éxito
+		// 6. Emit success event to the client
 		log.Printf("[JOIN-SUCCESS] Usuario %s unido exitosamente al lobby %s", username, lobbyID)
 		client.Emit("joined_lobby", gin.H{
 			"lobby_id":  lobbyID,
 			"username":  username,
 			"user_icon": icon,
 			"message":   "¡Bienvenido al lobby!",
-			// Pero vamos a ver, como que TotalPoints y NumberOfRounds si
-			// ni ha empezado la partida tio???
-			/*"total_points":     lobby.TotalPoints,
-			"number_of_rounds": lobby.NumberOfRounds,*/
 		})
 	}
 }

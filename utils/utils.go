@@ -78,13 +78,13 @@ func IsPlayerInLobby(db *gorm.DB, lobbyID string, username string) (bool, error)
 }
 
 // Check if user is in lobby
-func UserExists(db *gorm.DB, lobbyID string, username string, client *socket.Socket) error {
-	_, err := IsPlayerInLobby(db, lobbyID, username)
+func UserExistsInLobby(db *gorm.DB, lobbyID string, username string, client *socket.Socket) (inLobby bool, e error) {
+	isInLobby, err := IsPlayerInLobby(db, lobbyID, username)
 	if err != nil {
 		fmt.Println("Database error:", err)
 		client.Emit("error", gin.H{"error": "Database error"})
 	}
-	return err
+	return isInLobby, err
 }
 
 // Returns the icon of the user
