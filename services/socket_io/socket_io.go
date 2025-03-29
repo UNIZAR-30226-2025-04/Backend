@@ -28,10 +28,11 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 	c.SetServeClient(true)
 	// c.SetConnectionStateRecovery(&socket.ConnectionStateRecovery{})
 	// c.SetAllowEIO3(true)
-	c.SetPingInterval(300 * time.Millisecond)
-	c.SetPingTimeout(200 * time.Millisecond)
+	// NOTE: higher ping interval and timeout to 1) reduce network load and 2) support slower networks
+	c.SetPingInterval(5 * time.Second) // 300 * time.Millisecond
+	c.SetPingTimeout(3 * time.Second)  // 200 * time.Millisecond
 	c.SetMaxHttpBufferSize(1000000)
-	c.SetConnectTimeout(1000 * time.Millisecond)
+	c.SetConnectTimeout(10 * time.Second) // 1000 * time.Millisecond
 	c.SetTransports(types.NewSet("polling", "websocket"))
 	c.SetCors(&types.Cors{
 		Origin:      "*",
