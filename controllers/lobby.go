@@ -3,11 +3,10 @@ package controllers
 import (
 	"Nogler/middleware"
 	models "Nogler/models/postgres"
+	redis_models "Nogler/models/redis"
 	"Nogler/services/redis"
-	"log"
-
-	// "errors"
 	"Nogler/utils"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -66,7 +65,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		}
 
 		// Create corresponding Redis lobby
-		redisLobby := &redis.GameLobby{
+		redisLobby := &redis_models.GameLobby{
 			Id:              NewLobby.ID,
 			CreatorUsername: username,
 			NumberOfRounds:  0,
@@ -74,7 +73,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			CreatedAt:       NewLobby.CreatedAt,
 			GameHasBegun:    false,
 			IsPublic:        false,
-			ChatHistory:     []redis.ChatMessage{}, // Initialize empty chat
+			ChatHistory:     []redis_models.ChatMessage{}, // Initialize empty chat
 		}
 
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
@@ -333,7 +332,7 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		}
 
 		// Create Redis InGamePlayer entry
-		redisPlayer := &redis.InGamePlayer{
+		redisPlayer := &redis_models.InGamePlayer{
 			Username:       username,
 			LobbyId:        lobbyID,
 			PlayersMoney:   0,   // Initial money --> TODO: ver cuánto es la cifra inicial

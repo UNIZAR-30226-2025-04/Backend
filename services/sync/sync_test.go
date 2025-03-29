@@ -1,6 +1,7 @@
 package sync
 
 import (
+	redis_models "Nogler/models/redis"
 	"Nogler/services/redis"
 	"database/sql"
 	"encoding/json"
@@ -147,7 +148,7 @@ func TestSyncManager(t *testing.T) {
 		}
 
 		// Create data in Redis
-		player := &redis.InGamePlayer{
+		player := &redis_models.InGamePlayer{
 			Username:     testUsername,
 			LobbyId:      testLobbyId,
 			PlayersMoney: 1000,
@@ -213,11 +214,11 @@ func TestSyncManager(t *testing.T) {
 		}
 
 		// Create test data in Redis (different from initial)
-		lobby := &redis.GameLobby{
+		lobby := &redis_models.GameLobby{
 			Id:             testLobbyId,
 			NumberOfRounds: 5,
 			TotalPoints:    2000,
-			ChatHistory:    []redis.ChatMessage{},
+			ChatHistory:    []redis_models.ChatMessage{},
 		}
 
 		fmt.Printf("\nData in Redis before sync:\n%+v\n", lobby)
