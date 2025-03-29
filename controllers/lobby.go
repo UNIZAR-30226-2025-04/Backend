@@ -614,3 +614,100 @@ func KickFromLobby(db *gorm.DB) gin.HandlerFunc {
 	// de socketio, más fácil porque si no habría que pillar aquí la conexión del
 	// socket y llamar a socket.Leave(roomId)
 }
+
+// @Summary Returns a lobby code
+// @Description Returns the code of a lobby with a similiar score to the user
+// @Tags lobby
+// @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @Success 200 {object} object{message=string} "Lobby found or not found"
+// @Failure 400 {object} object{error=string} "User not found"
+// @Failure 401 {object} object{error=string} "User not authenticated"
+// @Failure 500 {object} object{error=string} "Error retrieving lobby"
+// @Router /auth/matchMaking [post]
+// @Security ApiKeyAuth
+func MatchMaking(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		// Validate JWT token
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
+
+		// Verify user exists
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		// Get user's game profile
+		var userProfile models.GameProfile
+		if err := db.Where("username = ?", user.ProfileUsername).First(&userProfile).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user's game profile"})
+			return
+		}
+
+		userScore := userProfile.UserStats["score"]
+		difference := 100
+
+		for i := 0; i < 10; i++ {
+			var averageScore int
+
+			var gameLobbies []models.GameLobby
+			// Get public and not started lobbies players from database
+			if err := db.Preload("InGamePlayers").Where("game_has_begun = ? AND is_public = ?", false, true).Find(&gameLobbies).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve lobbies"})
+				return
+			}
+
+			// Search for a lobby with players with similar score
+			for _, lobby := range gameLobbies {
+				// Only lobbies with less than 8 players and more than 0
+				if len(lobby.InGamePlayers) >= 8 || len(lobby.InGamePlayers) == 0{
+					continue
+				}
+
+				// Get usernames of players in the lobby
+				var usernames []string
+				for _, player := range lobby.InGamePlayers {
+					usernames = append(usernames, player.Username)
+				}
+
+				// Get score of the player from PostgreSQL
+				var players []models.GameProfile
+				if err := db.Where("username IN ?", usernames).Find(&players).Error; err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve players in lobby"})
+					return
+				}
+
+				// Calculate total score of the lobby
+				var totalScore int
+				for _, player := range players {
+					totalScore += player.UserStats["score"]
+				}
+				// Calculate average score
+				averageScore = totalScore / len(players)
+				
+				// Check if the lobby is suitable for the user
+				if averageScore <= userScore + difference && averageScore >= userScore - difference {
+					c.JSON(http.StatusOK, gin.H{
+						"lobby_id": lobby.ID,
+						"message":  "Lobby found",
+					})
+				}
+			}
+			difference += 100
+			sleep(2 * time.Second) // Sleep for 2 seconds before searching again
+		}
+
+		// If no lobby is found, return an empty lobby ID
+		c.JSON(http.StatusOK, gin.H{
+			"lobby_id": "",
+			"message":  "No lobbies found",
+		})
+	}
+}
