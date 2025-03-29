@@ -20,6 +20,77 @@ import (
  * The redis database is used specifically to store the state of the game.
  */
 
+// Function to get information about all users in a lobby.
+func GetLobbyInfo(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("[INFO] GetLobbyInfo iniciado - Usuario: %s, Args: %v", username, args)
+
+		// Validate arguments
+		if len(args) < 1 {
+			log.Printf("[INFO-ERROR] Faltan argumentos para usuario %s", username)
+			client.Emit("error", gin.H{"error": "Falta el ID del lobby"})
+			return
+		}
+
+		lobbyID := args[0].(string)
+		log.Printf("[INFO] Obteniendo información del lobby ID: %s para usuario: %s", lobbyID, username)
+
+		// Check if lobby exists
+		var lobby models.GameLobby
+		if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				client.Emit("error", gin.H{"error": "Lobby not found"})
+			} else {
+				client.Emit("error", gin.H{"error": "Database error"})
+			}
+			return
+		}
+
+		// Get all players in the lobby
+		var players []models.InGamePlayer
+		if err := db.Where("lobby_id = ?", lobbyID).Find(&players).Error; err != nil {
+			client.Emit("error", gin.H{"error": "Error retrieving players"})
+			return
+		}
+
+		// Get icons for all players
+		playerInfos := make([]gin.H, 0, len(players))
+		for _, player := range players {
+			// Get player icon
+			var gameProfile models.GameProfile
+			if err := db.Where("username = ?", player.Username).First(&gameProfile).Error; err != nil {
+				log.Printf("[INFO-WARNING] No se pudo obtener el perfil para %s", player.Username)
+				continue
+			}
+
+			playerInfos = append(playerInfos, gin.H{
+				"username":  player.Username,
+				"user_icon": gameProfile.UserIcon,
+			})
+		}
+
+		// Get creator information
+		var creatorProfile models.GameProfile
+		if err := db.Where("username = ?", lobby.CreatorUsername).First(&creatorProfile).Error; err != nil {
+			client.Emit("error", gin.H{"error": "Error retrieving creator info"})
+			return
+		}
+
+		// Return the complete lobby info
+		client.Emit("lobby_info", gin.H{
+			"players": playerInfos,
+			"creator": gin.H{
+				"username":  lobby.CreatorUsername,
+				"user_icon": creatorProfile.UserIcon,
+			},
+			"lobby_id": lobbyID,
+		})
+
+		log.Printf("[INFO-SUCCESS] Información del lobby %s enviada a usuario %s", lobbyID, username)
+	}
+}
+
 // Function to handle the act of joining a lobby. The code will check whether the user has
 // requested to join the lobby via the API (querying the Postgres database) and if the lobby
 // exists in Redis. If both checks are positive, the client will be automatically joined to the

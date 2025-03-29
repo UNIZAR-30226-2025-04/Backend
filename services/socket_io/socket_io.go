@@ -70,6 +70,9 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		// Kick a user from a lobby (only for hosts)
 		client.On("kick_from_lobby", handlers.HandleKickFromLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 
+		// Get (username,icon) of all users in a lobby and (username,icon) of the lobby host/creator
+		client.On("get_lobby_info", handlers.GetLobbyInfo(redisClient, client, db, username))
+
 		// Broadcast a message to all clients in a specific lobby
 		client.On("broadcast_to_lobby", handlers.BroadcastMessageToLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 
