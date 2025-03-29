@@ -15,7 +15,8 @@ import (
 
 /*
  * IMPORTANT NOTE: all the checks on whether a lobby exists, a user is in a lobby or not, etc
- * must be made through requests to the Postgres database, NOT to the redis database.
+ * must be made through requests to the Postgres database, NOT to the redis database. Check
+ * /controllers/lobby.go endpoints to see it.
  * The redis database is used specifically to store the state of the game.
  */
 

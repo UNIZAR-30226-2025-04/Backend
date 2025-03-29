@@ -14,6 +14,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// TODO: we need to add an option to make the created lobby public or private
+
 // @Summary Creates a new lobby
 // @Description Returns the id of a new created lobby?
 // @Tags lobby
@@ -71,6 +73,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			TotalPoints:     0,
 			CreatedAt:       NewLobby.CreatedAt,
 			GameHasBegun:    false,
+			IsPublic:        false,
 			ChatHistory:     []redis.ChatMessage{}, // Initialize empty chat
 		}
 
@@ -312,7 +315,7 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		).First(&userInLobby)
 
 		if result.RowsAffected > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "User exists in a lobby"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists in a lobby"})
 			return
 		}
 
@@ -325,7 +328,7 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		tx := db.Begin()
 		if err := tx.Create(&gamePlayer).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to lobby"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to the lobby"})
 			return
 		}
 
