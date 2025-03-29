@@ -8,6 +8,7 @@ import (
 	"Nogler/utils"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -651,8 +652,10 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		userScore := userProfile.UserStats["score"]
+		userScore := userProfile.UserScore
 		difference := 100
+
+		log.Printf("User score: %d", userScore)
 
 		for i := 0; i < 10; i++ {
 			var averageScore int
@@ -664,10 +667,12 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 				return
 			}
 
+			log.Printf("Found %d game lobbies", len(gameLobbies))
+
 			// Search for a lobby with players with similar score
 			for _, lobby := range gameLobbies {
 				// Only lobbies with less than 8 players and more than 0
-				if len(lobby.InGamePlayers) >= 8 || len(lobby.InGamePlayers) == 0{
+				if len(lobby.InGamePlayers) >= 8 || len(lobby.InGamePlayers) == 0 {
 					continue
 				}
 
@@ -687,21 +692,24 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 				// Calculate total score of the lobby
 				var totalScore int
 				for _, player := range players {
-					totalScore += player.UserStats["score"]
+					totalScore += player.UserScore
 				}
 				// Calculate average score
 				averageScore = totalScore / len(players)
-				
+
+				log.Printf("Lobby ID: %s, Average score: %d", lobby.ID, averageScore)
+
 				// Check if the lobby is suitable for the user
-				if averageScore <= userScore + difference && averageScore >= userScore - difference {
+				if userScore >= averageScore-difference && userScore <= averageScore+difference {
 					c.JSON(http.StatusOK, gin.H{
 						"lobby_id": lobby.ID,
 						"message":  "Lobby found",
 					})
+					return
 				}
 			}
 			difference += 100
-			sleep(2 * time.Second) // Sleep for 2 seconds before searching again
+			time.Sleep(2 * time.Second) // Sleep for 2 seconds before searching again
 		}
 
 		// If no lobby is found, return an empty lobby ID
