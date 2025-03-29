@@ -8,20 +8,6 @@ import (
 	"github.com/zishang520/socket.io/v2/socket"
 )
 
-// TODO: Esto igual se podría meter en la /utils de la raíz. Si no, mover lo que
-// haya en /utils (raíz) de socketio a este fichero.
-func fieldOnAuthdata() {
-
-}
-
-func userIsInLobby() {
-
-}
-
-func lobbyExists() {
-
-}
-
 // Function that verifies a socket.io client connection. That is, it checks whether
 // the Handshake Auth object exists and contains a username. If either of these
 // conditions is not met, the connection is rejected and an error message is sent
