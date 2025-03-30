@@ -19,7 +19,7 @@ import (
 // socket.io room corresponding to that lobby, and the Redis info about the player will be updated
 // (a new `InGamePlayer` object will be inserted).
 func HandleJoinLobby(redisClient *redis.RedisClient, client *socket.Socket,
-	db *gorm.DB, username string) func(args ...interface{}) {
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
 		log.Printf("[JOIN] HandleJoinLobby iniciado - Usuario: %s, Args: %v, Socket ID: %s",
 			username, args, client.Id())
@@ -102,6 +102,19 @@ func HandleJoinLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			// ni ha empezado la partida tio???
 			/*"total_points":     lobby.TotalPoints,
 			"number_of_rounds": lobby.NumberOfRounds,*/
+		})
+
+		var profile models.GameProfile
+		if err := db.Where("username = ?", username).First(&profile).Error; err != nil {
+			log.Println("Error al obtener GameProfile:", err)
+			client.Emit("error", gin.H{"error": "Error al obtener el perfil del jugador"})
+			return
+		}
+
+		sio.Sio_server.To(socket.Room(lobbyID)).Emit("new_user_in_lobby", gin.H{
+			"lobby_id": lobbyID,
+			"username": username,
+			"icon":     profile.UserIcon,
 		})
 	}
 }

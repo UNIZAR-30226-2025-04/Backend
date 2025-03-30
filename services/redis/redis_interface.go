@@ -40,6 +40,28 @@ type GameLobby struct {
 	ChatHistory     []ChatMessage `json:"chat_history"`     // Redis-specific field for real-time chat
 }
 
+// DE YAGO NOSE SI ESTÁ BIEN VALE???
+//----------------------------------------------------------------------------------------------------
+
+type HandLevel struct {
+	Fichas      int `json:"fichas"`       // Score multiplier
+	Mult        int `json:"mult"`         // XP needed for next level
+	TimesPlayed int `json:"times_played"` // Tracking for stats
+}
+
+// Value supongo que usaremos en plan un int como "relacionador" de midifier con lo que hace pa aplicarlo
+type Modifier struct {
+	Value       float64   `json:"value"`
+	ExpiresAt   time.Time `json:"expires_at"` // -1 if no acaba hasta final de partida?
+	Description string    `json:"description"`
+}
+
+type Joker struct {
+	ID string `json:"id"`
+}
+
+//----------------------------------------------------------------------------------------------------
+
 // RedisClient handles Redis operations
 type RedisClient struct {
 	client *redis.Client
