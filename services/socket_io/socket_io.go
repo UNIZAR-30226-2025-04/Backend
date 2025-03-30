@@ -63,7 +63,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		fmt.Println("Current connections: ", sio.UserConnections)
 
 		// Join the user to a room corresponding to a Nogler game lobby
-		client.On("join_lobby", handlers.HandleJoinLobby(redisClient, client, db, username))
+		client.On("join_lobby", handlers.HandleJoinLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 
 		// Exit a lobby voluntarily
 		client.On("exit_lobby", handlers.HandleExitLobby(redisClient, client, db, username))
