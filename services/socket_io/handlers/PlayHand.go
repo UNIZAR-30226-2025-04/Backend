@@ -48,18 +48,20 @@ func PlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// Calculate base points
-		fichas, mult := poker.BestHand(hand)
+		fichas, mult, _ := poker.BestHand(hand)
 
 		// Apply jokers (passing the hand which contains the jokers)
-		finalFichas, finalMult := poker.ApplyJokers(hand, hand.Jokers, fichas, mult)
+		finalFichas, finalMult, finalGold, jokersTriggered := poker.ApplyJokers(hand, hand.Jokers, fichas, mult, hand.Gold)
 		valorFinal := finalFichas * finalMult
 
 		// Log the result
 		log.Println("Jugador ha puntuado la friolera de:", valorFinal)
 		// Emit success response
 		client.Emit("played_hand", gin.H{
-			"points":  valorFinal,
-			"message": "¡Mano jugada con éxito!",
+			"points":          valorFinal,
+			"gold":            finalGold,
+			"jokersTriggered": jokersTriggered,
+			"message":         "¡Mano jugada con éxito!",
 		})
 
 		//logear en redis + pg cuanto ha puntuado supongo IMPORTANTEEEEEEEEEEEEEEEEEEEEEE
