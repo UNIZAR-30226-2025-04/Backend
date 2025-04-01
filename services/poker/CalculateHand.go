@@ -1,9 +1,21 @@
 package poker
 
 import (
+	"math/rand"
 	"sort"
 	"strconv"
 )
+
+type Hand struct {
+	Cards  []Card `json:"cards"`
+	Jokers Jokers `json:"jokers"`
+	Gold   int    `json:"gold"`
+}
+
+type Deck struct {
+	TotalCards  []Card // Available cards
+	PlayedCards []Card // Cards that have been played/discarded
+}
 
 // Define a Card struct with a Rank and suit
 type Card struct {
@@ -13,22 +25,6 @@ type Card struct {
 
 // Cards A, 2, 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K
 // Suit s (spades), c (clubs), d (diamonds), h (hearts)
-
-const (
-	flushFive     = "Flush five"
-	flushHouse    = "Flush house"
-	fiveOfAKind   = "Fife of a kind"
-	royalFlush    = "Royal Flush"
-	straightFlush = "Straight Flush"
-	fourOfAKind   = "Four of a Kind"
-	fullHouse     = "Full House"
-	flush         = "Flush"
-	straight      = "Straight"
-	threeOfAKind  = "Three of a Kind"
-	twoPair       = "Two Pair"
-	pair          = "Pair"
-	highCard      = "High Card"
-)
 
 type Multiplier struct {
 	First  int
@@ -52,10 +48,92 @@ var TypeMap = map[string]Multiplier{
 	"HighCard":      {1, 1},
 }
 
-type Hand struct {
-	Cards  []Card `json:"cards"`
-	Jokers Jokers `json:"jokers"`
-	Gold   int    `json:"gold"`
+func NewStandardDeck() *Deck {
+	ranks := []string{"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"}
+	suits := []string{"h", "d", "c", "s"}
+
+	total := make([]Card, 0, 52)
+	for _, suit := range suits {
+		for _, rank := range ranks {
+			total = append(total, Card{Rank: rank, Suit: suit})
+		}
+	}
+
+	return &Deck{
+		TotalCards:  total,
+		PlayedCards: make([]Card, 0),
+	}
+}
+
+func (d *Deck) AddCards(newCards []Card) {
+	d.TotalCards = append(d.TotalCards, newCards...)
+}
+
+func (d *Deck) RemoveCards(toRemove []Card) {
+	newTotal := make([]Card, 0, len(d.TotalCards))
+
+	for _, card := range d.TotalCards {
+		keep := true
+		for _, removed := range toRemove {
+			if card.Rank == removed.Rank && card.Suit == removed.Suit {
+				keep = false
+				break
+			}
+		}
+		if keep {
+			newTotal = append(newTotal, card)
+		}
+	}
+
+	d.TotalCards = newTotal
+}
+
+func (d *Deck) MarkAsPlayed(cards []Card) {
+	d.PlayedCards = append(d.PlayedCards, cards...)
+}
+
+func (d *Deck) Draw(n int) []Card {
+	if len(d.TotalCards) < n {
+		d.reshufflePlayed()
+	}
+
+	if n > len(d.TotalCards) {
+		n = len(d.TotalCards)
+	}
+
+	drawn := d.TotalCards[:n]
+	d.TotalCards = d.TotalCards[n:]
+
+	return drawn
+}
+
+// Shuffle randomizes the deck using Fisher-Yates algorithm
+func (d *Deck) Shuffle() {
+
+	// If we have played cards, combine them back first
+	if len(d.PlayedCards) > 0 {
+		d.TotalCards = append(d.TotalCards, d.PlayedCards...)
+		d.PlayedCards = []Card{} // Clear played cards
+	}
+
+	// Fisher-Yates shuffle on TotalCards (deepseek lo dice yo escucho)
+	for i := len(d.TotalCards) - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		d.TotalCards[i], d.TotalCards[j] = d.TotalCards[j], d.TotalCards[i]
+	}
+}
+
+// Necesario para si p ejemplo me quedan 3 cartas por drawear y juego 5 pues reshufleo
+func (d *Deck) reshufflePlayed() {
+
+	// Mezclar played cards
+	rand.Shuffle(len(d.PlayedCards), func(i, j int) {
+		d.PlayedCards[i], d.PlayedCards[j] = d.PlayedCards[j], d.PlayedCards[i]
+	})
+
+	// Añadir al final del mazo
+	d.TotalCards = append(d.TotalCards, d.PlayedCards...)
+	d.PlayedCards = make([]Card, 0)
 }
 
 func grade(c1 Card) int {

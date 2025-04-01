@@ -85,6 +85,8 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		client.On("draw_cards", handlers.HandleDrawCards(redisClient, client, db, username))
 
+		client.On("get_full_deck", handlers.HandleGetFullDeck(redisClient, client, db, username))
+
 	})
 
 	// NOTE: igual lo usamos en algún momento

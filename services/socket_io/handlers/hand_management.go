@@ -147,3 +147,47 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 func DrawCards() {
 	log.Println("Jugador ha puntuado la friolera de: callate la boca bot")
 }
+
+func HandleGetFullDeck(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("GetFullDeck request - Usuario: %s, Socket ID: %s", username, client.Id())
+
+		// 1. Get player's deck from Redis
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[DECK-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error al obtener el mazo"})
+			return
+		}
+
+		// 2. Parse the deck data
+		var deck poker.Deck
+		if player.CurrentDeck != nil {
+			err = json.Unmarshal(player.CurrentDeck, &deck)
+			if err != nil {
+				log.Printf("[DECK-ERROR] Error parsing deck: %v", err)
+				client.Emit("error", gin.H{"error": "Error al procesar el mazo"})
+				return
+			}
+		} else {
+			// Initialize empty deck if none exists
+			deck = poker.Deck{
+				TotalCards:  make([]poker.Card, 0),
+				PlayedCards: make([]poker.Card, 0),
+			}
+		}
+
+		// 3. Prepare response with complete deck state
+		response := gin.H{
+			"total_cards":  deck.TotalCards,  // Available cards
+			"played_cards": deck.PlayedCards, // Discarded/used cards
+			"deck_size":    len(deck.TotalCards) + len(deck.PlayedCards),
+			"username":     username,
+		}
+
+		// 4. Send to client
+		client.Emit("full_deck", response)
+		log.Printf("Sent full deck to user %s (%d total cards)", username, response["deck_size"])
+	}
+}
