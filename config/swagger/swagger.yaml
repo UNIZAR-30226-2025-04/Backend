@@ -1,5 +1,5 @@
 basePath: /
-host: nogler.ddns.net:8080
+host: nogler.ddns.net:443
 info:
   contact: {}
   description: Gin-Gonic server for the "Nogler" game API
@@ -575,9 +575,11 @@ paths:
       - application/json
       responses:
         "200":
-          description: Lobby found or not found
+          description: OK
           schema:
             properties:
+              lobby_id:
+                type: string
               message:
                 type: string
             type: object

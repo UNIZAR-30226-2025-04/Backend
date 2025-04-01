@@ -621,7 +621,7 @@ func KickFromLobby(db *gorm.DB) gin.HandlerFunc {
 // @Tags lobby
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Success 200 {object} object{message=string} "Lobby found or not found"
+// @Success 200 {object} object{lobby_id=string,message=string}
 // @Failure 400 {object} object{error=string} "User not found"
 // @Failure 401 {object} object{error=string} "User not authenticated"
 // @Failure 500 {object} object{error=string} "Error retrieving lobby"

@@ -915,10 +915,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Lobby found or not found",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "properties": {
+                                "lobby_id": {
+                                    "type": "string"
+                                },
                                 "message": {
                                     "type": "string"
                                 }
@@ -2423,7 +2426,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "nogler.ddns.net:8080",
+	Host:             "nogler.ddns.net:443",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Nogler API",
