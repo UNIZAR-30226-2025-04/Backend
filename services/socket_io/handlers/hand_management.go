@@ -15,7 +15,7 @@ import (
 // Un valor directamente. Lo mejor sería que consultemos en un spot (redis pg o dnd  sea)
 // El nivel al que tenemo sla mano para saber fichas y mult base
 // Ahora mismo está como string en el aproach mencionado sería 2 ints, fichas y mult
-func PlayHand(redisClient *redis.RedisClient, client *socket.Socket,
+func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string) func(args ...interface{}) {
 	return func(args ...interface{}) {
 
@@ -89,4 +89,61 @@ func PlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 func ApplyJokers(h poker.Hand, fichas int, mult int) int {
 	// Given a hand and the points obtained from poker.Hand
 	return fichas * mult
+}
+
+// Do this function plis TODO
+func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string) func(args ...interface{}) {
+	return func(args ...interface{}) {
+
+		log.Printf("drawCArd iniciado - Usuario: %s, Args: %v, Socket ID: %s",
+			username, args, client.Id())
+
+		if len(args) < 1 {
+			log.Printf("[DRAW-ERROR] Faltan argumentos para usuario %s", username)
+			client.Emit("error", gin.H{"error": "Faltan índices de cartas a descartar"})
+			return
+		}
+		// TODO: y si el mismo usuario vuelve a intentar conectarse otra vez sin haberse desconectado?
+
+		handData := args[0].(map[string]interface{}) // Argument is expected to be a map (which is a generic object)
+		handJson, err := json.Marshal(handData)      // Convert the argument to JSON
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error al convertir la mano a JSON: %v", err)
+			client.Emit("error", gin.H{"error": "Error al convertir la mano"})
+			return
+		}
+
+		// Parse the JSON into the poker.Hand struct
+		var hand poker.Hand
+		err = json.Unmarshal(handJson, &hand)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error al parsear la mano: %v", err)
+			client.Emit("error", gin.H{"error": "Error al procesar la mano"})
+			return
+		}
+
+		// Calculate base points
+		fichas, mult, _ := poker.BestHand(hand)
+
+		// Apply jokers (passing the hand which contains the jokers)
+		finalFichas, finalMult, finalGold, jokersTriggered := poker.ApplyJokers(hand, hand.Jokers, fichas, mult, hand.Gold)
+		valorFinal := finalFichas * finalMult
+
+		// Log the result
+		log.Println("Jugador ha puntuado la friolera de:", valorFinal)
+		// Emit success response
+		client.Emit("played_hand", gin.H{
+			"points":          valorFinal,
+			"gold":            finalGold,
+			"jokersTriggered": jokersTriggered,
+			"message":         "¡Mano jugada con éxito!",
+		})
+
+	}
+}
+
+// this function should ask redis, see what cards i have available on my deck, draw one, and mark it as "already obtained" or smt
+func DrawCards() {
+	log.Println("Jugador ha puntuado la friolera de: callate la boca bot")
 }

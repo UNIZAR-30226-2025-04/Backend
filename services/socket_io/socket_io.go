@@ -81,7 +81,10 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("disconnecting", handlers.HandleDisconnecting(username, (*socketio_types.SocketServer)(sio)))
 
 		// Play a hand and recieve the type of hand and the points scored
-		client.On("play_hand", handlers.PlayHand(redisClient, client, db, username))
+		client.On("play_hand", handlers.HandlePlayHand(redisClient, client, db, username))
+
+		client.On("draw_cards", handlers.HandleDrawCards(redisClient, client, db, username))
+
 	})
 
 	// NOTE: igual lo usamos en algún momento
