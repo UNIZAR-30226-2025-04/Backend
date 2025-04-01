@@ -213,3 +213,22 @@ func (rc *RedisClient) GetChatHistory(lobbyId string) ([]redis_models.ChatMessag
 	}
 	return lobby.ChatHistory, nil
 }
+
+// DeleteGameLobby removes a game lobby state from Redis
+// Key format: "lobby:{id}"
+// Deletes the lobby key
+func (rc *RedisClient) DeleteGameLobby(lobbyId string) error {
+	// Create pipeline for atomic operation
+	pipe := rc.client.Pipeline()
+
+	// Delete the lobby state
+	lobbyKey := redis_utils.FormatLobbyKey(lobbyId)
+	pipe.Del(rc.ctx, lobbyKey)
+
+	// Execute pipeline
+	_, err := pipe.Exec(rc.ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting lobby data: %v", err)
+	}
+	return nil
+}
