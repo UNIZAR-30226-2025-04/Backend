@@ -776,6 +776,9 @@ const docTemplate = `{
                                 "creator_username": {
                                     "type": "string"
                                 },
+                                "is_public": {
+                                    "type": "boolean"
+                                },
                                 "lobby_id": {
                                     "type": "string"
                                 },

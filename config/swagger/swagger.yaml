@@ -487,6 +487,8 @@ paths:
                 type: string
               creator_username:
                 type: string
+              is_public:
+                type: boolean
               lobby_id:
                 type: string
               number_players:

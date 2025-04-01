@@ -113,7 +113,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
 // @Param lobby_id path string true "Id of the lobby wanted"
-// @Success 200 {object} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string,number_players=integer,players=[]string}
+// @Success 200 {object} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string,is_public=boolean,number_players=integer,players=[]string}
 // @Failure 400 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -149,6 +149,7 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 			"number_rounds":    lobby.NumberOfRounds,
 			"total_points":     lobby.TotalPoints,
 			"created_at":       lobby.CreatedAt,
+			"is_public":        lobby.IsPublic,
 			"number_players":   number,
 			"players":          usersInLobby,
 		})
