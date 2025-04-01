@@ -73,7 +73,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns the id of a new created lobby?",
+                "description": "Returns the id of a new created lobby",
                 "produces": [
                     "application/json"
                 ],
@@ -88,22 +88,25 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Set to true for public lobby, false or omitted for private lobby",
+                        "name": "public",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "lobby_id": {
-                                        "type": "integer"
-                                    },
-                                    "message": {
-                                        "type": "string"
-                                    }
+                            "type": "object",
+                            "properties": {
+                                "lobby_id": {
+                                    "type": "string"
+                                },
+                                "message": {
+                                    "type": "string"
                                 }
                             }
                         }
@@ -442,7 +445,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns a list of all the lobbies with player count",
+                "description": "Returns a list of all public lobbies with player count",
                 "consumes": [
                     "application/json"
                 ],
@@ -452,7 +455,7 @@ const docTemplate = `{
                 "tags": [
                     "lobby"
                 ],
-                "summary": "Lists all existing lobbies",
+                "summary": "Lists all existing public lobbies",
                 "parameters": [
                     {
                         "type": "string",
@@ -478,6 +481,9 @@ const docTemplate = `{
                                     },
                                     "host_icon": {
                                         "type": "integer"
+                                    },
+                                    "is_public": {
+                                        "type": "boolean"
                                     },
                                     "lobby_id": {
                                         "type": "string"
@@ -1857,6 +1863,120 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/setLobbyVisibility/{lobby_id}": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Toggles a lobby between public and private. Only the creator can change this setting.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lobby"
+                ],
+                "summary": "Updates lobby visibility (public/private)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Lobby ID",
+                        "name": "lobby_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Set to true for public lobby, false for private lobby",
+                        "name": "is_public",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "is_public": {
+                                    "type": "boolean"
+                                },
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "User is not the lobby creator",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Lobby not found",
                         "schema": {
                             "type": "object",
                             "properties": {

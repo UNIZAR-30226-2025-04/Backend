@@ -76,11 +76,11 @@ func main() {
 	// Configure port
 	port := os.Getenv("PORT")
 	log.Println("Puerto leido: ", port)
-	if port == "443" && os.Getenv("USE_HTTPS") == "true" {
+	/*if port == "443" && os.Getenv("USE_HTTPS") == "true" {
 		port = "443"
 	} else {
 		port = "8080"
-	}
+	}*/
 	log.Println("Puerto =", port)
 
 	if os.Getenv("USE_HTTPS") == "true" {
@@ -94,7 +94,7 @@ func main() {
 			log.Fatalf("Error starting server: %v", err)
 		}
 	} else {
-		log.Println("Using HTTP on port 8080")
+		log.Println("Using HTTP on port " + port)
 		if err := r.Run(":" + port); err != nil {
 			log.Fatalf("Error starting server: %v", err)
 		}

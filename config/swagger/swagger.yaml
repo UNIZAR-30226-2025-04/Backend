@@ -41,27 +41,29 @@ paths:
       - users
   /auth/CreateLobby:
     post:
-      description: Returns the id of a new created lobby?
+      description: Returns the id of a new created lobby
       parameters:
       - description: Bearer JWT token
         in: header
         name: Authorization
         required: true
         type: string
+      - description: Set to true for public lobby, false or omitted for private lobby
+        in: formData
+        name: public
+        type: boolean
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              properties:
-                lobby_id:
-                  type: integer
-                message:
-                  type: string
-              type: object
-            type: array
+            properties:
+              lobby_id:
+                type: string
+              message:
+                type: string
+            type: object
         "400":
           description: Bad Request
           schema:
@@ -276,7 +278,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Returns a list of all the lobbies with player count
+      description: Returns a list of all public lobbies with player count
       parameters:
       - description: Bearer JWT token
         in: header
@@ -297,6 +299,8 @@ paths:
                   type: string
                 host_icon:
                   type: integer
+                is_public:
+                  type: boolean
                 lobby_id:
                   type: string
                 number_rounds:
@@ -323,7 +327,7 @@ paths:
             type: object
       security:
       - ApiKeyAuth: []
-      summary: Lists all existing lobbies
+      summary: Lists all existing public lobbies
       tags:
       - lobby
   /auth/joinLobby/{lobby_id}:
@@ -1200,6 +1204,80 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Get all game lobby invitations sent by the authenticated user
+      tags:
+      - lobby
+  /auth/setLobbyVisibility/{lobby_id}:
+    post:
+      consumes:
+      - application/json
+      description: Toggles a lobby between public and private. Only the creator can
+        change this setting.
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Lobby ID
+        in: path
+        name: lobby_id
+        required: true
+        type: string
+      - description: Set to true for public lobby, false for private lobby
+        in: formData
+        name: is_public
+        required: true
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              is_public:
+                type: boolean
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: User is not the lobby creator
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Lobby not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Updates lobby visibility (public/private)
       tags:
       - lobby
   /auth/update:
