@@ -268,7 +268,7 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 // @Param Authorization header string true "Bearer JWT token"
 // @Param lobby_id path string true "lobby_id"
 // @in header
-// @Success 200 {object} object{message=string}
+// @Success 200 {object} object{message=string,lobby_info=object{id=string,creator=string,number_rounds=integer,total_points=integer,game_has_begun=boolean}}
 // @Failure 400 {object} object{error=string}
 // @Failure 401 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
@@ -326,6 +326,24 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		gamePlayer := models.InGamePlayer{
 			LobbyID:  lobbyID,
 			Username: username,
+		}
+
+		// Check if the lobby is full
+		var playersInLobby []models.InGamePlayer
+		if err := db.Where("lobby_id = ?", lobbyID).Find(&playersInLobby).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve users in lobby"})
+			return
+		}
+
+		if len(playersInLobby) >= 8 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Lobby is full"})
+			return
+		}
+
+		// Check if the game has already started
+		if lobby.GameHasBegun {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Game has already started"})
+			return
 		}
 
 		// Start transaction
