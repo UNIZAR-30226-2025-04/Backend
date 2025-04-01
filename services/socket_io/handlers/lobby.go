@@ -232,6 +232,30 @@ func HandleExitLobby(redisClient *redis.RedisClient, client *socket.Socket,
 		// Leave the socket.io room
 		client.Leave(socket.Room(lobbyID))
 
+		// Check if there are no more players in the lobby
+		var playersInLobby []models.InGamePlayer
+		if err := db.Where("lobby_id = ?", lobbyID).Find(&playersInLobby).Error; err != nil {
+			client.Emit("error", gin.H{"error": "Error retrieving players in lobby"})
+			return
+		}
+
+		// If there are no more players, delete the lobby from PostgreSQL and Redis
+		if len(playersInLobby) == 0 {
+			// Delete lobby from PostgreSQL
+			if err := db.Delete(&lobby).Error; err != nil {
+				client.Emit("error", gin.H{"error": "Error deleting lobby"})
+				return
+			}
+
+			// Delete lobby from Redis
+			if redisClient != nil {
+				if err := redisClient.DeleteGameLobby(lobbyID); err != nil {
+					client.Emit("error", gin.H{"error": "Error deleting lobby from Redis"})
+					return
+				}
+			}
+		}
+
 		// Notify success
 		log.Printf("[EXIT-SUCCESS] Usuario %s ha salido exitosamente del lobby %s", username, lobbyID)
 		client.Emit("exited_lobby", gin.H{

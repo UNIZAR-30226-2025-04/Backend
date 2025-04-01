@@ -78,7 +78,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("broadcast_to_lobby", handlers.BroadcastMessageToLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 
 		// NOTE: will remove sio connection from map
-		client.On("disconnecting", handlers.HandleDisconnecting(username, (*socketio_types.SocketServer)(sio)))
+		client.On("disconnecting", handlers.HandleDisconnecting(username, (*socketio_types.SocketServer)(sio), redisClient, db))
 
 		// Play a hand and recieve the type of hand and the points scored
 		client.On("play_hand", handlers.HandlePlayHand(redisClient, client, db, username))
