@@ -17,11 +17,12 @@ import (
 // TODO: we need to add an option to make the created lobby public or private
 
 // @Summary Creates a new lobby
-// @Description Returns the id of a new created lobby?
+// @Description Returns the id of a new created lobby
 // @Tags lobby
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Success 200 {array} object{message=string,lobby_id=integer}
+// @Param public formData boolean false "Set to true for public lobby, false or omitted for private lobby"
+// @Success 200 {object} object{message=string,lobby_id=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 401 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
@@ -29,11 +30,17 @@ import (
 // @Security ApiKeyAuth
 func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		email, err := middleware.JWT_decoder(c)
 		if err != nil {
 			log.Print("Error en jwt...")
 			return
+		}
+
+		// Parse public parameter with default to false (private)
+		isPublic := false
+		publicParam := c.PostForm("public")
+		if publicParam == "true" {
+			isPublic = true
 		}
 
 		var user models.User
@@ -43,29 +50,26 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		}
 
 		username := user.ProfileUsername
-
 		if username == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
 			return
 		}
-		// Here we already have the username for the creator of the lobby
 
-		// *There is a function on the models gamelobby "beforeCreate" for the id generation
-
+		// Create lobby with public/private setting
 		NewLobby := models.GameLobby{
 			CreatorUsername: username,
 			NumberOfRounds:  0,
 			TotalPoints:     0,
-			// NOTE: GameHasBegun has false value by default
+			IsPublic:        isPublic, // Set from parameter
 		}
 
 		if err := db.Create(&NewLobby).Error; err != nil {
-			log.Fatal("Failed to create lobby:", err)
+			log.Printf("Failed to create lobby: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating lobby"})
 			return
 		}
 
-		// Create corresponding Redis lobby
+		// Create corresponding Redis lobby with matching public/private setting
 		redisLobby := &redis_models.GameLobby{
 			Id:              NewLobby.ID,
 			CreatorUsername: username,
@@ -73,13 +77,12 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			TotalPoints:     0,
 			CreatedAt:       NewLobby.CreatedAt,
 			GameHasBegun:    false,
-			IsPublic:        false,
-			ChatHistory:     []redis_models.ChatMessage{}, // Initialize empty chat
+			IsPublic:        isPublic, // Set from parameter
+			ChatHistory:     []redis_models.ChatMessage{},
 		}
 
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
 			log.Printf("Failed to create lobby in Redis: %v", err)
-			// Rollback PostgreSQL creation on Redis failure
 			if err := db.Delete(&NewLobby).Error; err != nil {
 				log.Printf("Failed to rollback PostgreSQL lobby creation: %v", err)
 			}
@@ -87,14 +90,10 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			return
 		}
 
-		rLobby, err := redisClient.GetGameLobby(NewLobby.ID)
-		if err == nil {
-			log.Println("Created lobby on Redis: ", rLobby)
-		}
-
 		c.JSON(http.StatusOK, gin.H{
 			"lobby_id": NewLobby.ID,
-			"message":  "Lobby created sucessfully",
+			"message":  "Lobby created successfully",
+			"public":   isPublic,
 		})
 	}
 
@@ -156,14 +155,14 @@ func GetLobbyInfo(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// @Summary Lists all existing lobbies
-// @Description Returns a list of all the lobbies with player count
+// @Summary Lists all existing public lobbies
+// @Description Returns a list of all public lobbies with player count
 // @Tags lobby
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @in header
-// @Success 200 {array} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string,host_icon=integer,player_count=integer}
+// @Success 200 {array} object{lobby_id=string,creator_username=string,number_rounds=integer,total_points=integer,created_at=string,host_icon=integer,player_count=integer,is_public=boolean}
 // @Failure 401 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/getAllLobbies [get]
@@ -187,8 +186,8 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 
 		var gameLobbies []models.GameLobby
 
-		// Get all lobbies from database
-		if err := db.Find(&gameLobbies).Error; err != nil {
+		// Get only public lobbies from database
+		if err := db.Where("is_public = ?", true).Find(&gameLobbies).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve lobbies"})
 			return
 		}
@@ -248,6 +247,7 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 				"created_at":       lobby.CreatedAt,
 				"host_icon":        hostIcons[lobby.CreatorUsername],
 				"player_count":     playerCounts[lobby.ID], // Add player count from the map
+				"is_public":        true,                   // Always true since we're filtering for public lobbies
 			}
 		}
 
@@ -716,6 +716,103 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"lobby_id": "",
 			"message":  "No lobbies found",
+		})
+	}
+}
+
+// @Summary Updates lobby visibility (public/private)
+// @Description Toggles a lobby between public and private. Only the creator can change this setting.
+// @Tags lobby
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @Param lobby_id path string true "Lobby ID"
+// @Param is_public formData boolean true "Set to true for public lobby, false for private lobby"
+// @Success 200 {object} object{message=string,is_public=boolean}
+// @Failure 400 {object} object{error=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 403 {object} object{error=string} "User is not the lobby creator"
+// @Failure 404 {object} object{error=string} "Lobby not found"
+// @Failure 500 {object} object{error=string}
+// @Router /auth/setLobbyVisibility/{lobby_id} [post]
+// @Security ApiKeyAuth
+func SetLobbyVisibility(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get lobby ID from parameters
+		lobbyID := c.Param("lobby_id")
+
+		// Get visibility parameter
+		isPublicStr := c.PostForm("is_public")
+		isPublic := isPublicStr == "true"
+
+		// Get user from JWT token
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error in JWT...")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		username := user.ProfileUsername
+
+		// Find the lobby
+		var lobby models.GameLobby
+		if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
+			return
+		}
+
+		// Verify the user is the lobby creator
+		if lobby.CreatorUsername != username {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only the lobby creator can change visibility settings"})
+			return
+		}
+
+		// Start transaction
+		tx := db.Begin()
+
+		// Update visibility in PostgreSQL
+		if err := tx.Model(&lobby).Update("is_public", isPublic).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update lobby visibility"})
+			return
+		}
+
+		// Update visibility in Redis
+		redisLobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve Redis lobby"})
+			return
+		}
+
+		redisLobby.IsPublic = isPublic
+		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update Redis lobby"})
+			return
+		}
+
+		// Commit transaction
+		if err := tx.Commit().Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error committing transaction"})
+			return
+		}
+
+		// Return success
+		c.JSON(http.StatusOK, gin.H{
+			"message":   "Lobby visibility updated successfully",
+			"is_public": isPublic,
 		})
 	}
 }
