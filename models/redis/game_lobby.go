@@ -12,4 +12,5 @@ type GameLobby struct {
 	GameHasBegun    bool          `json:"game_has_begun"`   // Matches game_lobbies.game_has_begun
 	IsPublic        bool          `json:"is_public"`        // Matches game_lobbies.is_public
 	ChatHistory     []ChatMessage `json:"chat_history"`     // Redis-specific field for real-time chat
+
 }

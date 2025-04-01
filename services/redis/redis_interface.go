@@ -12,6 +12,58 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// ChatMessage represents a message in the game chat
+type ChatMessage struct {
+	Message   string    `json:"message"`
+	Username  string    `json:"username"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// InGamePlayer represents a player's state during a game
+type InGamePlayer struct {
+	Username       string          `json:"username"`         // Matches game_profiles.username
+	LobbyId        string          `json:"lobby_id"`         // Matches game_lobbies.id
+	PlayersMoney   int             `json:"players_money"`    // Matches in_game_players.players_money
+	CurrentDeck    json.RawMessage `json:"current_deck"`     // Temporary Redis field
+	Modifiers      json.RawMessage `json:"modifiers"`        // Temporary Redis field
+	CurrentJokers  json.RawMessage `json:"current_jokers"`   // Temporary Redis field
+	MostPlayedHand json.RawMessage `json:"most_played_hand"` // Matches in_game_players.most_played_hand
+	Winner         bool            `json:"winner"`           // Matches in_game_players.winner
+}
+
+// GameLobby represents a game lobby state
+type GameLobby struct {
+	Id              string        `json:"id"`               // Matches game_lobbies.id
+	CreatorUsername string        `json:"creator_username"` // Matches game_lobbies.creator_username
+	NumberOfRounds  int           `json:"number_of_rounds"` // Matches game_lobbies.number_of_rounds
+	TotalPoints     int           `json:"total_points"`     // Matches game_lobbies.total_points
+	CreatedAt       time.Time     `json:"created_at"`       // Matches game_lobbies.created_at
+	GameHasBegun    bool          `json:"game_has_begun"`   // Matches game_lobbies.game_has_begun
+	ChatHistory     []ChatMessage `json:"chat_history"`     // Redis-specific field for real-time chat
+}
+
+// DE YAGO NOSE SI ESTÁ BIEN VALE???
+//----------------------------------------------------------------------------------------------------
+
+type HandLevel struct {
+	Fichas      int `json:"fichas"`       // Score multiplier
+	Mult        int `json:"mult"`         // XP needed for next level
+	TimesPlayed int `json:"times_played"` // Tracking for stats
+}
+
+// Value supongo que usaremos en plan un int como "relacionador" de midifier con lo que hace pa aplicarlo
+type Modifier struct {
+	Value       float64   `json:"value"`
+	ExpiresAt   time.Time `json:"expires_at"` // -1 if no acaba hasta final de partida?
+	Description string    `json:"description"`
+}
+
+type Joker struct {
+	ID string `json:"id"`
+}
+
+//----------------------------------------------------------------------------------------------------
+
 // RedisClient handles Redis operations
 type RedisClient struct {
 	client *redis.Client

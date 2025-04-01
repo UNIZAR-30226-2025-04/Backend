@@ -1,5 +1,5 @@
 basePath: /
-host: nogler.ddns.net:443
+host: nogler.ddns.net:8080
 info:
   contact: {}
   description: Gin-Gonic server for the "Nogler" game API
@@ -558,6 +558,51 @@ paths:
       summary: Log out a user
       tags:
       - auth
+  /auth/matchMaking:
+    post:
+      description: Returns the code of a lobby with a similiar score to the user
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lobby found or not found
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Error retrieving lobby
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Returns a lobby code
+      tags:
+      - lobby
   /auth/me:
     get:
       description: Returns private information about the authenticated user
