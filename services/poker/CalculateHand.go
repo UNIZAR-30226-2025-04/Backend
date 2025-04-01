@@ -13,8 +13,8 @@ type Hand struct {
 }
 
 type Deck struct {
-	TotalCards  []Card // Available cards
-	PlayedCards []Card // Cards that have been played/discarded
+	TotalCards  []Card `json:"total_cards"`
+	PlayedCards []Card `json:"played_cards"`
 }
 
 // Define a Card struct with a Rank and suit

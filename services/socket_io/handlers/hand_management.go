@@ -161,18 +161,16 @@ func HandleGetFullDeck(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// 2. Parse the deck data
-		var deck poker.Deck
+		var deck *poker.Deck
 		if player.CurrentDeck != nil {
-			err = json.Unmarshal(player.CurrentDeck, &deck)
+			deck, err = poker.DeckFromJSON(player.CurrentDeck)
 			if err != nil {
 				log.Printf("[DECK-ERROR] Error parsing deck: %v", err)
 				client.Emit("error", gin.H{"error": "Error al procesar el mazo"})
 				return
 			}
 		} else {
-			// Initialize empty deck if none exists
-			deck = poker.Deck{
+			deck = &poker.Deck{
 				TotalCards:  make([]poker.Card, 0),
 				PlayedCards: make([]poker.Card, 0),
 			}
