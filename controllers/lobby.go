@@ -4,6 +4,7 @@ import (
 	"Nogler/middleware"
 	models "Nogler/models/postgres"
 	redis_models "Nogler/models/redis"
+	"Nogler/services/poker"
 	"Nogler/services/redis"
 	"Nogler/utils"
 	"log"
@@ -95,6 +96,8 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			"message":  "Lobby created successfully",
 			"public":   isPublic,
 		})
+
+		// TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! INITIAL USER DOESNT HAVE DECK SINCE HE DOESNT EXPLICITLY JOIN??
 	}
 
 	// NOTE: after this endpoint returns the response to the client, the client should initiate the
@@ -337,11 +340,11 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		redisPlayer := &redis_models.InGamePlayer{
 			Username:       username,
 			LobbyId:        lobbyID,
-			PlayersMoney:   0,   // Initial money --> TODO: ver cuánto es la cifra inicial
-			CurrentDeck:    nil, // Will be initialized when game starts
-			Modifiers:      nil, // Will be initialized when game starts
-			CurrentJokers:  nil, // Will be initialized when game starts
-			MostPlayedHand: nil, // Will be initialized during game
+			PlayersMoney:   10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
+			CurrentDeck:    poker.InitializePlayerDeck(), // Will be initialized when game starts
+			Modifiers:      nil,                          // Will be initialized when game starts
+			CurrentJokers:  nil,                          // Will be initialized when game starts
+			MostPlayedHand: nil,                          // Will be initialized during game
 		}
 
 		if err := redisClient.SaveInGamePlayer(redisPlayer); err != nil {
