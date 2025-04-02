@@ -180,65 +180,6 @@ paths:
       summary: Remove a friend
       tags:
       - friends
-  /auth/exitLobby/{lobby_id}:
-    post:
-      consumes:
-      - application/json
-      description: Removes the user to the relation user-lobby
-      parameters:
-      - description: Bearer JWT token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: lobby_id
-        in: path
-        name: lobby_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            properties:
-              message:
-                type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Removes the user from the lobby
-      tags:
-      - lobby
   /auth/friends:
     get:
       description: Returns a list of the user's friends
@@ -353,6 +294,19 @@ paths:
           description: OK
           schema:
             properties:
+              lobby_info:
+                properties:
+                  creator:
+                    type: string
+                  game_has_begun:
+                    type: boolean
+                  id:
+                    type: string
+                  number_rounds:
+                    type: integer
+                  total_points:
+                    type: integer
+                type: object
               message:
                 type: string
             type: object
@@ -387,77 +341,6 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Inserts a user into a lobby
-      tags:
-      - lobby
-  /auth/kickFromLobby/{lobby_id}/{username}:
-    post:
-      consumes:
-      - application/json
-      description: Host can remove another user from their lobby
-      parameters:
-      - description: Bearer JWT token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: lobby_id
-        in: path
-        name: lobby_id
-        required: true
-        type: string
-      - description: username to kick
-        in: path
-        name: username
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            properties:
-              message:
-                type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Kicks a user from a lobby
       tags:
       - lobby
   /auth/lobbyInfo/{lobby_id}:
