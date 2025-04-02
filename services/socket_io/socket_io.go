@@ -47,7 +47,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client := clients[0].(*socket.Socket)
 
 		// Check if the client is authenticated
-		success, username, email := socketio_utils.VerifyUserConnection(client)
+		success, username, email := socketio_utils.VerifyUserConnection(client, db)
 		if !success {
 			return
 		}
