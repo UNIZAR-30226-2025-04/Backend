@@ -78,7 +78,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("broadcast_to_lobby", handlers.BroadcastMessageToLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 
 		// NOTE: will remove sio connection from map
-		client.On("disconnecting", handlers.HandleDisconnecting(username, (*socketio_types.SocketServer)(sio), redisClient, db))
+		client.On("disconnecting", handlers.HandleDisconnecting(username, (*socketio_types.SocketServer)(sio)))
 
 		// Start game
 		client.On("start_game", handlers.HandleStartGame(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
