@@ -12,36 +12,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// ChatMessage represents a message in the game chat
-type ChatMessage struct {
-	Message   string    `json:"message"`
-	Username  string    `json:"username"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-// InGamePlayer represents a player's state during a game
-type InGamePlayer struct {
-	Username       string          `json:"username"`         // Matches game_profiles.username
-	LobbyId        string          `json:"lobby_id"`         // Matches game_lobbies.id
-	PlayersMoney   int             `json:"players_money"`    // Matches in_game_players.players_money
-	CurrentDeck    json.RawMessage `json:"current_deck"`     // Temporary Redis field
-	Modifiers      json.RawMessage `json:"modifiers"`        // Temporary Redis field
-	CurrentJokers  json.RawMessage `json:"current_jokers"`   // Temporary Redis field
-	MostPlayedHand json.RawMessage `json:"most_played_hand"` // Matches in_game_players.most_played_hand
-	Winner         bool            `json:"winner"`           // Matches in_game_players.winner
-}
-
-// GameLobby represents a game lobby state
-type GameLobby struct {
-	Id              string        `json:"id"`               // Matches game_lobbies.id
-	CreatorUsername string        `json:"creator_username"` // Matches game_lobbies.creator_username
-	NumberOfRounds  int           `json:"number_of_rounds"` // Matches game_lobbies.number_of_rounds
-	TotalPoints     int           `json:"total_points"`     // Matches game_lobbies.total_points
-	CreatedAt       time.Time     `json:"created_at"`       // Matches game_lobbies.created_at
-	GameHasBegun    bool          `json:"game_has_begun"`   // Matches game_lobbies.game_has_begun
-	ChatHistory     []ChatMessage `json:"chat_history"`     // Redis-specific field for real-time chat
-}
-
 // DE YAGO NOSE SI ESTÁ BIEN VALE???
 //----------------------------------------------------------------------------------------------------
 
@@ -102,13 +72,8 @@ func (rc *RedisClient) SaveInGamePlayer(player *redis_models.InGamePlayer) error
 		return fmt.Errorf("error marshaling player data: %v", err)
 	}
 
-	playerLobbyKey := redis_utils.FormatPlayerCurrentLobbyKey(player.Username)
-
-	pipe := rc.client.Pipeline()
-	pipe.Set(rc.ctx, key, data, 24*time.Hour)
-	pipe.Set(rc.ctx, playerLobbyKey, player.LobbyId, 24*time.Hour)
-	_, err = pipe.Exec(rc.ctx)
-	return err
+	// Simply set the player data, lobby ID is contained within the player object
+	return rc.client.Set(rc.ctx, key, data, 24*time.Hour).Err()
 }
 
 // GetInGamePlayer retrieves a player's game state from Redis
@@ -129,36 +94,25 @@ func (rc *RedisClient) GetInGamePlayer(username string) (*redis_models.InGamePla
 }
 
 // DeleteInGamePlayer removes a player's game state from Redis
-// Deletes both "player:{username}:game" and "player:{username}:current_lobby" keys
+// Deletes the player's game state
 func (rc *RedisClient) DeleteInGamePlayer(username string, lobbyId string) error {
-	// Create pipeline for atomic operation
-	pipe := rc.client.Pipeline()
-
-	// Delete player game state
+	// Delete player game state only
 	gameKey := redis_utils.FormatInGamePlayerKey(username)
-	pipe.Del(rc.ctx, gameKey)
-
-	// Delete player's current lobby reference
-	lobbyKey := redis_utils.FormatPlayerCurrentLobbyKey(username)
-	pipe.Del(rc.ctx, lobbyKey)
-
-	// Execute pipeline
-	_, err := pipe.Exec(rc.ctx)
+	err := rc.client.Del(rc.ctx, gameKey).Err()
 	if err != nil {
 		return fmt.Errorf("error deleting player data: %v", err)
 	}
-
 	return nil
 }
 
 // GetPlayerCurrentLobby retrieves the current lobby of a player
+// by extracting it from the player's game state
 func (rc *RedisClient) GetPlayerCurrentLobby(playerName string) (string, error) {
-	key := redis_utils.FormatPlayerCurrentLobbyKey(playerName)
-	lobbyID, err := rc.client.Get(rc.ctx, key).Result()
+	player, err := rc.GetInGamePlayer(playerName)
 	if err != nil {
 		return "", fmt.Errorf("error getting player's current lobby: %v", err)
 	}
-	return lobbyID, nil
+	return player.LobbyId, nil
 }
 
 // SaveGameLobby stores a game lobby state in Redis
@@ -188,30 +142,6 @@ func (rc *RedisClient) GetGameLobby(lobbyId string) (*redis_models.GameLobby, er
 		return nil, fmt.Errorf("error unmarshaling lobby data: %v", err)
 	}
 	return &lobby, nil
-}
-
-// AddChatMessage adds a new message to the lobby's chat history
-// Key format: "lobby:{id}"
-// Updates the chat_history field of the GameLobby
-func (rc *RedisClient) AddChatMessage(lobbyId string, message *redis_models.ChatMessage) error {
-	lobby, err := rc.GetGameLobby(lobbyId)
-	if err != nil {
-		return fmt.Errorf("error getting lobby for chat: %v", err)
-	}
-
-	lobby.ChatHistory = append(lobby.ChatHistory, *message)
-	return rc.SaveGameLobby(lobby)
-}
-
-// GetChatHistory retrieves the chat history for a lobby
-// Key format: "lobby:{id}"
-// Returns: Array of ChatMessage or error
-func (rc *RedisClient) GetChatHistory(lobbyId string) ([]redis_models.ChatMessage, error) {
-	lobby, err := rc.GetGameLobby(lobbyId)
-	if err != nil {
-		return nil, fmt.Errorf("error getting lobby for chat history: %v", err)
-	}
-	return lobby.ChatHistory, nil
 }
 
 // DeleteGameLobby removes a game lobby state from Redis

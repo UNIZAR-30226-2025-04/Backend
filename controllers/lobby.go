@@ -78,8 +78,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			TotalPoints:     0,
 			CreatedAt:       NewLobby.CreatedAt,
 			GameHasBegun:    false,
-			IsPublic:        isPublic, // Set from parameter
-			ChatHistory:     []redis_models.ChatMessage{},
+			IsPublic:        isPublic,
 		}
 
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {

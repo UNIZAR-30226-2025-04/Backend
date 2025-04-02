@@ -218,7 +218,6 @@ func TestSyncManager(t *testing.T) {
 			Id:             testLobbyId,
 			NumberOfRounds: 5,
 			TotalPoints:    2000,
-			ChatHistory:    []redis_models.ChatMessage{},
 		}
 
 		fmt.Printf("\nData in Redis before sync:\n%+v\n", lobby)

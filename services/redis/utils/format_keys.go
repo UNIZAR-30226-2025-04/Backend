@@ -12,10 +12,6 @@ func FormatInGamePlayerKey(username string) string {
 	return fmt.Sprintf("player:%s:game", username)
 }
 
-func FormatPlayerCurrentLobbyKey(username string) string {
-	return fmt.Sprintf("player:%s:current_lobby", username)
-}
-
 func FormatLobbyKey(lobbyId string) string {
 	return fmt.Sprintf("lobby:%s", lobbyId)
 }

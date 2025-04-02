@@ -22,7 +22,7 @@ func VerifyUserConnection(client *socket.Socket, db *gorm.DB) (success bool, use
 	}
 
 	// Check if authorization token exists
-	_, exists := authData["authorization"].(string)
+	token, exists := authData["authorization"].(string)
 	if !exists {
 		fmt.Println("No authorization token provided in handshake!")
 		client.Emit("error", gin.H{"error": "Authentication failed: missing authorization token"})
@@ -30,7 +30,7 @@ func VerifyUserConnection(client *socket.Socket, db *gorm.DB) (success bool, use
 	}
 
 	// Decode JWT to get email
-	fmt.Println("Provided JWT: ", authData["authorization"].(string))
+	fmt.Println("Provided JWT: ", token)
 	email, err := middleware.Socketio_JWT_decoder(authData)
 	if err != nil {
 		fmt.Println("Error decoding JWT:", err)

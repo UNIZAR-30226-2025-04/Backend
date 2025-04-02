@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 )
 
 func TestRedisOperations(t *testing.T) {
@@ -36,7 +35,6 @@ func TestRedisOperations(t *testing.T) {
 			Id:             "test_lobby_123",
 			NumberOfRounds: 15,
 			TotalPoints:    2000,
-			ChatHistory:    []redis_models.ChatMessage{},
 		}
 
 		fmt.Printf("\nOriginal Lobby Data: %+v\n", lobby)
@@ -103,39 +101,6 @@ func TestRedisOperations(t *testing.T) {
 
 	t.Run("Chat Operations", func(t *testing.T) {
 		cleanupRedis()
-		messages := []*redis_models.ChatMessage{
-			{
-				Message:   "Hello!",
-				Username:  "test_player",
-				Timestamp: time.Now(),
-			},
-			{
-				Message:   "Ready to play",
-				Username:  "test_player",
-				Timestamp: time.Now(),
-			},
-		}
-
-		for _, msg := range messages {
-			fmt.Printf("\nSending message: %+v\n", msg)
-			if err := rc.AddChatMessage("test_lobby_123", msg); err != nil {
-				t.Errorf("Failed to add message: %v", err)
-			}
-		}
-
-		history, err := rc.GetChatHistory("test_lobby_123")
-		if err != nil {
-			t.Errorf("Failed to get chat history: %v", err)
-		}
-
-		fmt.Printf("\nRetrieved Chat History:\n")
-		for i, msg := range history {
-			fmt.Printf("Message %d: %+v\n", i+1, msg)
-		}
-
-		if len(history) != len(messages) {
-			t.Errorf("Chat history length mismatch. Expected %d, got %d",
-				len(messages), len(history))
-		}
+		// No longer storing chat history in Redis
 	})
 }
