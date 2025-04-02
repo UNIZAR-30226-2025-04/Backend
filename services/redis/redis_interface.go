@@ -12,36 +12,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// ChatMessage represents a message in the game chat
-type ChatMessage struct {
-	Message   string    `json:"message"`
-	Username  string    `json:"username"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-// InGamePlayer represents a player's state during a game
-type InGamePlayer struct {
-	Username       string          `json:"username"`         // Matches game_profiles.username
-	LobbyId        string          `json:"lobby_id"`         // Matches game_lobbies.id
-	PlayersMoney   int             `json:"players_money"`    // Matches in_game_players.players_money
-	CurrentDeck    json.RawMessage `json:"current_deck"`     // Temporary Redis field
-	Modifiers      json.RawMessage `json:"modifiers"`        // Temporary Redis field
-	CurrentJokers  json.RawMessage `json:"current_jokers"`   // Temporary Redis field
-	MostPlayedHand json.RawMessage `json:"most_played_hand"` // Matches in_game_players.most_played_hand
-	Winner         bool            `json:"winner"`           // Matches in_game_players.winner
-}
-
-// GameLobby represents a game lobby state
-type GameLobby struct {
-	Id              string        `json:"id"`               // Matches game_lobbies.id
-	CreatorUsername string        `json:"creator_username"` // Matches game_lobbies.creator_username
-	NumberOfRounds  int           `json:"number_of_rounds"` // Matches game_lobbies.number_of_rounds
-	TotalPoints     int           `json:"total_points"`     // Matches game_lobbies.total_points
-	CreatedAt       time.Time     `json:"created_at"`       // Matches game_lobbies.created_at
-	GameHasBegun    bool          `json:"game_has_begun"`   // Matches game_lobbies.game_has_begun
-	ChatHistory     []ChatMessage `json:"chat_history"`     // Redis-specific field for real-time chat
-}
-
 // DE YAGO NOSE SI ESTÁ BIEN VALE???
 //----------------------------------------------------------------------------------------------------
 
@@ -172,30 +142,6 @@ func (rc *RedisClient) GetGameLobby(lobbyId string) (*redis_models.GameLobby, er
 		return nil, fmt.Errorf("error unmarshaling lobby data: %v", err)
 	}
 	return &lobby, nil
-}
-
-// AddChatMessage adds a new message to the lobby's chat history
-// Key format: "lobby:{id}"
-// Updates the chat_history field of the GameLobby
-func (rc *RedisClient) AddChatMessage(lobbyId string, message *redis_models.ChatMessage) error {
-	lobby, err := rc.GetGameLobby(lobbyId)
-	if err != nil {
-		return fmt.Errorf("error getting lobby for chat: %v", err)
-	}
-
-	lobby.ChatHistory = append(lobby.ChatHistory, *message)
-	return rc.SaveGameLobby(lobby)
-}
-
-// GetChatHistory retrieves the chat history for a lobby
-// Key format: "lobby:{id}"
-// Returns: Array of ChatMessage or error
-func (rc *RedisClient) GetChatHistory(lobbyId string) ([]redis_models.ChatMessage, error) {
-	lobby, err := rc.GetGameLobby(lobbyId)
-	if err != nil {
-		return nil, fmt.Errorf("error getting lobby for chat history: %v", err)
-	}
-	return lobby.ChatHistory, nil
 }
 
 // DeleteGameLobby removes a game lobby state from Redis
