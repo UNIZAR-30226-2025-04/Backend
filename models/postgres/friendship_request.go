@@ -11,8 +11,8 @@ import (
  * The type 'FriendshipRequest' represents a friendship request
  */
 type FriendshipRequest struct {
-	Sender    string    `gorm:"primaryKey;size:50;not null"`
-	Recipient string    `gorm:"primaryKey;size:50;not null"`
+  Sender    string    `gorm:"primaryKey;size:50;not null;index:idx_friend_request_sender"`
+	Recipient string    `gorm:"primaryKey;size:50;not null;index:idx_friend_request_recipient"`
 	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 
 	// Relationships

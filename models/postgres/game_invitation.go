@@ -9,9 +9,9 @@ import (
  * a reference to GameLobby and GameProfile
  */
 type GameInvitation struct {
-	LobbyID         string    `gorm:"primaryKey;size:50;not null"`
-	SenderUsername  string    `gorm:"primaryKey;size:50;not null"`
-	InvitedUsername string    `gorm:"primaryKey;size:50;not null"`
+  LobbyID         string    `gorm:"primaryKey;size:50;not null;index:idx_invitations_lobby_user, priority:1"`
+  SenderUsername  string    `gorm:"primaryKey;size:50;not null;index:idx_invitations_sender"`
+  InvitedUsername string    `gorm:"primaryKey;size:50;not null;index:idx_invitations_lobby_user,priority:2"`
 	CreatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 
 	// Relationships

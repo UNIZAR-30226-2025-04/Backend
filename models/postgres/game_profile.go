@@ -9,7 +9,7 @@ import "gorm.io/datatypes"
 type GameProfile struct {
 	// NOTE: not null also requires a default value: https://stackoverflow.com/questions/43633108/gorm-upgrading-columns-constraint-with-migration
 	Username  string         `gorm:"type:varchar(50);primaryKey"`
-	UserStats datatypes.JSON `gorm:"type:jsonb;default:'{}'"`
+  UserStats datatypes.JSON `gorm:"type:jsonb;default:'{}';index:idx_profile_stats,type:gin"`
 	UserIcon  int            `gorm:"type:integer;default:0"`
 	IsInAGame bool           `gorm:"type:boolean;default:false"`
 	UserScore int            `gorm:"type:integer;default:0"`
