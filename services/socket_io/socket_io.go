@@ -49,6 +49,9 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		// Check if the client is authenticated
 		success, username, email := socketio_utils.VerifyUserConnection(client, db)
 		if !success {
+			client.Emit("connection_error", gin.H{
+				"message": "Authentication failed",
+			})
 			return
 		}
 
@@ -61,6 +64,12 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		// log oki
 		fmt.Println("An individual just connected!: ", username)
 		fmt.Println("Current connections: ", sio.UserConnections)
+
+		client.Emit("connection_success", gin.H{
+			"message":  "Connection successful",
+			"username": username,
+			"email":    email,
+		})
 
 		// Join the user to a room corresponding to a Nogler game lobby
 		client.On("join_lobby", handlers.HandleJoinLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
