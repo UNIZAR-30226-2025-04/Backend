@@ -102,13 +102,8 @@ func (rc *RedisClient) SaveInGamePlayer(player *redis_models.InGamePlayer) error
 		return fmt.Errorf("error marshaling player data: %v", err)
 	}
 
-	playerLobbyKey := redis_utils.FormatPlayerCurrentLobbyKey(player.Username)
-
-	pipe := rc.client.Pipeline()
-	pipe.Set(rc.ctx, key, data, 24*time.Hour)
-	pipe.Set(rc.ctx, playerLobbyKey, player.LobbyId, 24*time.Hour)
-	_, err = pipe.Exec(rc.ctx)
-	return err
+	// Simply set the player data, lobby ID is contained within the player object
+	return rc.client.Set(rc.ctx, key, data, 24*time.Hour).Err()
 }
 
 // GetInGamePlayer retrieves a player's game state from Redis
@@ -129,36 +124,25 @@ func (rc *RedisClient) GetInGamePlayer(username string) (*redis_models.InGamePla
 }
 
 // DeleteInGamePlayer removes a player's game state from Redis
-// Deletes both "player:{username}:game" and "player:{username}:current_lobby" keys
+// Deletes the player's game state
 func (rc *RedisClient) DeleteInGamePlayer(username string, lobbyId string) error {
-	// Create pipeline for atomic operation
-	pipe := rc.client.Pipeline()
-
-	// Delete player game state
+	// Delete player game state only
 	gameKey := redis_utils.FormatInGamePlayerKey(username)
-	pipe.Del(rc.ctx, gameKey)
-
-	// Delete player's current lobby reference
-	lobbyKey := redis_utils.FormatPlayerCurrentLobbyKey(username)
-	pipe.Del(rc.ctx, lobbyKey)
-
-	// Execute pipeline
-	_, err := pipe.Exec(rc.ctx)
+	err := rc.client.Del(rc.ctx, gameKey).Err()
 	if err != nil {
 		return fmt.Errorf("error deleting player data: %v", err)
 	}
-
 	return nil
 }
 
 // GetPlayerCurrentLobby retrieves the current lobby of a player
+// by extracting it from the player's game state
 func (rc *RedisClient) GetPlayerCurrentLobby(playerName string) (string, error) {
-	key := redis_utils.FormatPlayerCurrentLobbyKey(playerName)
-	lobbyID, err := rc.client.Get(rc.ctx, key).Result()
+	player, err := rc.GetInGamePlayer(playerName)
 	if err != nil {
 		return "", fmt.Errorf("error getting player's current lobby: %v", err)
 	}
-	return lobbyID, nil
+	return player.LobbyId, nil
 }
 
 // SaveGameLobby stores a game lobby state in Redis
