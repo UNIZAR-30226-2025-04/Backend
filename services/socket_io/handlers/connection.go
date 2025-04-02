@@ -24,6 +24,12 @@ func HandleDisconnecting(username string, sio *socketio_types.SocketServer, redi
 			return
 		}
 
+		// Remove the player from PostgreSQL
+		if err := db.Delete(&models.InGamePlayer{}, "username = ? AND lobby_id = ?", username, lobbyID).Error; err != nil {
+			fmt.Printf("[DISCONNECT-ERROR] Could not remove player %s from PostgreSQL: %v\n", username, err)
+			return
+		}
+
 		// Remove the player from Redis
 		if err := redisClient.DeleteInGamePlayer(username, lobbyID); err != nil {
 			fmt.Printf("[DISCONNECT-ERROR] Could not remove player %s from Redis: %v\n", username, err)

@@ -80,6 +80,9 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		// NOTE: will remove sio connection from map
 		client.On("disconnecting", handlers.HandleDisconnecting(username, (*socketio_types.SocketServer)(sio), redisClient, db))
 
+		// Start game
+		client.On("start_game", handlers.HandleStartGame(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+
 		// Play a hand and recieve the type of hand and the points scored
 		client.On("play_hand", handlers.HandlePlayHand(redisClient, client, db, username))
 

@@ -239,8 +239,16 @@ func HandleExitLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// Notify success
+		log.Printf("[EXIT-SUCCESS] Usuario %s ha salido exitosamente del lobby %s", username, lobbyID)
+		client.Emit("exited_lobby", gin.H{
+			"lobby_id": lobbyID,
+			"message":  "Has salido del lobby exitosamente",
+		})
+
 		// If there are no more players, delete the lobby from PostgreSQL and Redis
 		if len(playersInLobby) == 0 {
+			log.Printf("[EXIT] No players left in lobby %s. Deleting lobby...", lobbyID)
 			// Delete lobby from PostgreSQL
 			if err := db.Delete(&lobby).Error; err != nil {
 				client.Emit("error", gin.H{"error": "Error deleting lobby"})
@@ -255,13 +263,6 @@ func HandleExitLobby(redisClient *redis.RedisClient, client *socket.Socket,
 				}
 			}
 		}
-
-		// Notify success
-		log.Printf("[EXIT-SUCCESS] Usuario %s ha salido exitosamente del lobby %s", username, lobbyID)
-		client.Emit("exited_lobby", gin.H{
-			"lobby_id": lobbyID,
-			"message":  "Has salido del lobby exitosamente",
-		})
 
 		// Broadcast to other players in the lobby that this player left
 		client.To(socket.Room(lobbyID)).Emit("player_left", gin.H{
@@ -440,5 +441,57 @@ func BroadcastMessageToLobby(redisClient *redis.RedisClient, client *socket.Sock
 
 		// Send the message to all clients in the lobby
 		sio.Sio_server.To(socket.Room(lobbyID)).Emit("new_lobby_message", gin.H{"lobby_id": lobbyID, "username": username, "user_icon": icon, "message": message})
+	}
+}
+
+func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("[STARTING-GAME] HandleStartGame started - Usuario: %s, Args: %v", username, args)
+
+		if len(args) < 1 {
+			log.Printf("[START-ERROR] Arguments are missing %s", username)
+			client.Emit("error", gin.H{"error": "Lobby ID is missing"})
+			return
+		}
+
+		lobbyID := args[0].(string)
+
+		// Check if lobby exists
+		var lobby *models.GameLobby
+		lobby, err := utils.CheckLobbyExists(db, lobbyID)
+		if err != nil {
+			fmt.Println("Lobby does not exist:", lobbyID)
+			client.Emit("error", gin.H{"error": "Lobby does not exist"})
+			return
+		}
+
+		// Check if user is the host
+		if username != lobby.CreatorUsername {
+			client.Emit("error", gin.H{"error": "Only the host can start the game"})
+			return
+		}
+
+		// Update lobby state to "in progress" in PostgreSQL
+		if err := db.Model(&models.GameLobby{}).Where("id = ?", lobbyID).Update("game_has_begun", true).Error; err != nil {
+			client.Emit("error", gin.H{"error": "Error updating lobby state"})
+			return
+		}
+
+		// Update Redis state to "in progress"
+		if redisClient != nil {
+			if err := redisClient.CloseLobby(lobbyID); err != nil {
+				client.Emit("error", gin.H{"error": "Error updating Redis state"})
+				return
+			}
+		}
+
+		// Broadcast to all users in the lobby that the game is starting
+		sio.Sio_server.To(socket.Room(lobbyID)).Emit("game_starting", gin.H{
+			"lobby_id": lobbyID,
+			"message":  "The game is starting!",
+		})
+
+		log.Printf("[START-SUCCESS] The game started succesfully %s by %s", lobbyID, username)
 	}
 }

@@ -232,3 +232,19 @@ func (rc *RedisClient) DeleteGameLobby(lobbyId string) error {
 	}
 	return nil
 }
+
+// CloseLobby closes a lobby by updating its state in Redis
+// Key format: "lobby:{id}"
+// Updates the GameHasBegun field to true
+func (rc *RedisClient) CloseLobby(lobbyId string) error {
+	lobby, err := rc.GetGameLobby(lobbyId)
+	if err != nil {
+		return fmt.Errorf("error getting lobby for closing: %v", err)
+	}
+
+	lobby.GameHasBegun = true
+	if err := rc.SaveGameLobby(lobby); err != nil {
+		return fmt.Errorf("error saving closed lobby: %v", err)
+	}
+	return nil
+}
