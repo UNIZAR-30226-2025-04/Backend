@@ -709,7 +709,7 @@ const docTemplate = `{
             }
         },
         "/auth/matchMaking": {
-            "post": {
+            "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []

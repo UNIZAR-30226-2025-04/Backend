@@ -483,7 +483,7 @@ func SendLobbyInvitation(db *gorm.DB) gin.HandlerFunc {
 // @Failure 400 {object} object{error=string} "User not found"
 // @Failure 401 {object} object{error=string} "User not authenticated"
 // @Failure 500 {object} object{error=string} "Error retrieving lobby"
-// @Router /auth/matchMaking [post]
+// @Router /auth/matchMaking [get]
 // @Security ApiKeyAuth
 func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -511,12 +511,11 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		userScore := userProfile.UserScore
-		difference := 100
-
 		log.Printf("User score: %d", userScore)
 
-		for i := 0; i < 10; i++ {
-			var averageScore int
+		
+		for true{
+			difference := 100
 
 			var gameLobbies []models.GameLobby
 			// Get public and not started lobbies players from database
@@ -527,46 +526,50 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 
 			log.Printf("Found %d game lobbies", len(gameLobbies))
 
-			// Search for a lobby with players with similar score
-			for _, lobby := range gameLobbies {
-				// Only lobbies with less than 8 players and more than 0
-				if len(lobby.InGamePlayers) >= 8 || len(lobby.InGamePlayers) == 0 {
-					continue
-				}
+			for i := 0; i < 10; i++ {
+				var averageScore int
 
-				// Get usernames of players in the lobby
-				var usernames []string
-				for _, player := range lobby.InGamePlayers {
-					usernames = append(usernames, player.Username)
-				}
+				// Search for a lobby with players with similar score
+				for _, lobby := range gameLobbies {
+					// Only lobbies with less than 8 players and more than 0
+					if len(lobby.InGamePlayers) >= 8 || len(lobby.InGamePlayers) == 0 {
+						continue
+					}
 
-				// Get score of the player from PostgreSQL
-				var players []models.GameProfile
-				if err := db.Where("username IN ?", usernames).Find(&players).Error; err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve players in lobby"})
-					return
-				}
+					// Get usernames of players in the lobby
+					var usernames []string
+					for _, player := range lobby.InGamePlayers {
+						usernames = append(usernames, player.Username)
+					}
 
-				// Calculate total score of the lobby
-				var totalScore int
-				for _, player := range players {
-					totalScore += player.UserScore
-				}
-				// Calculate average score
-				averageScore = totalScore / len(players)
+					// Get score of the player from PostgreSQL
+					var players []models.GameProfile
+					if err := db.Where("username IN ?", usernames).Find(&players).Error; err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve players in lobby"})
+						return
+					}
 
-				log.Printf("Lobby ID: %s, Average score: %d", lobby.ID, averageScore)
+					// Calculate total score of the lobby
+					var totalScore int
+					for _, player := range players {
+						totalScore += player.UserScore
+					}
+					// Calculate average score
+					averageScore = totalScore / len(players)
 
-				// Check if the lobby is suitable for the user
-				if userScore >= averageScore-difference && userScore <= averageScore+difference {
-					c.JSON(http.StatusOK, gin.H{
-						"lobby_id": lobby.ID,
-						"message":  "Lobby found",
-					})
-					return
+					log.Printf("Lobby ID: %s, Average score: %d", lobby.ID, averageScore)
+
+					// Check if the lobby is suitable for the user
+					if userScore >= averageScore-difference && userScore <= averageScore+difference {
+						c.JSON(http.StatusOK, gin.H{
+							"lobby_id": lobby.ID,
+							"message":  "Lobby found",
+						})
+						return
+					}
 				}
+				difference += 100
 			}
-			difference += 100
 			time.Sleep(2 * time.Second) // Sleep for 2 seconds before searching again
 		}
 
