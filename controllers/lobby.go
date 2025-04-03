@@ -572,12 +572,6 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 			}
 			time.Sleep(2 * time.Second) // Sleep for 2 seconds before searching again
 		}
-
-		// If no lobby is found, return an empty lobby ID
-		c.JSON(http.StatusOK, gin.H{
-			"lobby_id": "",
-			"message":  "No lobbies found",
-		})
 	}
 }
 
