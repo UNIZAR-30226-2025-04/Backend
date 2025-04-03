@@ -488,6 +488,9 @@ const docTemplate = `{
                                         "number_rounds": {
                                             "type": "integer"
                                         },
+                                        "public": {
+                                            "type": "boolean"
+                                        },
                                         "total_points": {
                                             "type": "integer"
                                         }
