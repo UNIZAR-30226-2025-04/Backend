@@ -18,3 +18,4 @@ func Connect_redis() (*redis.RedisClient, error) {
 	log.Println("Redis connection established")
 	return redisClient, nil
 }
+
