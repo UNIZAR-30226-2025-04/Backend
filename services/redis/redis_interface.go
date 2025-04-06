@@ -178,3 +178,12 @@ func (rc *RedisClient) CloseLobby(lobbyId string) error {
 	}
 	return nil
 }
+
+func (rc *RedisClient) UpdateDeckPlayer(player redis_models.InGamePlayer) error {
+	key := redis_utils.FormatInGamePlayerKey(player.Username)
+	data, err := json.Marshal(player)
+	if err != nil {
+		return fmt.Errorf("error marshaling player data: %v", err)
+	}
+	return rc.client.Set(rc.ctx, key, data, 24*time.Hour).Err()
+}
