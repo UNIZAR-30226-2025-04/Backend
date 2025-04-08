@@ -8,9 +8,11 @@ import (
 // Function to handle socket.io client disconnections.
 func HandleDisconnecting(username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
+		disconnectReason := args[0].(string)
 		// Remove connection from map
 		sio.RemoveConnection(username)
 		fmt.Println("A user just disconnected: ", username)
 		fmt.Println("Current connections: ", sio.UserConnections)
+		fmt.Println("Disconnect reason: ", disconnectReason)
 	}
 }
