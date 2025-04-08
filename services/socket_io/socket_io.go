@@ -99,7 +99,11 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		client.On("get_full_deck", handlers.HandleGetFullDeck(redisClient, client, db, username))
 
-    client.On("open_pack", ServeHandler
+		client.On("open_pack", handlers.HandlerOpenPack(redisClient, client, db, username))
+
+		client.On("get_open_pack", handlers.HandlerGetOpenedPack(redisClient, client, db, username))
+
+		client.On("buy_card", handlers.HandlerBuyCard(redisClient, client, db, username))
 
 	})
 
