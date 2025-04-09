@@ -9,6 +9,7 @@ import (
 	"log"
 
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,7 @@ func HandlerOpenPack(redisClient *redis_services.RedisClient, client *socket.Soc
 			return
 		}
 
-		packID := args[0].(int)
+		packID, _ := strconv.Atoi(args[0].(string))
 		lobbyID := args[1].(string)
 
 		log.Printf("[INFO] Obteniendo información del lobby ID: %s para usuario: %s", lobbyID, username)
