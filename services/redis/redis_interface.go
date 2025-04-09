@@ -187,3 +187,25 @@ func (rc *RedisClient) UpdateDeckPlayer(player redis_models.InGamePlayer) error 
 	}
 	return rc.client.Set(rc.ctx, key, data, 24*time.Hour).Err()
 }
+
+func (rc *RedisClient) GetCurrentBlind(lobbyId string) (int, error) {
+	lobby, err := rc.GetGameLobby(lobbyId)
+	if err != nil {
+		return 0, fmt.Errorf("error getting lobby for current blind: %v", err)
+	}
+	return lobby.CurrentBlind, nil
+}
+
+func (rc *RedisClient) SetCurrentBlind(lobbyId string, blind int) error {
+	lobby, err := rc.GetGameLobby(lobbyId)
+	if err != nil {
+		return fmt.Errorf("error getting lobby for current blind: %v", err)
+	}
+	key := redis_utils.FormatLobbyKey(lobbyId)
+	lobby.CurrentBlind = blind
+	data, err := json.Marshal(lobbyId)
+	if err != nil {
+		return fmt.Errorf("error marshalling lobby: %v", err)
+	}
+	return rc.client.Set(rc.ctx, key, data, 24*time.Hour).Err()
+}

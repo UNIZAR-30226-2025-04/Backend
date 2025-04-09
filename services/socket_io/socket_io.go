@@ -99,6 +99,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		client.On("get_full_deck", handlers.HandleGetFullDeck(redisClient, client, db, username))
 
+		client.On("propose_blind", handlers.HandleProposeBlind(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 	})
 
 	// NOTE: igual lo usamos en algún momento
