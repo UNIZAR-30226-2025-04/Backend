@@ -3,6 +3,8 @@ package handlers
 import (
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
+	"Nogler/utils"
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -24,6 +26,19 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 		proposedBlind := args[0].(int)
 		lobby := args[1].(string)
 
+		isInLobby, err := utils.IsPlayerInLobby(db, lobby, username)
+		if err != nil {
+			fmt.Println("Database error:", err)
+			client.Emit("error", gin.H{"error": "Database error"})
+			return
+		}
+
+		if !isInLobby {
+			fmt.Println("User is NOT in lobby:", username, "Lobby:", lobby)
+			client.Emit("error", gin.H{"error": "You must join the lobby before proposing blinds"})
+			return
+		}
+
 		// TODO ?????? BroadcastMessageToLobby(redisClient, client, db, username, sio)
 
 		currentBlind, err := redisClient.GetCurrentBlind(lobby)
@@ -41,4 +56,15 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 		}
 	}
+}
+
+// Function we should call when
+func Send_chosen_blind(lobbyID string, rc *redis.RedisClient, sio *socketio_types.SocketServer) {
+	lobby, err := rc.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("Error obtaining lobby to broadcast blind: %v", err)
+		return
+	}
+	blind := lobby.CurrentBlind
+	sio.Sio_server.To(socket.Room(lobbyID)).Emit("send_chosen_blind", blind)
 }
