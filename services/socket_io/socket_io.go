@@ -2,8 +2,8 @@ package socket_io
 
 import (
 	"Nogler/services/redis"
-	"Nogler/services/socket_io/handlers"
 
+	"Nogler/services/socket_io/handlers"
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
 	"fmt"
@@ -98,6 +98,8 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("draw_cards", handlers.HandleDrawCards(redisClient, client, db, username))
 
 		client.On("get_full_deck", handlers.HandleGetFullDeck(redisClient, client, db, username))
+
+		client.On("open_pack", handlers.HandlerOpenPack(redisClient, client, db, username))
 
 		client.On("propose_blind", handlers.HandleProposeBlind(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 	})

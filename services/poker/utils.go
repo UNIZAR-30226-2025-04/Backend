@@ -35,3 +35,8 @@ func InitializePlayerDeck() json.RawMessage {
 	deck.Shuffle()
 	return deck.ToJSON()
 }
+
+
+func generatePack() {
+      
+}
