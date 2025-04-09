@@ -15,6 +15,7 @@ type GameLobby struct {
 	GameHasBegun    bool       `json:"game_has_begun"`   // Matches game_lobbies.game_has_begun
 	IsPublic        bool       `json:"is_public"`        // Matches game_lobbies.is_public
 	ShopState       *LobbyShop `json:"shop_state"`       // Matches game_lobbies.shop_state
+	CurrentBlind    int        `json:"current_blind"`    // Matches game_lobbies.current_blind
 }
 
 type LobbyShop struct {
