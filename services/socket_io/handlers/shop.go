@@ -9,7 +9,6 @@ import (
 	"log"
 
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,7 +31,13 @@ func HandlerOpenPack(redisClient *redis_services.RedisClient, client *socket.Soc
 			return
 		}
 
-		packID, _ := strconv.Atoi(args[0].(string))
+		// Handle pack ID (JavaScript numbers come as float64 says depsik)
+		packIDFloat, ok := args[0].(float64)
+		if !ok {
+			client.Emit("error", gin.H{"error": "El pack ID debe ser un número"})
+			return
+		}
+		packID := int(packIDFloat) // Convert to int
 		lobbyID := args[1].(string)
 
 		log.Printf("[INFO] Obteniendo información del lobby ID: %s para usuario: %s", lobbyID, username)
