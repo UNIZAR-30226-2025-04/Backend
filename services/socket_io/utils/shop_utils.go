@@ -6,10 +6,10 @@ import (
 	"math/rand/v2"
 )
 
-func GenerateSeed(parts ...interface{}) int64 {
+func GenerateSeed(parts ...interface{}) uint64 {
 	h := fnv.New64a()
 	h.Write([]byte(fmt.Sprint(parts...)))
-	return int64(h.Sum64())
+	return uint64(h.Sum64())
 }
 
 func CalculatePackPrice(numItems int) int {

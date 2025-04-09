@@ -25,10 +25,11 @@ type LobbyShop struct {
 }
 
 type ShopItem struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"` // "card", "joker", "pack", "modifier"
-	Price    int    `json:"price"`
-	PackSeed int64  `json:"pack_seed,omitempty"` // For deterministic generation
+	ID       string       `json:"id"`
+	Type     string       `json:"type"` // "card", "joker", "pack", "modifier"
+	Price    int          `json:"price"`
+	PackSeed int64        `json:"pack_seed,omitempty"` // For deterministic generation
+	Content  PackContents `json:"content,omitempty"`
 }
 
 type PackContents struct {

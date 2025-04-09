@@ -7,7 +7,6 @@ import (
 
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,12 +14,6 @@ import (
 	"golang.org/x/exp/rand"
 	"gorm.io/gorm"
 )
-
-func generateShopSeed(lobbyID string, roundNumber, rerollCount int) int64 {
-	h := fnv.New64a()
-	h.Write([]byte(fmt.Sprintf("%s-%d-%d", lobbyID, roundNumber, rerollCount)))
-	return int64(h.Sum64())
-}
 
 const ( // Only used here, i think its good to see it here
 	minFixedPacks = 2
@@ -45,6 +38,7 @@ func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
 
 func generateFixedPacks(rng *rand.Rand) []redis.ShopItem {
 	// Wrong, think a feasable number of packs generated per shop
+	// Could be managed by seing maxmoney, rounds maxmoneyplayer can reroll, and calc
 	count := minFixedPacks + rng.Intn(maxFixedPacks-minFixedPacks+1)
 	packs := make([]redis.ShopItem, count)
 
@@ -61,6 +55,7 @@ func generateFixedPacks(rng *rand.Rand) []redis.ShopItem {
 }
 
 func generateFixedModifiers(rng *rand.Rand) []redis.ShopItem {
+	// Same count problem as fixedpacks
 	count := minModifiers + rng.Intn(maxModifiers-minModifiers+1)
 	modifiers := make([]redis.ShopItem, count)
 
@@ -76,54 +71,20 @@ func generateFixedModifiers(rng *rand.Rand) []redis.ShopItem {
 }
 
 func RerollShopItems(redisClient *redis_services.RedisClient, lobbyID string) error {
-	return redisClient.Watch(func(tx *redis.Tx) error {
-		lobby, err := tx.GetLobby(lobbyID)
-		if err != nil {
-			return err
-		}
-
-		// Only regenerate rerollable items
-		newRerollCount := lobby.ShopState.RerollCount + 1
-		seed := generateSeed(lobbyID, "reroll", lobby.ShopState.RoundNumber, newRerollCount)
-		rng := rand.New(rand.NewSource(seed))
-
-		lobby.ShopState.RerollableItems = generateRerollableItems(rng, 4)
-		lobby.ShopState.RerollCount = newRerollCount
-
-		return tx.SaveLobby(lobby)
-	})
+	// do stuff
+	return nil
 }
 
 func generateRerollableItems(rng *rand.Rand, count int) []redis.ShopItem {
-	items := make([]redis.ShopItem, count)
-	for i := range items {
-		itemType := weightedRandomType(rng)
-		items[i] = redis.ShopItem{
-			ID:       fmt.Sprintf("reroll_item_%d", i),
-			Type:     itemType,
-			Price:    getPriceByType(rng, itemType),
-			Seed:     rng.Int63(),
-			Metadata: generateItemMetadata(rng, itemType),
-		}
-	}
-	return items
+	// do stuff
+	return nil
 }
 
-func weightedRandomType(rng *rand.Rand) string {
-	// Example weights: 40% card, 30% modifier, 20% joker, 10% pack
-	roll := rng.Float32()
-	switch {
-	case roll < 0.4:
-		return "card"
-	case roll < 0.7:
-		return "modifier"
-	case roll < 0.9:
-		return "joker"
-	default:
-		return "pack"
-	}
-}
+// Add a function that applies the probabilities of the groups (joker card modifier)
 
+// Add a function that calculates the probabilities of a given item in a group to appear
+
+// Handler that will be called.
 func HandlerOpenPack(redisClient *redis_services.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string) func(args ...interface{}) {
 	return func(args ...interface{}) {
@@ -159,6 +120,7 @@ func HandlerOpenPack(redisClient *redis_services.RedisClient, client *socket.Soc
 	}
 }
 
+// Check if pack has been opened or geherate it else.
 func getOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.GameLobby, item redis.ShopItem) (*PackContents, error) {
 	// Unique key per pack state
 	packKey := fmt.Sprintf("lobby:%s:round:%d:reroll:%d:pack:%s",
@@ -178,7 +140,7 @@ func getOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.Game
 	return &contents, nil
 }
 
-func generatePackContents(seed int64, metadata string) PackContents {
+func generatePackContents(seed int64, metadata string) redis.PackContents {
 	rng := rand.New(rand.NewSource(seed))
 	var params struct {
 		Cards  int `json:"cards"`
@@ -186,7 +148,7 @@ func generatePackContents(seed int64, metadata string) PackContents {
 	}
 	json.Unmarshal([]byte(metadata), &params)
 
-	return PackContents{
+	return redis.PackContents{
 		Cards:  generateCards(rng, params.Cards),
 		Jokers: generateJokers(rng, params.Jokers),
 	}
