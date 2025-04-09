@@ -178,3 +178,36 @@ func (rc *RedisClient) CloseLobby(lobbyId string) error {
 	}
 	return nil
 }
+
+// GetPackContents retrieves the PackContents for a specific key from Redis
+func (rc *RedisClient) GetPackContents(key string) (*redis_models.PackContents, error) {
+	data, err := rc.client.Get(rc.ctx, key).Bytes()
+	if err != nil {
+		if err == redis.Nil {
+			// Key does not exist
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error getting pack contents from Redis: %v", err)
+	}
+
+	var contents redis_models.PackContents
+	if err := json.Unmarshal(data, &contents); err != nil {
+		return nil, fmt.Errorf("error unmarshaling pack contents: %v", err)
+	}
+
+	return &contents, nil
+}
+
+// SetPackContents saves the PackContents for a specific key in Redis with a TTL
+func (rc *RedisClient) SetPackContents(key string, contents redis_models.PackContents, ttl time.Duration) error {
+	data, err := json.Marshal(contents)
+	if err != nil {
+		return fmt.Errorf("error marshaling pack contents: %v", err)
+	}
+
+	if err := rc.client.Set(rc.ctx, key, data, ttl).Err(); err != nil {
+		return fmt.Errorf("error setting pack contents in Redis: %v", err)
+	}
+
+	return nil
+}

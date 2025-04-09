@@ -33,6 +33,6 @@ type ShopItem struct {
 }
 
 type PackContents struct {
-	Cards  []poker.Card `json:"cards"`
-	Jokers []string     `json:"jokers"`
+	Cards  []poker.Card   `json:"cards"`
+	Jokers []poker.Jokers `json:"jokers"`
 }

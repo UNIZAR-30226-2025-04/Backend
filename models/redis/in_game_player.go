@@ -12,4 +12,8 @@ type InGamePlayer struct {
 	CurrentJokers  json.RawMessage `json:"current_jokers"`   // Temporary Redis field
 	MostPlayedHand json.RawMessage `json:"most_played_hand"` // Matches in_game_players.most_played_hand
 	Winner         bool            `json:"winner"`           // Matches in_game_players.winner
+	CurrentHand    int             `json:"current_hand"`     // Matches in_game_players.current_hand
+	CurrentPoints  int             `json:"current_points"`   // Matches in_game_players.current_points
+	TotalPoints    int             `json:"total_points"`     // Matches in_game_players.total_points
+
 }

@@ -2,8 +2,8 @@ package socket_io
 
 import (
 	"Nogler/services/redis"
-	"Nogler/services/socket_io/handlers"
 
+	"Nogler/services/socket_io/handlers"
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
 	"fmt"
