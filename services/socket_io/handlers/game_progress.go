@@ -48,6 +48,7 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		//TODO Manage when all players have given a blind or timeout is due round starts
 		if proposedBlind > currentBlind {
 			err := redisClient.SetCurrentBlind(lobby, proposedBlind)
 			if err != nil {
