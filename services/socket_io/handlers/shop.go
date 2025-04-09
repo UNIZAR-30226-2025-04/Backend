@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"Nogler/models/postgres"
 	redis "Nogler/models/redis"
 
 	"Nogler/services/poker"
@@ -37,13 +38,14 @@ func HandlerOpenPack(redisClient *redis_services.RedisClient, client *socket.Soc
 			client.Emit("error", gin.H{"error": "El pack ID debe ser un número"})
 			return
 		}
+
 		packID := int(packIDFloat) // Convert to int
 		lobbyID := args[1].(string)
 
 		log.Printf("[INFO] Obteniendo información del lobby ID: %s para usuario: %s", lobbyID, username)
 
 		// Check if lobby exists
-		var lobby redis.GameLobby
+		var lobby postgres.GameLobby
 		if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				client.Emit("error", gin.H{"error": "Lobby not found"})
@@ -53,13 +55,19 @@ func HandlerOpenPack(redisClient *redis_services.RedisClient, client *socket.Soc
 			return
 		}
 
-		item, exists := findShopItem(lobby, packID)
+		var lobbyState redis.GameLobby
+
+		if lobbyState.ShopState == nil {
+			client.Emit("error", gin.H{"error": "Lobby shop state not found"})
+			return
+		}
+		item, exists := findShopItem(lobbyState, packID)
 		if !exists || item.Type != "pack" {
 			client.Emit("invalid_pack")
 			return
 		}
 
-		contents, err := getOrGeneratePackContents(redisClient, &lobby, item)
+		contents, err := getOrGeneratePackContents(redisClient, &lobbyState, item)
 		if err != nil {
 			client.Emit("pack_generation_failed")
 			return
@@ -146,17 +154,15 @@ func getOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.Game
 	packKey := fmt.Sprintf("lobby:%s:round:%d:reroll:%d:pack:%s",
 		lobby.Id, lobby.NumberOfRounds, lobby.ShopState.Rerolls, item.ID)
 
-	// Try to get existing pack contents from Redis
-	contents, err := rc.GetPackContents(packKey)
-	if err != nil {
-		return nil, err
-	}
-	if contents != nil {
-		return contents, nil
+	// Try to get existing pack contents
+	existing, err := rc.GetPackContents(packKey)
+	if err == nil && existing != nil {
+		return existing, nil
 	}
 
 	// Generate new contents if not found
 	newContents := generatePackContents(uint64(item.PackSeed))
+
 	if err := rc.SetPackContents(packKey, newContents, 24*time.Hour); err != nil {
 		return nil, err
 	}
