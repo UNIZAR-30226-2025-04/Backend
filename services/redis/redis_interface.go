@@ -179,11 +179,66 @@ func (rc *RedisClient) CloseLobby(lobbyId string) error {
 	return nil
 }
 
+// GetPackContents retrieves the PackContents for a specific key from Redis
+func (rc *RedisClient) GetPackContents(key string) (*redis_models.PackContents, error) {
+	data, err := rc.client.Get(rc.ctx, key).Bytes()
+	if err != nil {
+		if err == redis.Nil {
+			// Key does not exist
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error getting pack contents from Redis: %v", err)
+	}
+
+	var contents redis_models.PackContents
+	if err := json.Unmarshal(data, &contents); err != nil {
+		return nil, fmt.Errorf("error unmarshaling pack contents: %v", err)
+	}
+
+	return &contents, nil
+}
+
+// SetPackContents saves the PackContents for a specific key in Redis with a TTL
+func (rc *RedisClient) SetPackContents(key string, contents redis_models.PackContents, ttl time.Duration) error {
+	data, err := json.Marshal(contents)
+	if err != nil {
+		return fmt.Errorf("error marshaling pack contents: %v", err)
+	}
+
+	if err := rc.client.Set(rc.ctx, key, data, ttl).Err(); err != nil {
+		return fmt.Errorf("error setting pack contents in Redis: %v", err)
+	}
+
+	return nil
+}
+
 func (rc *RedisClient) UpdateDeckPlayer(player redis_models.InGamePlayer) error {
 	key := redis_utils.FormatInGamePlayerKey(player.Username)
 	data, err := json.Marshal(player)
 	if err != nil {
 		return fmt.Errorf("error marshaling player data: %v", err)
+	}
+	return rc.client.Set(rc.ctx, key, data, 24*time.Hour).Err()
+}
+
+func (rc *RedisClient) GetCurrentBlind(lobbyId string) (int, error) {
+	lobby, err := rc.GetGameLobby(lobbyId)
+	if err != nil {
+		return 0, fmt.Errorf("error getting lobby for current blind: %v", err)
+	}
+	return lobby.CurrentBlind, nil
+}
+
+func (rc *RedisClient) SetCurrentBlind(lobbyId string, blind int) error {
+	lobby, err := rc.GetGameLobby(lobbyId)
+	if err != nil {
+		return fmt.Errorf("error getting lobby for current blind: %v", err)
+	}
+	key := redis_utils.FormatLobbyKey(lobbyId)
+	lobby.CurrentBlind = blind
+	data, err := json.Marshal(lobbyId)
+	if err != nil {
+		return fmt.Errorf("error marshalling lobby: %v", err)
 	}
 	return rc.client.Set(rc.ctx, key, data, 24*time.Hour).Err()
 }

@@ -79,6 +79,8 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			CreatedAt:       NewLobby.CreatedAt,
 			GameHasBegun:    false,
 			IsPublic:        isPublic,
+			CurrentBlind:    0,
+			NumberOfVotes:   0,
 		}
 
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
@@ -392,7 +394,7 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 				"number_rounds":  redisLobby.NumberOfRounds,
 				"total_points":   redisLobby.TotalPoints,
 				"game_has_begun": redisLobby.GameHasBegun,
-				"public":		  redisLobby.IsPublic,
+				"public":         redisLobby.IsPublic,
 			},
 		})
 	}
@@ -514,8 +516,7 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 		userScore := userProfile.UserScore
 		log.Printf("User score: %d", userScore)
 
-		
-		for true{
+		for true {
 			difference := 100
 
 			var gameLobbies []models.GameLobby

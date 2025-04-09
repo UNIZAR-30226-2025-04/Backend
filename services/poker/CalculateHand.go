@@ -48,13 +48,22 @@ var TypeMap = map[string]Multiplier{
 	"HighCard":      {1, 1},
 }
 
-func NewStandardDeck() *Deck {
-	ranks := []string{"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"}
-	suits := []string{"h", "d", "c", "s"}
+var RankMap = map[string]bool{
+	"A": true, "2": true, "3": true, "4": true, "5": true,
+	"6": true, "7": true, "8": true, "9": true, "10": true,
+	"J": true, "Q": true, "K": true,
+}
 
+var SuitMap = map[string]bool{
+	"h": true, "d": true, "c": true, "s": true,
+}
+
+func NewStandardDeck() *Deck {
 	total := make([]Card, 0, 52)
-	for _, suit := range suits {
-		for _, rank := range ranks {
+
+	// Iterate over SuitMap and RankMap keys
+	for suit := range SuitMap {
+		for rank := range RankMap {
 			total = append(total, Card{Rank: rank, Suit: suit})
 		}
 	}
