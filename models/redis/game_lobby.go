@@ -21,6 +21,7 @@ type GameLobby struct {
 	ShopState       *LobbyShop `json:"shop_state"`       // Matches game_lobbies.shop_state
 	CurrentBlind    int        `json:"current_blind"`    // Matches game_lobbies.current_blind
 	NumberOfVotes   int        `json:"number_of_votes"`  // Matches game_lobbies.number_of_votes
+	Timeout         time.Time  `json:"timeout"`          // Matches game_lobbies.timeout
 }
 
 type LobbyShop struct {

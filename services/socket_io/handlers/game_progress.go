@@ -6,6 +6,7 @@ import (
 	"Nogler/utils"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -68,4 +69,30 @@ func Send_chosen_blind(lobbyID string, rc *redis.RedisClient, sio *socketio_type
 	}
 	blind := lobby.CurrentBlind
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("send_chosen_blind", blind)
+}
+
+func Start_timeout(
+	lobbyID string, rc *redis.RedisClient, sio *socketio_types.SocketServer) {
+
+	log.Printf("[TIMEOUT] Starting timeout for lobby %s", lobbyID)
+
+	// Start the timeout for the lobby
+	lobby, err := rc.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[TIMEOUT-ERROR] Error obtaining lobby to start timeout: %v", err)
+		return
+	}
+
+	lobby.Timeout = time.Now()
+	err = rc.SaveGameLobby(lobby)
+	if err != nil {
+		log.Printf("[TIMEOUT-ERROR] Error setting lobby timeout: %v", err)
+		return
+	}
+	// Sleep for 2 minutes
+	time.Sleep(time.Minute * 2)
+
+	// Broadcast the timeout to all players in the lobby
+	sio.Sio_server.To(socket.Room(lobbyID)).Emit("timeout", gin.H{"message": "Timeout reached"})
+	log.Printf("[TIMEOUT] 2 minutes timeout reached %s", lobbyID)
 }
