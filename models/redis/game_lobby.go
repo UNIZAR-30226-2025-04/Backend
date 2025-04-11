@@ -20,6 +20,7 @@ type GameLobby struct {
 	IsPublic        bool       `json:"is_public"`        // Matches game_lobbies.is_public
 	ShopState       *LobbyShop `json:"shop_state"`       // Matches game_lobbies.shop_state
 	CurrentBlind    int        `json:"current_blind"`    // Matches game_lobbies.current_blind
+	NumberOfVotes   int        `json:"number_of_votes"`  // Matches game_lobbies.number_of_votes
 }
 
 type LobbyShop struct {
