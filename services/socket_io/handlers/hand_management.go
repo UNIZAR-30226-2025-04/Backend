@@ -3,6 +3,7 @@ package handlers
 import (
 	"Nogler/services/poker"
 	"Nogler/services/redis"
+	"Nogler/utils"
 	"encoding/json"
 	"log"
 
@@ -30,6 +31,35 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// TODO: y si el mismo usuario vuelve a intentar conectarse otra vez sin haberse desconectado?
 
+		// 1. Check if the player is in the game
+		lobbyID := args[1].(string)
+
+		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Database error: %v", err)
+			client.Emit("error", gin.H{"error": "Database error"})
+			return
+		}
+
+		if !isInLobby {
+			log.Printf("[HAND-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
+			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
+			return
+		}
+
+		// 2. Check if the player has enough plays left
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error al obtener los datos del jugador"})
+			return
+		}
+		if player.HandPlaysLeft <= 0 {
+			log.Printf("[HAND-ERROR] No hand plays left %s", username)
+			client.Emit("error", gin.H{"error": "No hand plays left"})
+			return
+		}
+
 		handData := args[0].(map[string]interface{}) // Argument is expected to be a map (which is a generic object)
 		handJson, err := json.Marshal(handData)      // Convert the argument to JSON
 		if err != nil {
@@ -47,22 +77,39 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// Calculate base points
+		// 3. Calculate base points
 		fichas, mult, _ := poker.BestHand(hand)
 
-		// Apply jokers (passing the hand which contains the jokers)
+		// 4. Apply jokers (passing the hand which contains the jokers)
 		finalFichas, finalMult, finalGold, jokersTriggered := poker.ApplyJokers(hand, hand.Jokers, fichas, mult, hand.Gold)
 		valorFinal := finalFichas * finalMult
 
+		// 5. Update player data in Redis
+		player.CurrentPoints = valorFinal
+		player.TotalPoints += valorFinal
+		player.HandPlaysLeft--
+		err = redisClient.UpdateDeckPlayer(*player)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error updating player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error updating player data"})
+			return
+		}
+
 		// Log the result
 		log.Println("Jugador ha puntuado la friolera de:", valorFinal)
-		// Emit success response
+		// 6. Emit success response
 		client.Emit("played_hand", gin.H{
 			"points":          valorFinal,
 			"gold":            finalGold,
 			"jokersTriggered": jokersTriggered,
 			"message":         "¡Mano jugada con éxito!",
 		})
+
+		// 7. If the player has no plays left, emit a message
+		if player.HandPlaysLeft <= 0 {
+			client.Emit("no_plays_left", gin.H{"message": "No hand plays left"})
+			log.Printf("[HAND-NO-PLAYS] User %s has no plays left", username)
+		}
 
 		//logear en redis + pg cuanto ha puntuado supongo IMPORTANTEEEEEEEEEEEEEEEEEEEEEE
 
@@ -93,48 +140,71 @@ func ApplyJokers(h poker.Hand, fichas int, mult int) int {
 
 // Do this function plis TODO
 func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
-    db *gorm.DB, username string) func(args ...interface{}) {
-    return func(args ...interface{}) {
-        log.Printf("DrawCards request - User: %s, Args: %v, Socket ID: %s",
-            username, args, client.Id())
+	db *gorm.DB, username string) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("DrawCards request - User: %s, Args: %v, Socket ID: %s",
+			username, args, client.Id())
 
-        // 1. Get player's deck from Redis
-        player, err := redisClient.GetInGamePlayer(username)
-        if err != nil {
-            log.Printf("[DECK-ERROR] Error getting player data: %v", err)
-            client.Emit("error", gin.H{"error": "Error al obtener el mazo"})
-            return
-        }
+		// 1. Check if the player is in the game
+		lobbyID := args[1].(string)
 
-        var deck *poker.Deck
-        if player.CurrentDeck != nil {
-            deck, err = poker.DeckFromJSON(player.CurrentDeck)
-            if err != nil {
-                log.Printf("[DECK-ERROR] Error parsing deck: %v", err)
-                client.Emit("error", gin.H{"error": "Error al procesar el mazo"})
-                return
-            }
-        } else {
-            deck = &poker.Deck{
-                TotalCards:  make([]poker.Card, 0),
-                PlayedCards: make([]poker.Card, 0),
-            }
-        }
+		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Database error: %v", err)
+			client.Emit("error", gin.H{"error": "Database error"})
+			return
+		}
+
+		if !isInLobby {
+			log.Printf("[HAND-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
+			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
+			return
+		}
+
+		// 2. Get player's deck from Redis
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[DECK-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error al obtener el mazo"})
+			return
+		}
+
+		// Check if the user has enough draws left
+		if player.DiscardsLeft <= 0 {
+			log.Printf("[HAND-ERROR] No draws left for user %s", username)
+			client.Emit("error", gin.H{"error": "No draws left"})
+			return
+		}
+
+		var deck *poker.Deck
+		if player.CurrentDeck != nil {
+			deck, err = poker.DeckFromJSON(player.CurrentDeck)
+			if err != nil {
+				log.Printf("[DECK-ERROR] Error parsing deck: %v", err)
+				client.Emit("error", gin.H{"error": "Error al procesar el mazo"})
+				return
+			}
+		} else {
+			deck = &poker.Deck{
+				TotalCards:  make([]poker.Card, 0),
+				PlayedCards: make([]poker.Card, 0),
+			}
+		}
 
 		handData, ok := args[0].(map[string]interface{})
-        if !ok {
-            log.Printf("[DRAW-ERROR] Invalid argument type for user %s. Expected map[string]interface{}, got %T", username, args[0])
-            client.Emit("error", gin.H{"error": "Formato de datos inválido"})
-            return
-        }
+		if !ok {
+			log.Printf("[DRAW-ERROR] Invalid argument type for user %s. Expected map[string]interface{}, got %T", username, args[0])
+			client.Emit("error", gin.H{"error": "Formato de datos inválido"})
+			return
+		}
 
-        // Convert handData to JSON
-        handJson, err := json.Marshal(handData)
-        if err != nil {
-            log.Printf("[HAND-ERROR] Error al convertir la mano a JSON: %v", err)
-            client.Emit("error", gin.H{"error": "Error al convertir la mano"})
-            return
-        }
+		// Convert handData to JSON
+		handJson, err := json.Marshal(handData)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error al convertir la mano a JSON: %v", err)
+			client.Emit("error", gin.H{"error": "Error al convertir la mano"})
+			return
+		}
 
 		// Parse the JSON into the poker.Hand struct
 		var hand poker.Hand
@@ -145,27 +215,28 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-        // 3. Determine how many cards the player needs
-        cardsNeeded := 8 - len(hand.Cards)
-        if cardsNeeded <= 0 {
-            client.Emit("error", gin.H{"error": "El jugador ya tiene suficientes cartas"})
-            return
-        }
+		// 3. Determine how many cards the player needs
+		cardsNeeded := 8 - len(hand.Cards)
+		if cardsNeeded <= 0 {
+			client.Emit("error", gin.H{"error": "El jugador ya tiene suficientes cartas"})
+			return
+		}
 
-        // 4. Get the necessary cards
-        newCards := deck.Draw(cardsNeeded)
-        if newCards == nil {
-            client.Emit("error", gin.H{"error": "No hay suficientes cartas disponibles en el mazo"})
-            return
-        }
+		// 4. Get the necessary cards
+		newCards := deck.Draw(cardsNeeded)
+		if newCards == nil {
+			client.Emit("error", gin.H{"error": "No hay suficientes cartas disponibles en el mazo"})
+			return
+		}
 
-        // Serialize new cards and the full deck
-        newCardsJson, _ := json.Marshal(newCards)
-        totalCardsJson, _ := json.Marshal(deck.TotalCards)
+		// Serialize new cards and the full deck
+		newCardsJson, _ := json.Marshal(newCards)
+		totalCardsJson, _ := json.Marshal(deck.TotalCards)
 
 		// 5. Update the player's deck in Redis
 		deck.RemoveCards(newCards)
 		player.CurrentDeck = deck.ToJSON()
+		player.DiscardsLeft--
 		err = redisClient.UpdateDeckPlayer(*player)
 		if err != nil {
 			log.Printf("[DECK-ERROR] Error updating player data: %v", err)
@@ -173,17 +244,23 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-        // 6. Prepare the response with the full deck state
-        response := gin.H{
-            "new_cards":     string(newCardsJson),
-            "total_cards":   string(totalCardsJson),
-            "deck_size":     len(deck.TotalCards),
-        }
+		// 6. Prepare the response with the full deck state
+		response := gin.H{
+			"new_cards":   string(newCardsJson),
+			"total_cards": string(totalCardsJson),
+			"deck_size":   len(deck.TotalCards),
+		}
 
-        // 7. Send the response to the client
-        client.Emit("drawed_cards", response)
-        log.Printf("[DRAW-SUCCESS] Sent updated deck to user %s (%d total cards)", username, response["deck_size"])
-    }
+		// 7. Send the response to the client
+		client.Emit("drawed_cards", response)
+		log.Printf("[DRAW-SUCCESS] Sent updated deck to user %s (%d total cards)", username, response["deck_size"])
+
+		// 8. If the player has no draws left, emit a message
+		if player.DiscardsLeft <= 0 {
+			client.Emit("no_draws_left", gin.H{"message": "No draws left"})
+			log.Printf("[DRAW-NO-DRAWS] User %s has no draws left", username)
+		}
+	}
 }
 
 // this function should ask redis, see what cards i have available on my deck, draw one, and mark it as "already obtained" or smt

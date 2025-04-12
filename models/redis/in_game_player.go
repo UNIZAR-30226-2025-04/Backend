@@ -15,5 +15,6 @@ type InGamePlayer struct {
 	CurrentHand    int             `json:"current_hand"`     // Matches in_game_players.current_hand
 	CurrentPoints  int             `json:"current_points"`   // Matches in_game_players.current_points
 	TotalPoints    int             `json:"total_points"`     // Matches in_game_players.total_points
-
+	HandPlaysLeft  int 		   	   `json:"hand_plays_left"`  // Matches in_game_players.hand_plays_left
+	DiscardsLeft   int             `json:"discards_left"`    // Matches in_game_players.discards_left
 }
