@@ -153,6 +153,7 @@ func HandleJoinLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// TODO: emit this event only to the rest of the room (client.To... instead of sio.Sio_server.To...?)
 		sio.Sio_server.To(socket.Room(lobbyID)).Emit("new_user_in_lobby", gin.H{
 			"lobby_id": lobbyID,
 			"username": username,
