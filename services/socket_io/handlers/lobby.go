@@ -457,7 +457,7 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 
 		lobbyID := args[0].(string)
 
-		// Check if lobby exists
+		// Check if lobby exists in the database
 		var lobby *models.GameLobby
 		lobby, err := utils.CheckLobbyExists(db, lobbyID)
 		if err != nil {
