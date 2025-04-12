@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	models "Nogler/models/postgres"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	"Nogler/utils"
@@ -71,28 +72,112 @@ func Send_chosen_blind(lobbyID string, rc *redis.RedisClient, sio *socketio_type
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("send_chosen_blind", blind)
 }
 
-func Start_timeout(
-	lobbyID string, rc *redis.RedisClient, sio *socketio_types.SocketServer) {
+func HandleStarttimeout(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
 
-	log.Printf("[TIMEOUT] Starting timeout for lobby %s", lobbyID)
+		lobbyID := args[0].(string)
+		timeout := args[1].(int)
 
-	// Start the timeout for the lobby
-	lobby, err := rc.GetGameLobby(lobbyID)
-	if err != nil {
-		log.Printf("[TIMEOUT-ERROR] Error obtaining lobby to start timeout: %v", err)
-		return
+		log.Printf("[TIMEOUT] Starting timeout of %d minutes for lobby %s", timeout, lobbyID)
+
+		// Check if lobby exists
+		var lobbyPG *models.GameLobby
+		lobbyPG, err := utils.CheckLobbyExists(db, lobbyID)
+		if err != nil {
+			fmt.Println("Lobby does not exist:", lobbyID)
+			client.Emit("error", gin.H{"error": "Lobby does not exist"})
+			return
+		}
+
+		// Check if the user is in the lobby
+		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Database error: %v", err)
+			client.Emit("error", gin.H{"error": "Database error"})
+			return
+		}
+
+		if !isInLobby {
+			log.Printf("[HAND-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
+			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
+			return
+		}
+
+		// Check if user is the host
+		if username != lobbyPG.CreatorUsername {
+			client.Emit("error", gin.H{"error": "Only the host can start the game"})
+			return
+		}
+
+		// Start the timeout for the lobby
+		lobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[TIMEOUT-ERROR] Error obtaining lobby to start timeout: %v", err)
+			return
+		}
+
+		// Check if the game is already in timeout
+		if !lobby.Timeout.IsZero() {
+			log.Printf("[TIMEOUT-ERROR] Game is already in timeout: %v", lobby.Timeout)
+			return
+		}
+
+		// Set the timeout to the current time
+		lobby.Timeout = time.Now()
+		err = redisClient.SaveGameLobby(lobby)
+		if err != nil {
+			log.Printf("[TIMEOUT-ERROR] Error setting lobby timeout: %v", err)
+			return
+		}
+
+		// Sleep for timeout duration
+		time.Sleep(time.Minute * time.Duration(timeout))
+
+		// Broadcast the timeout to all players in the lobby
+		sio.Sio_server.To(socket.Room(lobbyID)).Emit("started_timeout", gin.H{"message": "Timeout reached"})
+		log.Printf("[TIMEOUT] 2 minutes timeout reached %s", lobbyID)
+
+		// Reset the timeout
+		lobby.Timeout = time.Time{}
+		err = redisClient.SaveGameLobby(lobby)
+		if err != nil {
+			log.Printf("[TIMEOUT-ERROR] Error resetting lobby timeout: %v", err)
+			return
+		}
+		log.Printf("[TIMEOUT] Timeout reset for lobby %s", lobbyID)
 	}
+}
 
-	lobby.Timeout = time.Now()
-	err = rc.SaveGameLobby(lobby)
-	if err != nil {
-		log.Printf("[TIMEOUT-ERROR] Error setting lobby timeout: %v", err)
-		return
+func HandleRequestTimeout(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+
+		lobbyID := args[0].(string)
+
+		log.Printf("[TIMEOUT] Requesting timeout for lobby %s", lobbyID)
+
+		// Check if the user is in the lobby
+		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Database error: %v", err)
+			client.Emit("error", gin.H{"error": "Database error"})
+			return
+		}
+
+		if !isInLobby {
+			log.Printf("[HAND-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
+			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
+			return
+		}
+
+		// Get timeout from lobby
+		lobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[TIMEOUT-ERROR] Error obtaining lobby to start timeout: %v", err)
+			return
+		}
+
+		client.Emit("requested_timeout", gin.H{"message": lobby.Timeout})
 	}
-	// Sleep for 2 minutes
-	time.Sleep(time.Minute * 2)
-
-	// Broadcast the timeout to all players in the lobby
-	sio.Sio_server.To(socket.Room(lobbyID)).Emit("timeout", gin.H{"message": "Timeout reached"})
-	log.Printf("[TIMEOUT] 2 minutes timeout reached %s", lobbyID)
 }

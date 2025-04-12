@@ -102,6 +102,10 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("open_pack", handlers.HandlerOpenPack(redisClient, client, db, username))
 
 		client.On("propose_blind", handlers.HandleProposeBlind(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+
+		client.On("start_timeout", handlers.HandleStarttimeout(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+
+		client.On("request_timeout", handlers.HandleRequestTimeout(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 	})
 
 	// NOTE: igual lo usamos en algún momento
