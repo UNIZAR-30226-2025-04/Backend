@@ -87,7 +87,7 @@ func UserExistsInLobby(db *gorm.DB, lobbyID string, username string, client *soc
 	return isInLobby, err
 }
 
-// Returns the icon of the user
+// Returns the icon of a user
 func UserIcon(db *gorm.DB, username string) int {
 	var icon int
 	err := db.Model(&postgres.GameProfile{}).
