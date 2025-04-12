@@ -25,7 +25,7 @@ jobs:
             git reset --hard  # Ensure clean state
             git pull origin main
 
-            echo $PATH
+            source ~/.bashrc
             swag init --output config/swagger
 
             echo "Restarting Go Server..."
