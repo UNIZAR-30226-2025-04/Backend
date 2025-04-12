@@ -29,7 +29,7 @@ func VerifyUserConnection(client *socket.Socket, db *gorm.DB) (success bool, use
 		return false, "", ""
 	}
 
-	// Decode JWT to get email
+	// Decode JWT to get the user's email
 	fmt.Println("Provided JWT: ", token)
 	email, err := middleware.Socketio_JWT_decoder(authData)
 	if err != nil {
