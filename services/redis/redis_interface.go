@@ -243,18 +243,15 @@ func (rc *RedisClient) SetCurrentBlind(lobbyId string, blind int, proposerUserna
 
 // GetAllPlayersInLobby retrieves all players in a specific lobby
 func (rc *RedisClient) GetAllPlayersInLobby(lobbyId string) ([]redis_models.InGamePlayer, error) {
-	// Use a pattern to scan for all players
-	pattern := "player:*:game"
-	cursor := uint64(0)
 	var players []redis_models.InGamePlayer
+	pattern := "player:*:game"
+	var cursor uint64
 
 	for {
 		keys, nextCursor, err := rc.client.Scan(rc.ctx, cursor, pattern, 10).Result()
 		if err != nil {
 			return nil, fmt.Errorf("error scanning for players: %v", err)
 		}
-
-		cursor = nextCursor
 
 		for _, key := range keys {
 			data, err := rc.client.Get(rc.ctx, key).Bytes()
@@ -269,15 +266,15 @@ func (rc *RedisClient) GetAllPlayersInLobby(lobbyId string) ([]redis_models.InGa
 				continue
 			}
 
-			// Only include players in the requested lobby
 			if player.LobbyId == lobbyId {
 				players = append(players, player)
 			}
 		}
 
-		if cursor == 0 {
+		if nextCursor == 0 {
 			break
 		}
+		cursor = nextCursor
 	}
 
 	return players, nil

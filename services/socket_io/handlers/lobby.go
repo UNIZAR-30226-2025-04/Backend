@@ -529,6 +529,7 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// Broadcast to all users in the lobby that the game is starting
+		// TODO, CRITICAL: CHANGE TO "BLIND_STARTING"?
 		sio.Sio_server.To(socket.Room(lobbyID)).Emit("game_starting", gin.H{
 			"lobby_id": lobbyID,
 			"message":  "The game is starting!",
