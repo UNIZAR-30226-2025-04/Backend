@@ -56,7 +56,9 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		}
 
 		// Add connection to map
-		(*socketio_types.SocketServer)(sio).AddConnection(username, client)
+		// TODO: declare variable of type *socketio_types.SocketServer to avoid casting constantly
+		sio_casted := (*socketio_types.SocketServer)(sio)
+		sio_casted.AddConnection(username, client)
 
 		fmt.Println("Username: ", username)
 		fmt.Println("Email: ", email)
@@ -72,40 +74,44 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		})
 
 		// Join the user to a room corresponding to a Nogler game lobby
-		client.On("join_lobby", handlers.HandleJoinLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+		client.On("join_lobby", handlers.HandleJoinLobby(redisClient, client, db, username, sio_casted))
 
 		// Exit a lobby voluntarily
 		client.On("exit_lobby", handlers.HandleExitLobby(redisClient, client, db, username))
 
 		// Kick a user from a lobby (only for hosts)
-		client.On("kick_from_lobby", handlers.HandleKickFromLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+		client.On("kick_from_lobby", handlers.HandleKickFromLobby(redisClient, client, db, username, sio_casted))
 
 		// Get (username,icon) of all users in a lobby and (username,icon) of the lobby host/creator
 		client.On("get_lobby_info", handlers.GetLobbyInfo(redisClient, client, db, username))
 
 		// Broadcast a message to all clients in a specific lobby
-		client.On("broadcast_to_lobby", handlers.BroadcastMessageToLobby(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+		client.On("broadcast_to_lobby", handlers.BroadcastMessageToLobby(redisClient, client, db, username, sio_casted))
 
 		// NOTE: will remove sio connection from map
-		client.On("disconnecting", handlers.HandleDisconnecting(username, (*socketio_types.SocketServer)(sio)))
+		client.On("disconnecting", handlers.HandleDisconnecting(username, sio_casted))
 
 		// Start game
-		client.On("start_game", handlers.HandleStartGame(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+		client.On("start_game", handlers.HandleStartGame(redisClient, client, db, username, sio_casted))
 
 		// Play a hand and recieve the type of hand and the points scored
-		client.On("play_hand", handlers.HandlePlayHand(redisClient, client, db, username))
+		client.On("play_hand", handlers.HandlePlayHand(redisClient, client, db, username, sio_casted))
 
-		client.On("draw_cards", handlers.HandleDrawCards(redisClient, client, db, username))
+		client.On("draw_cards", handlers.HandleDrawCards(redisClient, client, db, username, sio_casted))
 
 		client.On("get_full_deck", handlers.HandleGetFullDeck(redisClient, client, db, username))
 
-		client.On("open_pack", handlers.HandlerOpenPack(redisClient, client, db, username))
+		client.On("open_pack", handlers.HandleOpenPack(redisClient, client, db, username))
 
-		client.On("propose_blind", handlers.HandleProposeBlind(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+		client.On("propose_blind", handlers.HandleProposeBlind(redisClient, client, db, username, sio_casted))
 
-		client.On("start_timeout", handlers.HandleStarttimeout(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+		// client.On("start_timeout", handlers.HandleStarttimeout(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
 
-		client.On("request_timeout", handlers.HandleRequestTimeout(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
+		client.On("request_blind_timeout", handlers.HandleRequestBlindTimeout(redisClient, client, db, username))
+
+		client.On("request_game_round_timeout", handlers.HandleRequestGameRoundTimeout(redisClient, client, db, username))
+
+		client.On("request_shop_timeout", handlers.HandleRequestShopTimeout(redisClient, client, db, username))
 	})
 
 	// NOTE: igual lo usamos en algún momento

@@ -3,6 +3,7 @@ package handlers
 import (
 	"Nogler/services/poker"
 	"Nogler/services/redis"
+	socketio_types "Nogler/services/socket_io/types"
 	"Nogler/utils"
 	"encoding/json"
 	"log"
@@ -17,7 +18,7 @@ import (
 // El nivel al que tenemo sla mano para saber fichas y mult base
 // Ahora mismo está como string en el aproach mencionado sería 2 ints, fichas y mult
 func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
-	db *gorm.DB, username string) func(args ...interface{}) {
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
 
 		log.Printf("PlayHand iniciado - Usuario: %s, Args: %v, Socket ID: %s",
@@ -109,6 +110,8 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		if player.HandPlaysLeft <= 0 {
 			client.Emit("no_plays_left", gin.H{"message": "No hand plays left"})
 			log.Printf("[HAND-NO-PLAYS] User %s has no plays left", username)
+
+			checkPlayerFinishedRound(redisClient, db, username, lobbyID, sio)
 		}
 
 		//logear en redis + pg cuanto ha puntuado supongo IMPORTANTEEEEEEEEEEEEEEEEEEEEEE
@@ -140,7 +143,7 @@ func ApplyJokers(h poker.Hand, fichas int, mult int) int {
 
 // Do this function plis TODO
 func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
-	db *gorm.DB, username string) func(args ...interface{}) {
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
 		log.Printf("DrawCards request - User: %s, Args: %v, Socket ID: %s",
 			username, args, client.Id())
@@ -259,6 +262,7 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 		if player.DiscardsLeft <= 0 {
 			client.Emit("no_draws_left", gin.H{"message": "No draws left"})
 			log.Printf("[DRAW-NO-DRAWS] User %s has no draws left", username)
+			checkPlayerFinishedRound(redisClient, db, username, lobbyID, sio)
 		}
 	}
 }
@@ -307,5 +311,51 @@ func HandleGetFullDeck(redisClient *redis.RedisClient, client *socket.Socket,
 		// 4. Send to client
 		client.Emit("full_deck", response)
 		log.Printf("Sent full deck to user %s (%d total cards)", username, response["deck_size"])
+	}
+}
+
+// CheckPlayerFinishedRound checks if a player has finished the round and handles it
+func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, username string,
+	lobbyID string, sio *socketio_types.SocketServer) {
+
+	log.Printf("[ROUND-CHECK] Checking if player %s has finished round in lobby %s", username, lobbyID)
+
+	// Get player from Redis
+	player, err := redisClient.GetInGamePlayer(username)
+	if err != nil {
+		log.Printf("[ROUND-CHECK-ERROR] Error getting player data: %v", err)
+		return
+	}
+
+	// Check if player has no plays and discards left
+	if player.HandPlaysLeft <= 0 && player.DiscardsLeft <= 0 {
+		log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays or discards left)", username)
+
+		// Get the lobby
+		lobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[ROUND-CHECK-ERROR] Error getting lobby: %v", err)
+			return
+		}
+
+		// Increment the counter of players who finished the round
+		lobby.TotalPlayersFinishedRound++
+		log.Printf("[ROUND-CHECK] Incremented finished players count to %d/%d for lobby %s",
+			lobby.TotalPlayersFinishedRound, lobby.PlayerCount, lobbyID)
+
+		// Save the updated lobby
+		err = redisClient.SaveGameLobby(lobby)
+		if err != nil {
+			log.Printf("[ROUND-CHECK-ERROR] Error saving lobby: %v", err)
+			return
+		}
+
+		// If all players have finished the round, end it
+		if lobby.TotalPlayersFinishedRound >= lobby.PlayerCount {
+			log.Printf("[ROUND-CHECK] All players (%d/%d) have finished their round in lobby %s. Ending round.",
+				lobby.TotalPlayersFinishedRound, lobby.PlayerCount, lobbyID)
+
+			handleRoundEnd(redisClient, db, lobbyID, sio)
+		}
 	}
 }

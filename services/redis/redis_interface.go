@@ -229,16 +229,56 @@ func (rc *RedisClient) GetCurrentBlind(lobbyId string) (int, error) {
 	return lobby.CurrentBlind, nil
 }
 
-func (rc *RedisClient) SetCurrentBlind(lobbyId string, blind int) error {
+func (rc *RedisClient) SetCurrentBlind(lobbyId string, blind int, proposerUsername string) error {
 	lobby, err := rc.GetGameLobby(lobbyId)
 	if err != nil {
 		return fmt.Errorf("error getting lobby for current blind: %v", err)
 	}
-	key := redis_utils.FormatLobbyKey(lobbyId)
+
 	lobby.CurrentBlind = blind
-	data, err := json.Marshal(lobbyId)
-	if err != nil {
-		return fmt.Errorf("error marshalling lobby: %v", err)
+	lobby.HighestBlindProposer = proposerUsername
+
+	return rc.SaveGameLobby(lobby)
+}
+
+// GetAllPlayersInLobby retrieves all players in a specific lobby
+func (rc *RedisClient) GetAllPlayersInLobby(lobbyId string) ([]redis_models.InGamePlayer, error) {
+	// Use a pattern to scan for all players
+	pattern := "player:*:game"
+	cursor := uint64(0)
+	var players []redis_models.InGamePlayer
+
+	for {
+		keys, nextCursor, err := rc.client.Scan(rc.ctx, cursor, pattern, 10).Result()
+		if err != nil {
+			return nil, fmt.Errorf("error scanning for players: %v", err)
+		}
+
+		cursor = nextCursor
+
+		for _, key := range keys {
+			data, err := rc.client.Get(rc.ctx, key).Bytes()
+			if err != nil {
+				log.Printf("error getting player data for key %s: %v", key, err)
+				continue
+			}
+
+			var player redis_models.InGamePlayer
+			if err := json.Unmarshal(data, &player); err != nil {
+				log.Printf("error unmarshaling player data for key %s: %v", key, err)
+				continue
+			}
+
+			// Only include players in the requested lobby
+			if player.LobbyId == lobbyId {
+				players = append(players, player)
+			}
+		}
+
+		if cursor == 0 {
+			break
+		}
 	}
-	return rc.client.Set(rc.ctx, key, data, 24*time.Hour).Err()
+
+	return players, nil
 }

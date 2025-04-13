@@ -72,15 +72,22 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 
 		// Create corresponding Redis lobby with matching public/private setting
 		redisLobby := &redis_models.GameLobby{
-			Id:              NewLobby.ID,
-			CreatorUsername: username,
-			NumberOfRounds:  0,
-			TotalPoints:     0,
-			CreatedAt:       NewLobby.CreatedAt,
-			GameHasBegun:    false,
-			IsPublic:        isPublic,
-			CurrentBlind:    0,
-			NumberOfVotes:   0,
+			Id:                        NewLobby.ID,
+			CreatorUsername:           username,
+			NumberOfRounds:            0,
+			TotalPoints:               0,
+			CreatedAt:                 NewLobby.CreatedAt,
+			GameHasBegun:              false,
+			IsPublic:                  isPublic,
+			CurrentBlind:              0,
+			NumberOfVotes:             0,
+			CurrentRound:              0,
+			TotalProposedBlinds:       0,
+			TotalPlayersFinishedRound: 0,
+			TotalPlayersFinishedShop:  0,
+			BlindTimeout:              time.Time{},
+			GameRoundTimeout:          time.Time{},
+			ShopTimeout:               time.Time{},
 		}
 
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {

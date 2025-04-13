@@ -215,6 +215,17 @@ func HandleExitLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// Decrement player count in Redis
+		redisLobby, err := redisClient.GetGameLobby(lobbyID)
+		if err == nil && redisLobby.PlayerCount > 0 {
+			redisLobby.PlayerCount--
+			log.Printf("[EXIT] Decremented player count for lobby %s to %d", lobbyID, redisLobby.PlayerCount)
+			err = redisClient.SaveGameLobby(redisLobby)
+			if err != nil {
+				log.Printf("[EXIT-WARNING] Failed to update player count in Redis: %v", err)
+			}
+		}
+
 		// Remove player from Redis if exists
 		if redisClient != nil {
 			if err := redisClient.DeleteInGamePlayer(username, lobbyID); err != nil {
@@ -346,9 +357,15 @@ func HandleKickFromLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		playerLobby, err := redisClient.GetPlayerCurrentLobby(usernameToKick)
-		if err == nil {
-			fmt.Println("Current player lobby: ", playerLobby)
+		// Decrement player count in Redis
+		redisLobby, err := redisClient.GetGameLobby(lobbyID)
+		if err == nil && redisLobby.PlayerCount > 0 {
+			redisLobby.PlayerCount--
+			log.Printf("[KICK] Decremented player count for lobby %s to %d", lobbyID, redisLobby.PlayerCount)
+			err = redisClient.SaveGameLobby(redisLobby)
+			if err != nil {
+				log.Printf("[KICK-WARNING] Failed to update player count in Redis: %v", err)
+			}
 		}
 
 		// Remove player from Redis if exists
@@ -358,11 +375,6 @@ func HandleKickFromLobby(redisClient *redis.RedisClient, client *socket.Socket,
 				client.Emit("error", gin.H{"error": "Error removing user from Redis"})
 				return
 			}
-		}
-
-		playerLobby2, err := redisClient.GetPlayerCurrentLobby(usernameToKick)
-		if err == nil {
-			fmt.Println("Current player lobby: ", playerLobby2)
 		}
 
 		// Commit transaction
@@ -473,6 +485,35 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// Check if the game has already begun
+		if lobby.GameHasBegun {
+			client.Emit("error", gin.H{"error": "Game has already started"})
+			return
+		}
+
+		// Count the number of players in the lobby
+		var playerCount int64
+		if err := db.Model(&models.InGamePlayer{}).Where("lobby_id = ?", lobbyID).Count(&playerCount).Error; err != nil {
+			client.Emit("error", gin.H{"error": "Error counting players"})
+			return
+		}
+
+		// Get the Redis lobby to update PlayerCount
+		redisLobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			client.Emit("error", gin.H{"error": "Error getting Redis lobby"})
+			return
+		}
+
+		// Set the player count
+		redisLobby.PlayerCount = int(playerCount)
+
+		// Update Redis with player count
+		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
+			client.Emit("error", gin.H{"error": "Error updating Redis lobby"})
+			return
+		}
+
 		// Update lobby state to "in progress" in PostgreSQL
 		if err := db.Model(&models.GameLobby{}).Where("id = ?", lobbyID).Update("game_has_begun", true).Error; err != nil {
 			client.Emit("error", gin.H{"error": "Error updating lobby state"})
@@ -494,5 +535,8 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 		})
 
 		log.Printf("[START-SUCCESS] The game started succesfully %s by %s", lobbyID, username)
+
+		// Start the blind proposal phase immediately
+		startBlindTimeout(redisClient, client, db, lobbyID, sio)
 	}
 }

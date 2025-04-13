@@ -11,17 +11,29 @@ import (
 // GameLobby represents a game lobby state
 
 type GameLobby struct {
-	Id              string     `json:"id"`               // Matches game_lobbies.id
-	CreatorUsername string     `json:"creator_username"` // Matches game_lobbies.creator_username
-	NumberOfRounds  int        `json:"number_of_rounds"` // Matches game_lobbies.number_of_rounds
-	TotalPoints     int        `json:"total_points"`     // Matches game_lobbies.total_points
-	CreatedAt       time.Time  `json:"created_at"`       // Matches game_lobbies.created_at
-	GameHasBegun    bool       `json:"game_has_begun"`   // Matches game_lobbies.game_has_begun
-	IsPublic        bool       `json:"is_public"`        // Matches game_lobbies.is_public
-	ShopState       *LobbyShop `json:"shop_state"`       // Matches game_lobbies.shop_state
-	CurrentBlind    int        `json:"current_blind"`    // Matches game_lobbies.current_blind
-	NumberOfVotes   int        `json:"number_of_votes"`  // Matches game_lobbies.number_of_votes
-	Timeout         time.Time  `json:"timeout"`          // Matches game_lobbies.timeout
+	Id                   string     `json:"id"`                     // Matches game_lobbies.id
+	CreatorUsername      string     `json:"creator_username"`       // Matches game_lobbies.creator_username
+	NumberOfRounds       int        `json:"number_of_rounds"`       // Matches game_lobbies.number_of_rounds
+	TotalPoints          int        `json:"total_points"`           // Matches game_lobbies.total_points
+	CreatedAt            time.Time  `json:"created_at"`             // Matches game_lobbies.created_at
+	GameHasBegun         bool       `json:"game_has_begun"`         // Matches game_lobbies.game_has_begun
+	IsPublic             bool       `json:"is_public"`              // Matches game_lobbies.is_public
+	ShopState            *LobbyShop `json:"shop_state"`             // Matches game_lobbies.shop_state
+	CurrentBlind         int        `json:"current_blind"`          // Matches game_lobbies.current_blind
+	NumberOfVotes        int        `json:"number_of_votes"`        // Matches game_lobbies.number_of_votes
+	HighestBlindProposer string     `json:"highest_blind_proposer"` // New field to track who proposed the highest blind
+
+	// New fields
+	CurrentRound              int `json:"current_round"`
+	TotalProposedBlinds       int `json:"total_proposed_blinds"`
+	TotalPlayersFinishedRound int `json:"total_players_finished_round"`
+	TotalPlayersFinishedShop  int `json:"total_players_finished_shop"`
+	PlayerCount               int `json:"player_count"` // New field to track number of players
+
+	// Replace single Timeout with specific timeouts
+	BlindTimeout     time.Time `json:"blind_timeout"`
+	GameRoundTimeout time.Time `json:"game_round_timeout"`
+	ShopTimeout      time.Time `json:"shop_timeout"`
 }
 
 type LobbyShop struct {

@@ -19,7 +19,7 @@ import (
 )
 
 // Handler that will be called.
-func HandlerOpenPack(redisClient *redis_services.RedisClient, client *socket.Socket,
+func HandleOpenPack(redisClient *redis_services.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string) func(args ...interface{}) {
 	return func(args ...interface{}) {
 
