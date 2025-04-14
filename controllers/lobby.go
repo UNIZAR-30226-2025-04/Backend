@@ -85,9 +85,11 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			TotalProposedBlinds:       0,
 			TotalPlayersFinishedRound: 0,
 			TotalPlayersFinishedShop:  0,
+			PlayerCount:               0,
 			BlindTimeout:              time.Time{},
 			GameRoundTimeout:          time.Time{},
 			ShopTimeout:               time.Time{},
+			CurrentPhase:              redis_models.PhaseNone, // Initialize with "none" phase
 		}
 
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {

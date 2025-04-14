@@ -372,10 +372,24 @@ func send_round_start_event(redisClient *redis.RedisClient, db *gorm.DB, lobbyID
 	// Reset players finished round counter in redis
 	lobby.TotalPlayersFinishedRound = 0
 
+	// Reset the blind timeout to indicate round has started
+	lobby.BlindTimeout = time.Time{}
+
+	// Set the current phase to play round and before broadcasting
+	// `starting_round` event to the players (avoid concurrency problems)
+	lobby.CurrentPhase = redis_models.PhasePlayRound
+
 	// Get the blind value
 	blind := lobby.CurrentBlind
 
-	// Broadcast round start event to all players in the lobby with the current round number
+	// CRITICAL: Save the updated lobby state BEFORE broadcasting
+	err = redisClient.SaveGameLobby(lobby)
+	if err != nil {
+		log.Printf("[ROUND-START-ERROR] Error updating lobby state: %v", err)
+		return
+	}
+
+	// Now broadcast round start event to all players in the lobby
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("starting_round", gin.H{
 		"round_number": lobby.CurrentRound,
 		"blind":        blind,
@@ -383,15 +397,6 @@ func send_round_start_event(redisClient *redis.RedisClient, db *gorm.DB, lobbyID
 
 	log.Printf("[ROUND-START] Broadcast round start event to lobby %s with round %d and blind %d",
 		lobbyID, lobby.CurrentRound, blind)
-
-	// Reset the blind timeout to indicate round has started
-	lobby.BlindTimeout = time.Time{}
-
-	// Save the updated lobby
-	err = redisClient.SaveGameLobby(lobby)
-	if err != nil {
-		log.Printf("[ROUND-START-ERROR] Error updating lobby state: %v", err)
-	}
 
 	// Start a timeout for the round
 	startRoundPlayTimeout(redisClient, db, lobbyID, sio)
@@ -456,6 +461,17 @@ func handleRoundEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string,
 
 	// Reset the game round timeout to indicate round has ended
 	lobby.GameRoundTimeout = time.Time{}
+
+	// Update the current phase
+	lobby.CurrentPhase = redis_models.PhaseShop
+
+	// CRITICAL: save game lobby, we'll save it again in handlePlayerEliminations,
+	// and before broadcasting `starting_shop` event to the players (avoid concurrency problems)
+	err = redisClient.SaveGameLobby(lobby)
+	if err != nil {
+		log.Printf("[ROUND-END-ERROR] Error saving lobby with updated GameRoundTimeout and CurrentPhase: %v", err)
+		return
+	}
 
 	// Process eliminations based on blind achievement
 	_, err = handlePlayerEliminations(redisClient, lobbyID, sio)
@@ -609,11 +625,11 @@ func startShopTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID strin
 
 	// Start the timeout goroutine
 	go func() {
-		// Sleep for shop duration (e.g., 1 minute)
+		// TODO, change the timeout value
 		time.Sleep(1 * time.Minute)
 
 		// Advance to the next blind
-		advanceToNextBlindAndRound(redisClient, db, lobbyID, sio, false)
+		advanceToNextBlind(redisClient, db, lobbyID, sio, false)
 	}()
 
 	log.Printf("[SHOP-TIMEOUT] Shop timeout started for lobby %s", lobbyID)
@@ -671,11 +687,11 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 
 		// If all players are ready, broadcast the starting_next_blind event
 		if lobby.TotalPlayersFinishedShop >= lobby.PlayerCount {
-			log.Printf("[NEXT-BLIND-COMPLETE] All players ready for next blind (%d/%d).",
-				lobby.TotalPlayersFinishedShop, lobby.PlayerCount)
+			log.Printf("[NEXT-BLIND-COMPLETE] All players ready for next blind (%d/%d), round %d.",
+				lobby.TotalPlayersFinishedShop, lobby.PlayerCount, lobby.CurrentRound)
 
 			// Advance to the next blind
-			advanceToNextBlindAndRound(redisClient, db, lobbyID, sio, false)
+			advanceToNextBlind(redisClient, db, lobbyID, sio, false)
 		}
 	}
 }
@@ -706,7 +722,7 @@ func incrementGameRound(redisClient *redis.RedisClient, lobbyID string, incremen
 	return lobby.CurrentRound, nil
 }
 
-func advanceToNextBlindAndRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, isFirstBlind bool) error {
+func advanceToNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, isFirstBlind bool) error {
 	log.Printf("[ROUND-ADVANCE] Advancing to next round for lobby %s", lobbyID)
 
 	// Get the lobby for early check
@@ -731,11 +747,47 @@ func advanceToNextBlindAndRound(redisClient *redis.RedisClient, db *gorm.DB, lob
 
 	log.Printf("[ROUND-ADVANCE] Lobby %s advanced to round %d", lobbyID, newRound)
 
+	// Update the current phase
+	if err := setGamePhase(redisClient, lobbyID, redis_models.PhaseBlind); err != nil {
+		log.Printf("[ROUND-ADVANCE-ERROR] %v", err)
+		return err
+	}
+
 	// Step 2: Broadcast the next blind phase event
 	broadcastStartingNextBlind(redisClient, db, lobbyID, sio)
 
 	// Step 3: Start the blind timeout process
 	startBlindTimeout(redisClient, db, lobbyID, sio, isFirstBlind)
 
+	return nil
+}
+
+func setGamePhase(redisClient *redis.RedisClient, lobbyID string, newPhase string) error {
+	log.Printf("[PHASE-CHANGE] Setting lobby %s phase to %s", lobbyID, newPhase)
+
+	// Get the game lobby from Redis
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[PHASE-CHANGE-ERROR] Error getting lobby: %v", err)
+		return fmt.Errorf("error getting lobby: %v", err)
+	}
+
+	// Check if phase is already set to the requested value
+	if lobby.CurrentPhase == newPhase {
+		log.Printf("[PHASE-CHANGE-INFO] Lobby %s phase already set to %s", lobbyID, newPhase)
+		return nil
+	}
+
+	// Update the phase
+	lobby.CurrentPhase = newPhase
+
+	// Save the updated lobby back to Redis
+	err = redisClient.SaveGameLobby(lobby)
+	if err != nil {
+		log.Printf("[PHASE-CHANGE-ERROR] Error saving lobby with updated phase: %v", err)
+		return fmt.Errorf("error saving lobby with updated phase: %v", err)
+	}
+
+	log.Printf("[PHASE-CHANGE-SUCCESS] Lobby %s phase changed to %s", lobbyID, newPhase)
 	return nil
 }

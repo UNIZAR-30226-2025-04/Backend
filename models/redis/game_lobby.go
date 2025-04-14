@@ -8,8 +8,16 @@ import (
 	"time"
 )
 
-// GameLobby represents a game lobby state
+// String consts to represent the different phases of the game
+const (
+	PhaseNone      = "none"
+	PhaseBlind     = "blind"
+	PhasePlayRound = "play_round"
+	PhaseShop      = "shop"
+	AnnounceWinner = "announce_winner"
+)
 
+// GameLobby represents a game lobby state
 type GameLobby struct {
 	Id                   string     `json:"id"`                     // Matches game_lobbies.id
 	CreatorUsername      string     `json:"creator_username"`       // Matches game_lobbies.creator_username
@@ -34,6 +42,9 @@ type GameLobby struct {
 	BlindTimeout     time.Time `json:"blind_timeout"`
 	GameRoundTimeout time.Time `json:"game_round_timeout"`
 	ShopTimeout      time.Time `json:"shop_timeout"`
+
+	// Add current phase tracking
+	CurrentPhase string `json:"current_phase"` // One of: none, blind, play_round, shop
 }
 
 type LobbyShop struct {
