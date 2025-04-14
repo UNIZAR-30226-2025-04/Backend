@@ -258,8 +258,15 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			return
 		}
 
+		// Get player-specific data from Redis
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[PHASE-INFO-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving player data"})
+			return
+		}
+
 		// Determine which timeout to return based on the current phase
-		// NOTE: concurrency model is not fully checked, VERY UNLIKELY SITUATIONS MIGHT OCCUR
 		var phaseTimeout time.Time
 		switch lobby.CurrentPhase {
 		case redis_models.PhaseBlind:
@@ -269,16 +276,47 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 		case redis_models.PhaseShop:
 			phaseTimeout = lobby.ShopTimeout
 		default:
-			phaseTimeout = time.Time{} // Zero time for other phases (for example, when announcing the winner)
+			phaseTimeout = time.Time{} // Zero time for other phases
 		}
 
-		// Send a single phase_info event with both current phase and timeout
-		client.Emit("game_phase_info", gin.H{
-			"phase":   lobby.CurrentPhase,
-			"timeout": phaseTimeout,
-		})
+		// Create a response with comprehensive game and player state
+		response := gin.H{
+			// Game state information
+			"phase":         lobby.CurrentPhase,
+			"timeout":       phaseTimeout,
+			"total_players": lobby.PlayerCount,
+			"current_round": lobby.CurrentRound,
+			"current_blind": lobby.CurrentBlind,
 
-		log.Printf("[PHASE-INFO] Sent phase info to %s: phase=%s, timeout=%v",
-			username, lobby.CurrentPhase, phaseTimeout)
+			// Player-specific state
+			"player_data": gin.H{
+				"username":        player.Username,
+				"players_money":   player.PlayersMoney,
+				"current_deck":    player.CurrentDeck,
+				"modifiers":       player.Modifiers,
+				"current_jokers":  player.CurrentJokers,
+				"current_points":  player.CurrentPoints,
+				"total_points":    player.TotalPoints,
+				"hand_plays_left": player.HandPlaysLeft,
+				"discards_left":   player.DiscardsLeft,
+			},
+		}
+
+		// Add phase-specific information
+		switch lobby.CurrentPhase {
+		case redis_models.PhaseBlind:
+			response["total_proposals"] = lobby.TotalProposedBlinds
+		case redis_models.PhasePlayRound:
+			response["players_finished_round"] = lobby.TotalPlayersFinishedRound
+		case redis_models.PhaseShop:
+			response["shop_items"] = lobby.ShopState
+			response["players_finished_shop"] = lobby.TotalPlayersFinishedShop
+		}
+
+		// Send the comprehensive game state
+		client.Emit("game_phase_info", response)
+
+		log.Printf("[PHASE-INFO] Sent complete game info to %s for phase %s",
+			username, lobby.CurrentPhase)
 	}
 }
