@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	redis_models "Nogler/models/redis"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/game_flow"
 	"Nogler/utils"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -190,72 +192,6 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 	}
 }*/
 
-func HandleRequestBlindTimeout(redisClient *redis.RedisClient, client *socket.Socket,
-	db *gorm.DB, username string) func(args ...interface{}) {
-	return func(args ...interface{}) {
-		if len(args) < 1 {
-			client.Emit("error", gin.H{"error": "Lobby ID is required"})
-			return
-		}
-
-		lobbyID := args[0].(string)
-		log.Printf("[BLIND-TIMEOUT-REQUEST] Requesting blind timeout for lobby %s by user %s", lobbyID, username)
-
-		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
-		if err != nil {
-			return
-		}
-
-		client.Emit("blind_timeout_info", gin.H{
-			"timeout": lobby.BlindTimeout,
-		})
-	}
-}
-
-func HandleRequestGameRoundTimeout(redisClient *redis.RedisClient, client *socket.Socket,
-	db *gorm.DB, username string) func(args ...interface{}) {
-	return func(args ...interface{}) {
-		if len(args) < 1 {
-			client.Emit("error", gin.H{"error": "Lobby ID is required"})
-			return
-		}
-
-		lobbyID := args[0].(string)
-		log.Printf("[GAME-ROUND-TIMEOUT-REQUEST] Requesting game round timeout for lobby %s by user %s", lobbyID, username)
-
-		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
-		if err != nil {
-			return
-		}
-
-		client.Emit("game_round_timeout_info", gin.H{
-			"timeout": lobby.GameRoundTimeout,
-		})
-	}
-}
-
-func HandleRequestShopTimeout(redisClient *redis.RedisClient, client *socket.Socket,
-	db *gorm.DB, username string) func(args ...interface{}) {
-	return func(args ...interface{}) {
-		if len(args) < 1 {
-			client.Emit("error", gin.H{"error": "Lobby ID is required"})
-			return
-		}
-
-		lobbyID := args[0].(string)
-		log.Printf("[SHOP-TIMEOUT-REQUEST] Requesting shop timeout for lobby %s by user %s", lobbyID, username)
-
-		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
-		if err != nil {
-			return
-		}
-
-		client.Emit("shop_timeout_info", gin.H{
-			"timeout": lobby.ShopTimeout,
-		})
-	}
-}
-
 func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
@@ -302,5 +238,47 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 			// Advance to the next blind
 			game_flow.AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, false, lobby.CurrentRound)
 		}
+	}
+}
+
+func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		if len(args) < 1 {
+			client.Emit("error", gin.H{"error": "Lobby ID is required"})
+			return
+		}
+
+		lobbyID := args[0].(string)
+		log.Printf("[PHASE-INFO-REQUEST] Requesting phase info for lobby %s by user %s", lobbyID, username)
+
+		// Validate the user and lobby
+		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
+		if err != nil {
+			return
+		}
+
+		// Determine which timeout to return based on the current phase
+		// NOTE: concurrency model is not fully checked, VERY UNLIKELY SITUATIONS MIGHT OCCUR
+		var phaseTimeout time.Time
+		switch lobby.CurrentPhase {
+		case redis_models.PhaseBlind:
+			phaseTimeout = lobby.BlindTimeout
+		case redis_models.PhasePlayRound:
+			phaseTimeout = lobby.GameRoundTimeout
+		case redis_models.PhaseShop:
+			phaseTimeout = lobby.ShopTimeout
+		default:
+			phaseTimeout = time.Time{} // Zero time for other phases (for example, when announcing the winner)
+		}
+
+		// Send a single phase_info event with both current phase and timeout
+		client.Emit("game_phase_info", gin.H{
+			"phase":   lobby.CurrentPhase,
+			"timeout": phaseTimeout,
+		})
+
+		log.Printf("[PHASE-INFO] Sent phase info to %s: phase=%s, timeout=%v",
+			username, lobby.CurrentPhase, phaseTimeout)
 	}
 }

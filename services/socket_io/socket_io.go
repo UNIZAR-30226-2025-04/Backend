@@ -105,13 +105,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		client.On("propose_blind", handlers.HandleProposeBlind(redisClient, client, db, username, sio_casted))
 
-		// client.On("start_timeout", handlers.HandleStarttimeout(redisClient, client, db, username, (*socketio_types.SocketServer)(sio)))
-
-		client.On("request_blind_timeout", handlers.HandleRequestBlindTimeout(redisClient, client, db, username))
-
-		client.On("request_game_round_timeout", handlers.HandleRequestGameRoundTimeout(redisClient, client, db, username))
-
-		client.On("request_shop_timeout", handlers.HandleRequestShopTimeout(redisClient, client, db, username))
+		client.On("request_game_phase_info", handlers.HandleRequestGamePhaseInfo(redisClient, client, db, username))
 
 		client.On("continue_to_next_blind", handlers.HandleContinueToNextBlind(redisClient, client, db, username, sio_casted))
 	})
