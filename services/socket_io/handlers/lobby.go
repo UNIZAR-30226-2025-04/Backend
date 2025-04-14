@@ -528,13 +528,8 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 		}
 
-		// Broadcast to all users in the lobby that the game is starting
-		// TODO, CRITICAL: CHANGE TO "BLIND_STARTING"?
-		broadcastStartingNextBlind(redisClient, db, lobbyID, sio)
-
 		log.Printf("[START-SUCCESS] The game started succesfully %s by %s", lobbyID, username)
 
-		// Start the blind proposal phase immediately, pass isFirstBlind = true
-		startBlindTimeout(redisClient, client, db, lobbyID, sio, true)
+		advanceToNextBlindAndRound(redisClient, db, lobbyID, sio, true)
 	}
 }

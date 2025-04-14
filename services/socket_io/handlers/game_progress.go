@@ -288,7 +288,7 @@ func HandleRequestShopTimeout(redisClient *redis.RedisClient, client *socket.Soc
 	}
 }
 
-func startBlindTimeout(redisClient *redis.RedisClient, client *socket.Socket,
+func startBlindTimeout(redisClient *redis.RedisClient,
 	db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, isFirstBlind bool) {
 
 	log.Printf("[BLIND-TIMEOUT] Starting blind timeout for lobby %s", lobbyID)
@@ -375,11 +375,6 @@ func send_round_start_event(redisClient *redis.RedisClient, db *gorm.DB, lobbyID
 		log.Printf("[ROUND-START-INFO] Round already started for lobby %s, skipping", lobbyID)
 		return
 	}
-
-	// Increment the round number
-	// NOTE: the initial value on creation is 0 (see controllers/lobby.go/CreateLobby)
-	// TODO: increment it before?
-	lobby.CurrentRound++
 
 	// Reset players finished round counter in redis
 	lobby.TotalPlayersFinishedRound = 0
@@ -624,8 +619,8 @@ func startShopTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID strin
 		// Sleep for shop duration (e.g., 1 minute)
 		time.Sleep(1 * time.Minute)
 
-		// Directly start the next blind timeout phase
-		startBlindTimeout(redisClient, nil, db, lobbyID, sio, false)
+		// Advance to the next blind
+		advanceToNextBlindAndRound(redisClient, db, lobbyID, sio, false)
 	}()
 
 	log.Printf("[SHOP-TIMEOUT] Shop timeout started for lobby %s", lobbyID)
@@ -686,11 +681,55 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 			log.Printf("[NEXT-BLIND-COMPLETE] All players ready for next blind (%d/%d).",
 				lobby.TotalPlayersFinishedShop, lobby.PlayerCount)
 
-			// Start the blind phase
-			broadcastStartingNextBlind(redisClient, db, lobbyID, sio)
-
-			// Start the blind timeout process
-			startBlindTimeout(redisClient, nil, db, lobbyID, sio, false)
+			// Advance to the next blind
+			advanceToNextBlindAndRound(redisClient, db, lobbyID, sio, false)
 		}
 	}
+}
+
+func incrementGameRound(redisClient *redis.RedisClient, lobbyID string, incrementBy int) (int, error) {
+	log.Printf("[ROUND-INCREMENT] Incrementing round for lobby %s by %d", lobbyID, incrementBy)
+
+	// Get the game lobby from Redis
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[ROUND-INCREMENT-ERROR] Error getting lobby: %v", err)
+		return 0, fmt.Errorf("error getting lobby: %v", err)
+	}
+
+	// Increment the current round
+	lobby.CurrentRound += incrementBy
+
+	// Save the updated lobby back to Redis
+	err = redisClient.SaveGameLobby(lobby)
+	if err != nil {
+		log.Printf("[ROUND-INCREMENT-ERROR] Error saving lobby: %v", err)
+		return 0, fmt.Errorf("error saving lobby: %v", err)
+	}
+
+	log.Printf("[ROUND-INCREMENT-SUCCESS] Lobby %s round incremented to %d",
+		lobbyID, lobby.CurrentRound)
+
+	return lobby.CurrentRound, nil
+}
+
+func advanceToNextBlindAndRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, isFirstBlind bool) error {
+	log.Printf("[ROUND-ADVANCE] Advancing to next round for lobby %s", lobbyID)
+
+	// Step 1: Increment the round number
+	newRound, err := incrementGameRound(redisClient, lobbyID, 1)
+	if err != nil {
+		log.Printf("[ROUND-ADVANCE-ERROR] Failed to increment round: %v", err)
+		return fmt.Errorf("failed to increment round: %v", err)
+	}
+
+	log.Printf("[ROUND-ADVANCE] Lobby %s advanced to round %d", lobbyID, newRound)
+
+	// Step 2: Broadcast the next blind phase event
+	broadcastStartingNextBlind(redisClient, db, lobbyID, sio)
+
+	// Step 3: Start the blind timeout process
+	startBlindTimeout(redisClient, db, lobbyID, sio, isFirstBlind)
+
+	return nil
 }
