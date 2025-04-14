@@ -85,6 +85,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 			}
 
 			// Broadcast the eliminated players
+			// TODO, CHECK IF WE SHOULD BROADCAST OR SEND TO EACH PLAYER INDIVIDUALLY
 			sio.Sio_server.To(socket.Room(lobbyID)).Emit("players_eliminated", gin.H{
 				"eliminated_players": eliminatedPlayers,
 				"reason":             "blind_check",

@@ -271,6 +271,7 @@ func HandleRoundPlayEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 		time.Sleep(2 * time.Second)
 
 		// Clean up all game resources (ALL the players and the lobby from both redis and Postgres)
+		// TODO: might have to remove it
 		end_game.CleanupGame(redisClient, db, lobbyID)
 	} else {
 		// Continue with shop phase

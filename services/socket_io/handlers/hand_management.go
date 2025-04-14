@@ -144,6 +144,52 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 	}
 }
 
+// checkPlayerFinishedRound checks if a player has finished the round and handles it
+func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, username string,
+	lobbyID string, sio *socketio_types.SocketServer) {
+
+	log.Printf("[ROUND-CHECK] Checking if player %s has finished round in lobby %s", username, lobbyID)
+
+	// Get player from Redis
+	player, err := redisClient.GetInGamePlayer(username)
+	if err != nil {
+		log.Printf("[ROUND-CHECK-ERROR] Error getting player data: %v", err)
+		return
+	}
+
+	// Check if player has no plays and discards left
+	if player.HandPlaysLeft <= 0 && player.DiscardsLeft <= 0 {
+		log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays or discards left)", username)
+
+		// Get the lobby
+		lobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[ROUND-CHECK-ERROR] Error getting lobby: %v", err)
+			return
+		}
+
+		// Increment the counter of players who finished the round (NEW, using a map to avoid same user incrementing the counter several times)
+		lobby.PlayersFinishedRound[username] = true
+		log.Printf("[ROUND-CHECK] Incremented finished players count to %d/%d for lobby %s",
+			len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
+
+		// Save the updated lobby
+		err = redisClient.SaveGameLobby(lobby)
+		if err != nil {
+			log.Printf("[ROUND-CHECK-ERROR] Error saving lobby: %v", err)
+			return
+		}
+
+		// If all players have finished the round, end it
+		if len(lobby.PlayersFinishedRound) >= lobby.PlayerCount {
+			log.Printf("[ROUND-CHECK] All players (%d/%d) have finished their round in lobby %s. Ending round.",
+				len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
+
+			game_flow.HandleRoundPlayEnd(redisClient, db, lobbyID, sio, lobby.CurrentRound)
+		}
+	}
+}
+
 func ApplyJokers(h poker.Hand, fichas int, mult int) int {
 	// Given a hand and the points obtained from poker.Hand
 	return fichas * mult
@@ -352,51 +398,5 @@ func HandleGetFullDeck(redisClient *redis.RedisClient, client *socket.Socket,
 		// 4. Send to client
 		client.Emit("full_deck", response)
 		log.Printf("Sent full deck to user %s (%d total cards)", username, response["deck_size"])
-	}
-}
-
-// CheckPlayerFinishedRound checks if a player has finished the round and handles it
-func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, username string,
-	lobbyID string, sio *socketio_types.SocketServer) {
-
-	log.Printf("[ROUND-CHECK] Checking if player %s has finished round in lobby %s", username, lobbyID)
-
-	// Get player from Redis
-	player, err := redisClient.GetInGamePlayer(username)
-	if err != nil {
-		log.Printf("[ROUND-CHECK-ERROR] Error getting player data: %v", err)
-		return
-	}
-
-	// Check if player has no plays and discards left
-	if player.HandPlaysLeft <= 0 && player.DiscardsLeft <= 0 {
-		log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays or discards left)", username)
-
-		// Get the lobby
-		lobby, err := redisClient.GetGameLobby(lobbyID)
-		if err != nil {
-			log.Printf("[ROUND-CHECK-ERROR] Error getting lobby: %v", err)
-			return
-		}
-
-		// Increment the counter of players who finished the round (NEW, using a map to avoid same user incrementing the counter several times)
-		lobby.PlayersFinishedRound[username] = true
-		log.Printf("[ROUND-CHECK] Incremented finished players count to %d/%d for lobby %s",
-			len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
-
-		// Save the updated lobby
-		err = redisClient.SaveGameLobby(lobby)
-		if err != nil {
-			log.Printf("[ROUND-CHECK-ERROR] Error saving lobby: %v", err)
-			return
-		}
-
-		// If all players have finished the round, end it
-		if len(lobby.PlayersFinishedRound) >= lobby.PlayerCount {
-			log.Printf("[ROUND-CHECK] All players (%d/%d) have finished their round in lobby %s. Ending round.",
-				len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
-
-			game_flow.HandleRoundPlayEnd(redisClient, db, lobbyID, sio, lobby.CurrentRound)
-		}
 	}
 }
