@@ -98,8 +98,8 @@ func StartBlindTimeout(redisClient *redis.RedisClient,
 		return
 	}
 
-	// Reset the blind-related counters
-	lobby.TotalProposedBlinds = 0
+	// Reset the blind-related map
+	lobby.ProposedBlinds = make(map[string]bool)
 
 	// Set the blind timeout to the current time
 	lobby.BlindTimeout = time.Now()
@@ -183,8 +183,8 @@ func StartRoundPlayTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID 
 		return
 	}
 
-	// Reset the round-related counters
-	lobby.TotalPlayersFinishedRound = 0
+	// NOTE: Already done in PrepareRoundStart
+	// lobby.PlayersFinishedRound = make(map[string]bool)
 
 	// Set the game round timeout to the current time
 	lobby.GameRoundTimeout = time.Now()
@@ -309,8 +309,8 @@ func AdvanceToShop(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, 
 	// Store shop state in lobby
 	lobby.ShopState = shopItems
 
-	// Reset shop-related counters
-	lobby.TotalPlayersFinishedShop = 0
+	// Reset shop-related counters (NEW, using map)
+	lobby.PlayersFinishedShop = make(map[string]bool)
 
 	// Save the updated lobby
 	if err := redisClient.SaveGameLobby(lobby); err != nil {

@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	redis_models "Nogler/models/redis"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/game_flow"
 	"Nogler/utils"
 	"log"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -80,10 +78,10 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			})
 		}
 
-		// Increment the counter of proposed blinds
-		lobby.TotalProposedBlinds++
+		// Increment the counter of proposed blinds (NEW, using a map to avoid same user incrementing the counter several times)
+		lobby.ProposedBlinds[username] = true
 		log.Printf("[BLIND] Player %s proposed blind. Total proposals: %d/%d",
-			username, lobby.TotalProposedBlinds, lobby.PlayerCount)
+			username, len(lobby.ProposedBlinds), lobby.PlayerCount)
 
 		// Save the updated lobby
 		err = redisClient.SaveGameLobby(lobby)
@@ -94,9 +92,9 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// If all players have proposed, start the round
-		if lobby.TotalProposedBlinds >= lobby.PlayerCount {
+		if len(lobby.ProposedBlinds) >= lobby.PlayerCount {
 			log.Printf("[BLIND-COMPLETE] All players have proposed blinds (%d/%d). Starting round.",
-				lobby.TotalProposedBlinds, lobby.PlayerCount)
+				len(lobby.ProposedBlinds), lobby.PlayerCount)
 
 			// Start the round immediately instead of waiting for timeout
 			go game_flow.AdvanceToNextRoundPlayIfUndone(redisClient, db, lobbyID, sio, lobby.CurrentRound)
@@ -217,10 +215,10 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 			return
 		}
 
-		// Increment the finished shop counter
-		lobby.TotalPlayersFinishedShop++
+		// Increment the finished shop counter (NEW, using maps now)
+		lobby.PlayersFinishedShop[username] = true
 		log.Printf("[NEXT-BLIND] Player %s ready for next blind. Total ready: %d/%d",
-			username, lobby.TotalPlayersFinishedShop, lobby.PlayerCount)
+			username, len(lobby.PlayersFinishedShop), lobby.PlayerCount)
 
 		// Save the updated lobby
 		err = redisClient.SaveGameLobby(lobby)
@@ -231,92 +229,12 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 		}
 
 		// If all players are ready, broadcast the starting_next_blind event
-		if lobby.TotalPlayersFinishedShop >= lobby.PlayerCount {
+		if len(lobby.PlayersFinishedShop) >= lobby.PlayerCount {
 			log.Printf("[NEXT-BLIND-COMPLETE] All players ready for next blind (%d/%d), round %d.",
-				lobby.TotalPlayersFinishedShop, lobby.PlayerCount, lobby.CurrentRound)
+				len(lobby.PlayersFinishedShop), lobby.PlayerCount, lobby.CurrentRound)
 
 			// Advance to the next blind
 			game_flow.AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, false, lobby.CurrentRound)
 		}
-	}
-}
-
-func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.Socket,
-	db *gorm.DB, username string) func(args ...interface{}) {
-	return func(args ...interface{}) {
-		if len(args) < 1 {
-			client.Emit("error", gin.H{"error": "Lobby ID is required"})
-			return
-		}
-
-		lobbyID := args[0].(string)
-		log.Printf("[PHASE-INFO-REQUEST] Requesting phase info for lobby %s by user %s", lobbyID, username)
-
-		// Validate the user and lobby
-		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
-		if err != nil {
-			return
-		}
-
-		// Get player-specific data from Redis
-		player, err := redisClient.GetInGamePlayer(username)
-		if err != nil {
-			log.Printf("[PHASE-INFO-ERROR] Error getting player data: %v", err)
-			client.Emit("error", gin.H{"error": "Error retrieving player data"})
-			return
-		}
-
-		// Determine which timeout to return based on the current phase
-		var phaseTimeout time.Time
-		switch lobby.CurrentPhase {
-		case redis_models.PhaseBlind:
-			phaseTimeout = lobby.BlindTimeout
-		case redis_models.PhasePlayRound:
-			phaseTimeout = lobby.GameRoundTimeout
-		case redis_models.PhaseShop:
-			phaseTimeout = lobby.ShopTimeout
-		default:
-			phaseTimeout = time.Time{} // Zero time for other phases
-		}
-
-		// Create a response with comprehensive game and player state
-		response := gin.H{
-			// Game state information
-			"phase":         lobby.CurrentPhase,
-			"timeout":       phaseTimeout,
-			"total_players": lobby.PlayerCount,
-			"current_round": lobby.CurrentRound,
-			"current_blind": lobby.CurrentBlind,
-
-			// Player-specific state
-			"player_data": gin.H{
-				"username":        player.Username,
-				"players_money":   player.PlayersMoney,
-				"current_deck":    player.CurrentDeck,
-				"modifiers":       player.Modifiers,
-				"current_jokers":  player.CurrentJokers,
-				"current_points":  player.CurrentPoints,
-				"total_points":    player.TotalPoints,
-				"hand_plays_left": player.HandPlaysLeft,
-				"discards_left":   player.DiscardsLeft,
-			},
-		}
-
-		// Add phase-specific information
-		switch lobby.CurrentPhase {
-		case redis_models.PhaseBlind:
-			response["total_proposals"] = lobby.TotalProposedBlinds
-		case redis_models.PhasePlayRound:
-			response["players_finished_round"] = lobby.TotalPlayersFinishedRound
-		case redis_models.PhaseShop:
-			response["shop_items"] = lobby.ShopState
-			response["players_finished_shop"] = lobby.TotalPlayersFinishedShop
-		}
-
-		// Send the comprehensive game state
-		client.Emit("game_phase_info", response)
-
-		log.Printf("[PHASE-INFO] Sent complete game info to %s for phase %s",
-			username, lobby.CurrentPhase)
 	}
 }

@@ -25,8 +25,8 @@ func PrepareRoundStart(redisClient *redis.RedisClient, lobbyID string) (*redis_m
 		return nil, 0, err
 	}
 
-	// Reset players finished round counter in redis
-	lobby.TotalPlayersFinishedRound = 0
+	// Reset players finished round map in redis
+	lobby.PlayersFinishedRound = make(map[string]bool)
 
 	// Reset the blind timeout to indicate round has started
 	lobby.BlindTimeout = time.Time{}

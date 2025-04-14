@@ -32,11 +32,14 @@ type GameLobby struct {
 	HighestBlindProposer string     `json:"highest_blind_proposer"` // New field to track who proposed the highest blind
 
 	// New fields
-	CurrentRound              int `json:"current_round"`
-	TotalProposedBlinds       int `json:"total_proposed_blinds"`
-	TotalPlayersFinishedRound int `json:"total_players_finished_round"`
-	TotalPlayersFinishedShop  int `json:"total_players_finished_shop"`
-	PlayerCount               int `json:"player_count"` // New field to track number of players
+	CurrentRound int `json:"current_round"`
+
+	// Replace counters with maps of usernames to track who has completed each action
+	ProposedBlinds       map[string]bool `json:"proposed_blinds"`        // Map of usernames who have proposed blinds
+	PlayersFinishedRound map[string]bool `json:"players_finished_round"` // Map of usernames who have finished the round
+	PlayersFinishedShop  map[string]bool `json:"players_finished_shop"`  // Map of usernames who have finished shopping
+
+	PlayerCount int `json:"player_count"` // New field to track number of players
 
 	// Replace single Timeout with specific timeouts
 	BlindTimeout     time.Time `json:"blind_timeout"`
@@ -45,6 +48,19 @@ type GameLobby struct {
 
 	// Add current phase tracking
 	CurrentPhase string `json:"current_phase"` // One of: none, blind, play_round, shop
+}
+
+// CRITICAL: if maps were not initialized, they would be nil and cause panic
+func (l *GameLobby) EnsureMapsInitialized() {
+	if l.ProposedBlinds == nil {
+		l.ProposedBlinds = make(map[string]bool)
+	}
+	if l.PlayersFinishedRound == nil {
+		l.PlayersFinishedRound = make(map[string]bool)
+	}
+	if l.PlayersFinishedShop == nil {
+		l.PlayersFinishedShop = make(map[string]bool)
+	}
 }
 
 type LobbyShop struct {

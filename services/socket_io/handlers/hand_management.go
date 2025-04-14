@@ -379,10 +379,10 @@ func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, usern
 			return
 		}
 
-		// Increment the counter of players who finished the round
-		lobby.TotalPlayersFinishedRound++
+		// Increment the counter of players who finished the round (NEW, using a map to avoid same user incrementing the counter several times)
+		lobby.PlayersFinishedRound[username] = true
 		log.Printf("[ROUND-CHECK] Incremented finished players count to %d/%d for lobby %s",
-			lobby.TotalPlayersFinishedRound, lobby.PlayerCount, lobbyID)
+			len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
 
 		// Save the updated lobby
 		err = redisClient.SaveGameLobby(lobby)
@@ -392,9 +392,9 @@ func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, usern
 		}
 
 		// If all players have finished the round, end it
-		if lobby.TotalPlayersFinishedRound >= lobby.PlayerCount {
+		if len(lobby.PlayersFinishedRound) >= lobby.PlayerCount {
 			log.Printf("[ROUND-CHECK] All players (%d/%d) have finished their round in lobby %s. Ending round.",
-				lobby.TotalPlayersFinishedRound, lobby.PlayerCount, lobbyID)
+				len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
 
 			game_flow.HandleRoundPlayEnd(redisClient, db, lobbyID, sio, lobby.CurrentRound)
 		}

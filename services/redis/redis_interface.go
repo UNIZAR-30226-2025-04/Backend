@@ -141,6 +141,8 @@ func (rc *RedisClient) GetGameLobby(lobbyId string) (*redis_models.GameLobby, er
 	if err := json.Unmarshal(data, &lobby); err != nil {
 		return nil, fmt.Errorf("error unmarshaling lobby data: %v", err)
 	}
+	// CRITICAL: Ensure maps are initialized to avoid panics
+	lobby.EnsureMapsInitialized()
 	return &lobby, nil
 }
 
