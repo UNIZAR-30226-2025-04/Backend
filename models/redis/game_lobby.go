@@ -14,6 +14,7 @@ const (
 	PhaseBlind     = "blind"
 	PhasePlayRound = "play_round"
 	PhaseShop      = "shop"
+	PhaseModifiers = "modifiers"
 	AnnounceWinner = "announce_winner"
 )
 

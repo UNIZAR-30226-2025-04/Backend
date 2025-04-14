@@ -400,3 +400,269 @@ func HandleGetFullDeck(redisClient *redis.RedisClient, client *socket.Socket,
 		log.Printf("Sent full deck to user %s (%d total cards)", username, response["deck_size"])
 	}
 }
+
+func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("ActivateModifier request - User: %s, Args: %v, Socket ID: %s",
+			username, args, client.Id())
+
+		// 1. Check if the player is in the game
+		lobbyID := args[0].(string)
+
+		// Check player is in lobby
+		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Database error: %v", err)
+			client.Emit("error", gin.H{"error": "Database error"})
+			return
+		}
+
+		if !isInLobby {
+			log.Printf("[MODIFIER-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
+			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
+			return
+		}
+
+		// Validate modifiers phase
+		valid, err := socketio_utils.ValidateModifiersPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			return
+		}
+
+		if len(args) < 1 {
+			log.Printf("[MODIFIER-ERROR] Missing arguments for user %s", username)
+			client.Emit("error", gin.H{"error": "Missing modifier or lobby"})
+			return
+		}
+
+		modifiers := args[1].([]redis.Modifier)
+
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting player data"})
+			return
+		}
+
+		if player.Modifiers == nil {
+			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
+			client.Emit("error", gin.H{"error": "No modifiers available"})
+			return
+		}
+
+		var player_modifiers []redis.Modifier
+		err = json.Unmarshal(player.Modifiers, &player_modifiers)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error parsing modifiers"})
+			return
+		}
+
+		// Check if the modifiers are available
+		found := false
+		var mod int
+		for _, m := range player_modifiers {
+			for _, modifier := range modifiers {
+				if m == modifier {
+					found = true
+					mod = int(m.Value)
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if !found {
+			log.Printf("[MODIFIER-ERROR] Modifier %d not available for user %s", mod, username)
+			client.Emit("error", gin.H{"error": "Modifier not available"})
+			return
+		}
+
+		// Add the activated modifiers to the player
+		var activated_modifiers []redis.Modifier
+		activated_modifiers = append(activated_modifiers, modifiers...)
+		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error processing modifiers"})
+			return
+		}
+		player.ActivatedModifiers = activated_modifiersJSON
+		log.Printf("[MODIFIER-INFO] Activated modifiers for user %s: %v", username, activated_modifiers)
+
+		// Remove the activated modifier from the available modifiers
+		for i, v := range player_modifiers {
+			for _, value := range modifiers {
+				if v == value {
+					player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
+				}
+			}
+		}
+
+		modifiersJSON, err := json.Marshal(player_modifiers)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error marshaling modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error processing modifiers"})
+			return
+		}
+		player.Modifiers = modifiersJSON
+
+		err = redisClient.UpdateDeckPlayer(*player)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error updating player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error updating player data"})
+			return
+		}
+
+		// Emit success response
+		client.Emit("modifier_activated", gin.H{
+			"modifiers": player.Modifiers,
+			"activated": player.ActivatedModifiers,
+		})
+		log.Printf("[MODIFIER-SUCCESS] Modifiers activated for user %s", username)
+	}
+}
+
+func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("ActivateModifier request - User: %s, Args: %v, Socket ID: %s",
+			username, args, client.Id())
+
+		// 1. Check if the player is in the game
+		lobbyID := args[0].(string)
+
+		// Check player is in lobby
+		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Database error: %v", err)
+			client.Emit("error", gin.H{"error": "Database error"})
+			return
+		}
+
+		if !isInLobby {
+			log.Printf("[MODIFIER-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
+			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
+			return
+		}
+
+		// Validate modifiers phase
+		valid, err := socketio_utils.ValidateModifiersPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			return
+		}
+
+		if len(args) < 1 {
+			log.Printf("[MODIFIER-ERROR] Missing arguments for user %s", username)
+			client.Emit("error", gin.H{"error": "Missing modifier or lobby"})
+			return
+		}
+
+		modifiers := args[1].([]redis.Modifier)
+
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting player data"})
+			return
+		}
+
+		if player.Modifiers == nil {
+			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
+			client.Emit("error", gin.H{"error": "No modifiers available"})
+			return
+		}
+
+		var player_modifiers []redis.Modifier
+		err = json.Unmarshal(player.Modifiers, &player_modifiers)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error parsing modifiers"})
+			return
+		}
+
+		// Check if the modifiers are available
+		found := false
+		var mod int
+		for _, m := range player_modifiers {
+			for _, modifier := range modifiers {
+				if m == modifier {
+					found = true
+					mod = int(m.Value)
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if !found {
+			log.Printf("[MODIFIER-ERROR] Modifier %d not available for user %s", mod, username)
+			client.Emit("error", gin.H{"error": "Modifier not available"})
+			return
+		}
+
+		// Remove the activated modifier from the available modifiers
+		for i, v := range player_modifiers {
+			for _, value := range modifiers {
+				if v == value {
+					player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
+				}
+			}
+		}
+
+		modifiersJSON, err := json.Marshal(player_modifiers)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error marshaling modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error processing modifiers"})
+			return
+		}
+		player.Modifiers = modifiersJSON
+
+		err = redisClient.UpdateDeckPlayer(*player)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error updating player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error updating player data"})
+			return
+		}
+
+		request_player := args[2].(string)
+
+		// Update the receiving player
+
+		receiver, err := redisClient.GetInGamePlayer(request_player)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting player data"})
+			return
+		}
+
+		// Add the activated modifiers to the player
+		var activated_modifiers []redis.Modifier
+		activated_modifiers = append(activated_modifiers, modifiers...)
+		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error processing modifiers"})
+			return
+		}
+		receiver.ReceivedModifiers = activated_modifiersJSON
+		log.Printf("[MODIFIER-INFO] Activated modifiers for user %s: %v", receiver.Username, activated_modifiers)
+
+		// Notify the receiving player
+		sio.UserConnections[receiver.Username].Emit("modifier_received", gin.H{
+			"modifiers": receiver.ReceivedModifiers,
+			"sender":    username,
+		})
+
+		// Notify the sender
+		client.Emit("modifier_sended", gin.H{
+			"modifiers": player.Modifiers,
+		})
+
+		log.Printf("[MODIFIER-SUCCESS] Modifiers sent to user %s from %s", request_player, username)
+
+	}
+}
