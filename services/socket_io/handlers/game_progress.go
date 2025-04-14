@@ -300,10 +300,9 @@ func startBlindTimeout(redisClient *redis.RedisClient,
 		return
 	}
 
-	// If the shop timeout is already zero, the blind phase has already started
-	// NEW: if we're in the first blind, shopTimeout is allowed to be zero
-	if lobby.ShopTimeout.IsZero() && !isFirstBlind {
-		log.Printf("[BLIND-TIMEOUT-INFO] Shop phase already ended for lobby %s, skipping", lobbyID)
+	// Check if the blind voting is already in timeout
+	if !lobby.BlindTimeout.IsZero() {
+		log.Printf("[BLIND-TIMEOUT-ERROR] Blind voting is already in timeout: %v", lobby.BlindTimeout)
 		return
 	}
 
@@ -314,12 +313,6 @@ func startBlindTimeout(redisClient *redis.RedisClient,
 	_, err = utils.CheckLobbyExists(db, lobbyID)
 	if err != nil {
 		log.Printf("[BLIND-TIMEOUT-ERROR] Lobby does not exist: %s", lobbyID)
-		return
-	}
-
-	// Check if the blind voting is already in timeout
-	if !lobby.BlindTimeout.IsZero() {
-		log.Printf("[BLIND-TIMEOUT-ERROR] Blind voting is already in timeout: %v", lobby.BlindTimeout)
 		return
 	}
 
@@ -715,6 +708,19 @@ func incrementGameRound(redisClient *redis.RedisClient, lobbyID string, incremen
 
 func advanceToNextBlindAndRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, isFirstBlind bool) error {
 	log.Printf("[ROUND-ADVANCE] Advancing to next round for lobby %s", lobbyID)
+
+	// Get the lobby for early check
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[ROUND-ADVANCE-ERROR] Error getting lobby: %v", err)
+		return fmt.Errorf("error getting lobby: %v", err)
+	}
+
+	// Early return if already advancing to next round (shop timeout is zero and not first blind)
+	if lobby.ShopTimeout.IsZero() && !isFirstBlind {
+		log.Printf("[ROUND-ADVANCE-INFO] Already advancing to next round for lobby %s, skipping", lobbyID)
+		return nil
+	}
 
 	// Step 1: Increment the round number
 	newRound, err := incrementGameRound(redisClient, lobbyID, 1)
