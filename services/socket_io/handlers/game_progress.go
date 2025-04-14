@@ -48,10 +48,10 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// Check if blind timeout has already started
-		if lobby.BlindTimeout.IsZero() {
-			log.Printf("[BLIND-WARNING] Trying to propose blind without active blind phase for lobby %s", lobbyID)
-			client.Emit("error", gin.H{"error": "Blind voting phase is not active"})
+		// Validate blind phase
+		valid, err := socketio_utils.ValidateBlindPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidateBlindPhase
 			return
 		}
 
@@ -103,7 +103,7 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 }
 
 // Function we should call when
-func Send_chosen_blind(lobbyID string, rc *redis.RedisClient, sio *socketio_types.SocketServer) {
+/*func Send_chosen_blind(lobbyID string, rc *redis.RedisClient, sio *socketio_types.SocketServer) {
 	lobby, err := rc.GetGameLobby(lobbyID)
 	if err != nil {
 		log.Printf("Error obtaining lobby to broadcast blind: %v", err)
@@ -111,7 +111,7 @@ func Send_chosen_blind(lobbyID string, rc *redis.RedisClient, sio *socketio_type
 	}
 	blind := lobby.CurrentBlind
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("send_chosen_blind", blind)
-}
+}*/
 
 /*func HandleStarttimeout(redisClient *redis.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
@@ -271,6 +271,13 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 		// Validate the user and lobby
 		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
 		if err != nil {
+			return
+		}
+
+		// Validate shop phase
+		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidateShopPhase
 			return
 		}
 

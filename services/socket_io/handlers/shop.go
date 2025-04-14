@@ -88,3 +88,5 @@ func HandleOpenPack(redisClient *redis_services.RedisClient, client *socket.Sock
 		})
 	}
 }
+
+// TODO: add more functionalities, buy vouchers, jokers, etc?
