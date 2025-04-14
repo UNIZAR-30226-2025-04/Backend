@@ -1,6 +1,7 @@
 package game_flow
 
 import (
+	game_constants "Nogler/constants/game"
 	redis_models "Nogler/models/redis"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
@@ -205,10 +206,10 @@ func StartRoundPlayTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID 
 
 // ---------------------------------------------------------------
 // Functions that are executed when the current game round
-// finishes and to start the next shop phase
+// finishes and to start the next shop phase / finish game
 // ---------------------------------------------------------------
 
-// Function to handle the end of a round
+// Now modify the HandleRoundEnd function
 func HandleRoundEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
 	log.Printf("[ROUND-END] Handling end of round for lobby %s", lobbyID)
 
@@ -228,14 +229,10 @@ func HandleRoundEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string,
 	// Reset the game round timeout to indicate round has ended
 	lobby.GameRoundTimeout = time.Time{}
 
-	// Update the current phase
-	lobby.CurrentPhase = redis_models.PhaseShop
-
-	// CRITICAL: save game lobby, we'll save it again in handlePlayerEliminations,
-	// and before broadcasting `starting_shop` event to the players (avoid concurrency problems)
+	// CRITICAL: save game lobby to indicate round has ended
 	err = redisClient.SaveGameLobby(lobby)
 	if err != nil {
-		log.Printf("[ROUND-END-ERROR] Error saving lobby with updated GameRoundTimeout and CurrentPhase: %v", err)
+		log.Printf("[ROUND-END-ERROR] Error saving lobby with updated GameRoundTimeout: %v", err)
 		return
 	}
 
@@ -245,39 +242,78 @@ func HandleRoundEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string,
 		log.Printf("[ELIMINATION-ERROR] Error handling player eliminations: %v", err)
 	}
 
-	// Get updated lobby (player count might have changed)
+	// Get updated lobby (player count might have changed after eliminations)
 	lobby, err = redisClient.GetGameLobby(lobbyID)
 	if err != nil {
 		log.Printf("[ROUND-END-ERROR] Error getting updated lobby: %v", err)
 		return
 	}
 
-	// Initialize the shop phase
-	shop, err := shop.InitializeShop(lobbyID, lobby.CurrentRound)
-	if err != nil {
-		log.Printf("[SHOP-INIT-ERROR] Error initializing shop: %v", err)
+	// Check if the game should end (player count <= 1 or max rounds reached)
+	if lobby.PlayerCount <= 1 || lobby.CurrentRound >= game_constants.MaxGameRounds {
+		log.Printf("[ROUND-END] Game ending conditions met: players=%d, current_round=%d",
+			lobby.PlayerCount, lobby.CurrentRound)
+
+		// Go to game end phase
+		AnnounceWinner(redisClient, db, lobbyID, sio)
 	} else {
-		// Store shop state in lobby
-		lobby.ShopState = shop
-
-		// Reset shop-related counters
-		lobby.TotalPlayersFinishedShop = 0
-
-		// Save the updated lobby
-		if err := redisClient.SaveGameLobby(lobby); err != nil {
-			log.Printf("[ROUND-END-ERROR] Error saving lobby: %v", err)
-		}
-
-		// Broadcast shop start to all players
-		sio.Sio_server.To(socket.Room(lobbyID)).Emit("starting_shop", gin.H{
-			"shop": shop,
-		})
-
-		// Start the shop timeout
-		StartShopTimeout(redisClient, db, lobbyID, sio)
+		// Continue with shop phase
+		AdvanceToShop(redisClient, db, lobbyID, sio)
 	}
 
 	log.Printf("[ROUND-END] Round ended for lobby %s", lobbyID)
+}
+
+// Create the AdvanceToShop function that handles shop initialization
+func AdvanceToShop(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
+	log.Printf("[SHOP-ADVANCE] Advancing to shop phase for lobby %s", lobbyID)
+
+	// Get updated lobby
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[SHOP-ADVANCE-ERROR] Error getting updated lobby: %v", err)
+		return
+	}
+
+	// Initialize the shop
+	shopItems, err := shop.InitializeShop(lobbyID, lobby.CurrentRound)
+	if err != nil {
+		log.Printf("[SHOP-INIT-ERROR] Error initializing shop: %v", err)
+		return
+	}
+
+	// Update the current phase (set it to redis_models.PhaseShop)
+	if err := socketio_utils.SetGamePhase(redisClient, lobbyID, redis_models.PhaseShop); err != nil {
+		log.Printf("[SHOP-ADVANCE-ERROR] Error setting shop phase: %v", err)
+		return
+	}
+
+	// Get the fresh lobby after phase update
+	lobby, err = redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[SHOP-ADVANCE-ERROR] Error getting updated lobby: %v", err)
+		return
+	}
+
+	// Store shop state in lobby
+	lobby.ShopState = shopItems
+
+	// Reset shop-related counters
+	lobby.TotalPlayersFinishedShop = 0
+
+	// Save the updated lobby
+	if err := redisClient.SaveGameLobby(lobby); err != nil {
+		log.Printf("[SHOP-ADVANCE-ERROR] Error saving lobby: %v", err)
+		return
+	}
+
+	// Broadcast shop start to all players
+	shop.BroadcastStartingShop(sio, lobbyID, shopItems)
+
+	// Start the shop timeout
+	StartShopTimeout(redisClient, db, lobbyID, sio)
+
+	log.Printf("[SHOP-ADVANCE] Successfully advanced lobby %s to shop phase", lobbyID)
 }
 
 // Function to start the shop timeout
@@ -315,4 +351,59 @@ func StartShopTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID strin
 	}()
 
 	log.Printf("[SHOP-TIMEOUT] Shop timeout started for lobby %s", lobbyID)
+}
+
+// Add a function to handle game end and announce winner
+func AnnounceWinner(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
+	log.Printf("[GAME-END] Game ending for lobby %s", lobbyID)
+
+	// Set the game phase to announce winner
+	if err := socketio_utils.SetGamePhase(redisClient, lobbyID, redis_models.AnnounceWinner); err != nil {
+		log.Printf("[GAME-END-ERROR] Error setting game end phase: %v", err)
+	}
+
+	// Get all players to determine winner
+	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
+	if err != nil {
+		log.Printf("[GAME-END-ERROR] Error getting players: %v", err)
+		return
+	}
+
+	var winner *redis_models.InGamePlayer
+	var highestPoints = -1
+
+	// Find the player with highest points
+	for i := range players {
+		if players[i].CurrentPoints > highestPoints {
+			winner = &players[i]
+			highestPoints = players[i].CurrentPoints
+		}
+	}
+
+	winnerData := gin.H{
+		"winner_username": "No winner",
+		"points":          0,
+		"icon":            1, // Default icon
+	}
+
+	if winner != nil {
+		// Get the winner's icon from PostgreSQL database
+		winnerIcon := utils.UserIcon(db, winner.Username)
+
+		winnerData = gin.H{
+			"winner_username": winner.Username,
+			"points":          winner.CurrentPoints,
+			"icon":            winnerIcon,
+		}
+		log.Printf("[GAME-END] Winner is %s with %d points and icon %d",
+			winner.Username, winner.CurrentPoints, winnerIcon)
+	}
+
+	// Broadcast game end to all players
+	sio.Sio_server.To(socket.Room(lobbyID)).Emit("game_end", gin.H{
+		"winner":  winnerData,
+		"message": "The game has ended!",
+	})
+
+	log.Printf("[GAME-END] Game ended for lobby %s", lobbyID)
 }
