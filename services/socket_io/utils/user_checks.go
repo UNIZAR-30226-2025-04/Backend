@@ -3,7 +3,11 @@ package socketio_utils
 import (
 	"Nogler/middleware"
 	models "Nogler/models/postgres"
+	redis_models "Nogler/models/redis"
+	"Nogler/services/redis"
+	"Nogler/utils"
 	"fmt"
+	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -51,4 +55,35 @@ func VerifyUserConnection(client *socket.Socket, db *gorm.DB) (success bool, use
 
 	username = user.ProfileUsername
 	return true, username, email
+}
+
+// Helper function to validate lobby and user, returning the lobby if valid
+func ValidateLobbyAndUser(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, lobbyID string) (*redis_models.GameLobby, error) {
+
+	log.Printf("[TIMEOUT-REQUEST] Validating lobby %s and user %s", lobbyID, username)
+
+	// Check if the user is in the lobby
+	isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+	if err != nil {
+		log.Printf("[TIMEOUT-ERROR] Database error: %v", err)
+		client.Emit("error", gin.H{"error": "Database error"})
+		return nil, err
+	}
+
+	if !isInLobby {
+		log.Printf("[TIMEOUT-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
+		client.Emit("error", gin.H{"error": "You must join the lobby before requesting timeout info"})
+		return nil, fmt.Errorf("user not in lobby")
+	}
+
+	// Get lobby from Redis
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[TIMEOUT-ERROR] Error obtaining lobby: %v", err)
+		client.Emit("error", gin.H{"error": "Error obtaining lobby information"})
+		return nil, err
+	}
+
+	return lobby, nil
 }

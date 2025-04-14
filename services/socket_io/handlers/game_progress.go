@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	redis_models "Nogler/models/redis"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
+	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/game_flow"
 	"Nogler/utils"
-	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -191,37 +190,6 @@ func Send_chosen_blind(lobbyID string, rc *redis.RedisClient, sio *socketio_type
 	}
 }*/
 
-// Helper function to validate lobby and user, returning the lobby if valid
-func validateLobbyAndUser(redisClient *redis.RedisClient, client *socket.Socket,
-	db *gorm.DB, username string, lobbyID string) (*redis_models.GameLobby, error) {
-
-	log.Printf("[TIMEOUT-REQUEST] Validating lobby %s and user %s", lobbyID, username)
-
-	// Check if the user is in the lobby
-	isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
-	if err != nil {
-		log.Printf("[TIMEOUT-ERROR] Database error: %v", err)
-		client.Emit("error", gin.H{"error": "Database error"})
-		return nil, err
-	}
-
-	if !isInLobby {
-		log.Printf("[TIMEOUT-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
-		client.Emit("error", gin.H{"error": "You must join the lobby before requesting timeout info"})
-		return nil, fmt.Errorf("user not in lobby")
-	}
-
-	// Get lobby from Redis
-	lobby, err := redisClient.GetGameLobby(lobbyID)
-	if err != nil {
-		log.Printf("[TIMEOUT-ERROR] Error obtaining lobby: %v", err)
-		client.Emit("error", gin.H{"error": "Error obtaining lobby information"})
-		return nil, err
-	}
-
-	return lobby, nil
-}
-
 func HandleRequestBlindTimeout(redisClient *redis.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string) func(args ...interface{}) {
 	return func(args ...interface{}) {
@@ -233,7 +201,7 @@ func HandleRequestBlindTimeout(redisClient *redis.RedisClient, client *socket.So
 		lobbyID := args[0].(string)
 		log.Printf("[BLIND-TIMEOUT-REQUEST] Requesting blind timeout for lobby %s by user %s", lobbyID, username)
 
-		lobby, err := validateLobbyAndUser(redisClient, client, db, username, lobbyID)
+		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
 		if err != nil {
 			return
 		}
@@ -255,7 +223,7 @@ func HandleRequestGameRoundTimeout(redisClient *redis.RedisClient, client *socke
 		lobbyID := args[0].(string)
 		log.Printf("[GAME-ROUND-TIMEOUT-REQUEST] Requesting game round timeout for lobby %s by user %s", lobbyID, username)
 
-		lobby, err := validateLobbyAndUser(redisClient, client, db, username, lobbyID)
+		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
 		if err != nil {
 			return
 		}
@@ -277,7 +245,7 @@ func HandleRequestShopTimeout(redisClient *redis.RedisClient, client *socket.Soc
 		lobbyID := args[0].(string)
 		log.Printf("[SHOP-TIMEOUT-REQUEST] Requesting shop timeout for lobby %s by user %s", lobbyID, username)
 
-		lobby, err := validateLobbyAndUser(redisClient, client, db, username, lobbyID)
+		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
 		if err != nil {
 			return
 		}
@@ -301,7 +269,7 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 		log.Printf("[NEXT-BLIND] User %s requesting to continue to next blind in lobby %s", username, lobbyID)
 
 		// Validate the user and lobby
-		lobby, err := validateLobbyAndUser(redisClient, client, db, username, lobbyID)
+		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
 		if err != nil {
 			return
 		}

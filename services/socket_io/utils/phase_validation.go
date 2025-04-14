@@ -42,3 +42,8 @@ func ValidateGamePhase(redisClient *redis.RedisClient, client *socket.Socket, lo
 func ValidatePlayRoundPhase(redisClient *redis.RedisClient, client *socket.Socket, lobbyID string) (bool, error) {
 	return ValidateGamePhase(redisClient, client, lobbyID, redis_models.PhasePlayRound)
 }
+
+// ValidateShopPhase specifically validates that the game is in the shop phase
+func ValidateShopPhase(redisClient *redis.RedisClient, client *socket.Socket, lobbyID string) (bool, error) {
+	return ValidateGamePhase(redisClient, client, lobbyID, redis_models.PhaseShop)
+}

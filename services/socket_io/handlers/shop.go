@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"Nogler/models/postgres"
-	redis "Nogler/models/redis"
 
 	redis_services "Nogler/services/redis"
+	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/stages/shop"
 	"log"
 
@@ -50,19 +50,33 @@ func HandleOpenPack(redisClient *redis_services.RedisClient, client *socket.Sock
 			return
 		}
 
-		var lobbyState redis.GameLobby
+		// Validate that we are in the shop phase
+		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidateShopPhase
+			return
+		}
+
+		// Get the game lobby from Redis
+		lobbyState, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Error getting lobby state: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting lobby state"})
+			return
+		}
 
 		if lobbyState.ShopState == nil {
 			client.Emit("error", gin.H{"error": "Lobby shop state not found"})
 			return
 		}
-		item, exists := shop.FindShopItem(lobbyState, packID)
+
+		item, exists := shop.FindShopItem(*lobbyState, packID)
 		if !exists || item.Type != "pack" {
 			client.Emit("invalid_pack")
 			return
 		}
 
-		contents, err := shop.GetOrGeneratePackContents(redisClient, &lobbyState, item)
+		contents, err := shop.GetOrGeneratePackContents(redisClient, lobbyState, item)
 		if err != nil {
 			client.Emit("pack_generation_failed")
 			return
