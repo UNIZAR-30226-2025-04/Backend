@@ -7,6 +7,7 @@ import (
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/stages/blind"
+	"Nogler/services/socket_io/utils/stages/end_game"
 	"Nogler/services/socket_io/utils/stages/play_round"
 	"Nogler/services/socket_io/utils/stages/shop"
 	"Nogler/utils"
@@ -14,8 +15,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/zishang520/socket.io/v2/socket"
 	"gorm.io/gorm"
 )
 
@@ -266,7 +265,13 @@ func HandleRoundPlayEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 			lobby.PlayerCount, lobby.CurrentRound)
 
 		// Go to game end phase
-		AnnounceWinner(redisClient, db, lobbyID, sio)
+		end_game.AnnounceWinner(redisClient, db, lobbyID, sio)
+
+		// Short delay to ensure all clients receive the game_end event before cleanup
+		time.Sleep(2 * time.Second)
+
+		// Clean up all game resources (ALL the players and the lobby from both redis and Postgres)
+		end_game.CleanupGame(redisClient, db, lobbyID)
 	} else {
 		// Continue with shop phase
 		AdvanceToShop(redisClient, db, lobbyID, sio)
@@ -365,59 +370,4 @@ func StartShopTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID strin
 	}()
 
 	log.Printf("[SHOP-TIMEOUT] Shop timeout started for lobby %s", lobbyID)
-}
-
-// Add a function to handle game end and announce winner
-func AnnounceWinner(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
-	log.Printf("[GAME-END] Game ending for lobby %s", lobbyID)
-
-	// Set the game phase to announce winner
-	if err := socketio_utils.SetGamePhase(redisClient, lobbyID, redis_models.AnnounceWinner); err != nil {
-		log.Printf("[GAME-END-ERROR] Error setting game end phase: %v", err)
-	}
-
-	// Get all players to determine winner
-	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
-	if err != nil {
-		log.Printf("[GAME-END-ERROR] Error getting players: %v", err)
-		return
-	}
-
-	var winner *redis_models.InGamePlayer
-	var highestPoints = -1
-
-	// Find the player with highest points
-	for i := range players {
-		if players[i].CurrentPoints > highestPoints {
-			winner = &players[i]
-			highestPoints = players[i].CurrentPoints
-		}
-	}
-
-	winnerData := gin.H{
-		"winner_username": "No winner",
-		"points":          0,
-		"icon":            1, // Default icon
-	}
-
-	if winner != nil {
-		// Get the winner's icon from PostgreSQL database
-		winnerIcon := utils.UserIcon(db, winner.Username)
-
-		winnerData = gin.H{
-			"winner_username": winner.Username,
-			"points":          winner.CurrentPoints,
-			"icon":            winnerIcon,
-		}
-		log.Printf("[GAME-END] Winner is %s with %d points and icon %d",
-			winner.Username, winner.CurrentPoints, winnerIcon)
-	}
-
-	// Broadcast game end to all players
-	sio.Sio_server.To(socket.Room(lobbyID)).Emit("game_end", gin.H{
-		"winner":  winnerData,
-		"message": "The game has ended!",
-	})
-
-	log.Printf("[GAME-END] Game ended for lobby %s", lobbyID)
 }

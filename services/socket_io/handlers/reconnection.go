@@ -85,7 +85,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 		}
 
 		// Send the comprehensive game state
-		client.Emit("game_phase_info", response)
+		client.Emit("game_phase_player_info", response)
 
 		log.Printf("[PHASE-INFO] Sent complete game info to %s for phase %s",
 			username, lobby.CurrentPhase)

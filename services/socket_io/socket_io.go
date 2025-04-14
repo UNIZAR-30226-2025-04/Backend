@@ -105,7 +105,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		client.On("propose_blind", handlers.HandleProposeBlind(redisClient, client, db, username, sio_casted))
 
-		client.On("request_game_phase_info", handlers.HandleRequestGamePhaseInfo(redisClient, client, db, username))
+		client.On("request_game_phase_player_info", handlers.HandleRequestGamePhaseInfo(redisClient, client, db, username))
 
 		client.On("continue_to_next_blind", handlers.HandleContinueToNextBlind(redisClient, client, db, username, sio_casted))
 	})
