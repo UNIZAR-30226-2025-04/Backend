@@ -4,7 +4,7 @@ import (
 	"Nogler/services/poker"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
-	"Nogler/services/socket_io/utils/stages/play_round"
+	"Nogler/services/socket_io/utils/stages/game_flow"
 	"Nogler/utils"
 	"encoding/json"
 	"log"
@@ -356,7 +356,7 @@ func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, usern
 			log.Printf("[ROUND-CHECK] All players (%d/%d) have finished their round in lobby %s. Ending round.",
 				lobby.TotalPlayersFinishedRound, lobby.PlayerCount, lobbyID)
 
-			play_round.HandleRoundEnd(redisClient, db, lobbyID, sio)
+			game_flow.HandleRoundEnd(redisClient, db, lobbyID, sio)
 		}
 	}
 }

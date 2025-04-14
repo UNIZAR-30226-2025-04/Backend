@@ -4,8 +4,8 @@ import (
 	"Nogler/models/redis"
 	"Nogler/services/poker"
 	redis_services "Nogler/services/redis"
-	socketio_utils "Nogler/services/socket_io/utils"
 	"fmt"
+	"hash/fnv"
 	"time"
 
 	"golang.org/x/exp/rand"
@@ -19,7 +19,7 @@ const ( // Only used here, i think its good to see it here
 )
 
 func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
-	baseSeed := socketio_utils.GenerateSeed(lobbyID, "shop", roundNumber)
+	baseSeed := GenerateSeed(lobbyID, "shop", roundNumber)
 	rng := rand.New(rand.NewSource(baseSeed))
 
 	shop := &redis.LobbyShop{
@@ -43,7 +43,7 @@ func generateFixedPacks(rng *rand.Rand) []redis.ShopItem {
 		packs[i] = redis.ShopItem{
 			ID:       fmt.Sprintf("fixed_pack_%d", i),
 			Type:     "pack",
-			Price:    socketio_utils.CalculatePackPrice(3), // 3 should really be the number of items
+			Price:    CalculatePackPrice(3), // 3 should really be the number of items
 			PackSeed: seed,
 		}
 	}
@@ -136,7 +136,7 @@ func generateCards(rng *rand.Rand, numCards int) []poker.Card {
 func generateJokers(rng *rand.Rand, numJokers int) []poker.Jokers {
 	// Calculate total weight
 	totalWeight := 0
-	for _, joker := range socketio_utils.JokerWeights {
+	for _, joker := range JokerWeights {
 		totalWeight += joker.Weight
 	}
 
@@ -144,7 +144,7 @@ func generateJokers(rng *rand.Rand, numJokers int) []poker.Jokers {
 	jokers := make([]poker.Jokers, numJokers)
 	for i := 0; i < numJokers; i++ {
 		randomWeight := rng.Intn(totalWeight)
-		for _, joker := range socketio_utils.JokerWeights {
+		for _, joker := range JokerWeights {
 			if randomWeight < joker.Weight {
 				jokers[i] = poker.Jokers{Juglares: []int{joker.ID}}
 				break
@@ -178,4 +178,36 @@ func FindShopItem(lobby redis.GameLobby, packID int) (redis.ShopItem, bool) {
 
 	// If no match is found, return false
 	return redis.ShopItem{}, false
+}
+
+func GenerateSeed(parts ...interface{}) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(fmt.Sprint(parts...)))
+	return uint64(h.Sum64())
+}
+
+func CalculatePackPrice(numItems int) int {
+	return numItems + 1
+}
+
+// Change this OBVIOUSLY GPT GENERATED for a real one
+func RandomModifierType(rng *rand.Rand) string {
+	return "modifier yeahhhhh"
+}
+
+// Change weights
+var JokerWeights = []struct {
+	ID     int
+	Weight int
+}{
+	{1, 10}, // SolidSevenJoker: 10% chance
+	{2, 20}, // PoorJoker: 20% chance
+	{3, 15}, // BotardoJoker: 15% chance
+	{4, 10}, // AverageSizeMichel: 10% chance
+	{5, 5},  // HellCowboy: 5% chance
+	{6, 10}, // CarbSponge: 10% chance
+	{7, 10}, // Photograph: 10% chance
+	{8, 10}, // Petpet: 10% chance
+	{9, 5},  // EmptyJoker: 5% chance
+	{10, 5}, // TwoFriendsJoker: 5% chance
 }

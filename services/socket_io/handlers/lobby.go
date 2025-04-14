@@ -4,6 +4,7 @@ import (
 	models "Nogler/models/postgres"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
+	"Nogler/services/socket_io/utils/stages/game_flow"
 	"Nogler/utils"
 	"fmt"
 	"log"
@@ -530,6 +531,6 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 
 		log.Printf("[START-SUCCESS] The game started succesfully %s by %s", lobbyID, username)
 
-		advanceToNextBlind(redisClient, db, lobbyID, sio, true)
+		game_flow.AdvanceToNextBlind(redisClient, db, lobbyID, sio, true)
 	}
 }

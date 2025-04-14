@@ -13,7 +13,7 @@ import (
 
 // Separate function to handle player eliminations based on blind achievement
 // TODO: REVISE!!
-func handlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) ([]string, error) {
+func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) ([]string, error) {
 	// List to track eliminated players
 	var eliminatedPlayers []string
 
