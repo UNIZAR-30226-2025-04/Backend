@@ -112,6 +112,8 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("request_game_round_timeout", handlers.HandleRequestGameRoundTimeout(redisClient, client, db, username))
 
 		client.On("request_shop_timeout", handlers.HandleRequestShopTimeout(redisClient, client, db, username))
+
+		client.On("continue_to_next_blind", handlers.HandleContinueToNextBlind(redisClient, client, db, username, sio_casted))
 	})
 
 	// NOTE: igual lo usamos en algún momento
