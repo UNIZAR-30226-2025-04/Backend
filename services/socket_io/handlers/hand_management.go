@@ -4,6 +4,7 @@ import (
 	"Nogler/services/poker"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
+	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/game_flow"
 	"Nogler/utils"
 	"encoding/json"
@@ -31,11 +32,10 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// TODO: y si el mismo usuario vuelve a intentar conectarse otra vez sin haberse desconectado?
-
 		// 1. Check if the player is in the game
 		lobbyID := args[1].(string)
 
+		// Check player is in lobby
 		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
 		if err != nil {
 			log.Printf("[HAND-ERROR] Database error: %v", err)
@@ -46,6 +46,13 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		if !isInLobby {
 			log.Printf("[HAND-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
 			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
+			return
+		}
+
+		// Validate play round phase
+		valid, err := socketio_utils.ValidatePlayRoundPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidatePlayRoundPhase
 			return
 		}
 
@@ -165,6 +172,13 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// Validate play round phase
+		valid, err := socketio_utils.ValidatePlayRoundPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidatePlayRoundPhase
+			return
+		}
+
 		// 2. Get player's deck from Redis
 		player, err := redisClient.GetInGamePlayer(username)
 		if err != nil {
@@ -268,15 +282,41 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 	}
 }
 
-// this function should ask redis, see what cards i have available on my deck, draw one, and mark it as "already obtained" or smt
-func DrawCards() {
-	log.Println("Jugador ha puntuado la friolera de: callate la boca bot")
-}
-
 func HandleGetFullDeck(redisClient *redis.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string) func(args ...interface{}) {
 	return func(args ...interface{}) {
 		log.Printf("GetFullDeck request - Usuario: %s, Socket ID: %s", username, client.Id())
+
+		// Check if lobby ID is provided
+		if len(args) < 1 {
+			log.Printf("[DECK-ERROR] Missing lobby ID for user %s", username)
+			client.Emit("error", gin.H{"error": "Missing lobby ID"})
+			return
+		}
+
+		// Get the lobby ID from args
+		lobbyID := args[0].(string)
+
+		// Verify that the player is in the lobby
+		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+		if err != nil {
+			log.Printf("[DECK-ERROR] Database error when checking lobby membership: %v", err)
+			client.Emit("error", gin.H{"error": "Database error"})
+			return
+		}
+
+		if !isInLobby {
+			log.Printf("[DECK-ERROR] User %s is not in lobby %s", username, lobbyID)
+			client.Emit("error", gin.H{"error": "You must join a game lobby first"})
+			return
+		}
+
+		// Validate play round phase
+		valid, err := socketio_utils.ValidatePlayRoundPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidatePlayRoundPhase
+			return
+		}
 
 		// 1. Get player's deck from Redis
 		player, err := redisClient.GetInGamePlayer(username)
