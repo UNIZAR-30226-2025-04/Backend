@@ -531,6 +531,6 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 
 		log.Printf("[START-SUCCESS] The game started succesfully %s by %s", lobbyID, username)
 
-		game_flow.AdvanceToNextBlind(redisClient, db, lobbyID, sio, true)
+		game_flow.AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, true, redisLobby.CurrentRound)
 	}
 }

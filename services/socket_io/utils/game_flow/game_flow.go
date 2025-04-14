@@ -23,14 +23,21 @@ import (
 // Functions that are executed to start the next blind
 // ---------------------------------------------------------------
 
-func AdvanceToNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, isFirstBlind bool) error {
-	log.Printf("[ROUND-ADVANCE] Advancing to next round for lobby %s", lobbyID)
+func AdvanceToNextBlindIfUndone(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, isFirstBlind bool, expectedRound int) error {
+	log.Printf("[ROUND-ADVANCE] Advancing to next round for lobby %s (expected round: %d)", lobbyID, expectedRound)
 
 	// Get the lobby for early check
 	lobby, err := redisClient.GetGameLobby(lobbyID)
 	if err != nil {
 		log.Printf("[ROUND-ADVANCE-ERROR] Error getting lobby: %v", err)
 		return fmt.Errorf("error getting lobby: %v", err)
+	}
+
+	// Validate the round number - abort if this is an old timeout trying to advance a newer round
+	if !isFirstBlind && lobby.CurrentRound != expectedRound {
+		log.Printf("[ROUND-ADVANCE-WARN] Round mismatch - current: %d, expected: %d. Ignoring stale timeout.",
+			lobby.CurrentRound, expectedRound)
+		return nil
 	}
 
 	// Early return if already advancing to next round (shop timeout is zero and not first blind)
@@ -104,25 +111,14 @@ func StartBlindTimeout(redisClient *redis.RedisClient,
 
 	// Start a goroutine to handle the timeout
 	go func() {
-		// TODO, change the timeout
-		time.Sleep(10 * time.Second)
+		// Capture the current round when creating the goroutine
+		currentRound := lobby.CurrentRound
 
-		// Check if the blind phase is still active
-		currentLobby, err := redisClient.GetGameLobby(lobbyID)
-		if err != nil {
-			log.Printf("[BLIND-TIMEOUT-ERROR] Error getting lobby after timeout: %v", err)
-			return
-		}
+		// TODO, change the timeout value
+		time.Sleep(20 * time.Second)
 
-		// NOTE: If the blind timeout was reset, it means the round already started
-		// because ALL the players proposed their blinds
-		if currentLobby.BlindTimeout.IsZero() {
-			log.Printf("[BLIND-TIMEOUT-INFO] Blind phase already completed for lobby %s", lobbyID)
-			return
-		}
-
-		// When the timeout expires, send the round start event
-		AdvanceToNextRoundPlay(redisClient, db, lobbyID, sio)
+		// Pass the expected round to AdvanceToNextRoundPlayIfUndone
+		AdvanceToNextRoundPlayIfUndone(redisClient, db, lobbyID, sio, currentRound)
 	}()
 
 	log.Printf("[BLIND-TIMEOUT] Blind timeout started for lobby %s", lobbyID)
@@ -132,8 +128,10 @@ func StartBlindTimeout(redisClient *redis.RedisClient,
 // Functions that are executed to start the next game round
 // ---------------------------------------------------------------
 
-func AdvanceToNextRoundPlay(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
-	log.Printf("[ROUND-PLAY-ADVANCE] Advancing to round play phase for lobby %s", lobbyID)
+// Update AdvanceToNextRoundPlayIfUndone
+func AdvanceToNextRoundPlayIfUndone(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, expectedRound int) {
+	log.Printf("[ROUND-PLAY-ADVANCE] Advancing to round play phase for lobby %s (expected round: %d)",
+		lobbyID, expectedRound)
 
 	// Get the lobby to check if round already started
 	lobby, err := redisClient.GetGameLobby(lobbyID)
@@ -142,8 +140,12 @@ func AdvanceToNextRoundPlay(redisClient *redis.RedisClient, db *gorm.DB, lobbyID
 		return
 	}
 
-	// Early return if blind timeout is already reset (round already started)
-	if lobby.BlindTimeout.IsZero() {
+	// Validate the round number
+	if lobby.CurrentRound != expectedRound {
+		log.Printf("[ROUND-PLAY-ADVANCE-WARN] Round mismatch - current: %d, expected: %d. Ignoring stale timeout.",
+			lobby.CurrentRound, expectedRound)
+		return
+	} else if lobby.BlindTimeout.IsZero() {
 		log.Printf("[ROUND-PLAY-ADVANCE-INFO] Round already started for lobby %s, skipping", lobbyID)
 		return
 	}
@@ -194,11 +196,14 @@ func StartRoundPlayTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID 
 
 	// Start a goroutine to handle the timeout
 	go func() {
-		// Sleep for the round duration (e.g., 2 minutes)
+		// Capture the current round
+		currentRound := lobby.CurrentRound
+
+		// TODO, change the timeout value
 		time.Sleep(2 * time.Minute)
 
 		// Call the function to handle round end
-		HandleRoundEnd(redisClient, db, lobbyID, sio)
+		HandleRoundPlayEnd(redisClient, db, lobbyID, sio, currentRound)
 	}()
 
 	log.Printf("[ROUND-PLAY-TIMEOUT] Round play timeout started for lobby %s", lobbyID)
@@ -210,8 +215,10 @@ func StartRoundPlayTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID 
 // ---------------------------------------------------------------
 
 // Now modify the HandleRoundEnd function
-func HandleRoundEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
-	log.Printf("[ROUND-END] Handling end of round for lobby %s", lobbyID)
+// Update HandleRoundPlayEnd
+func HandleRoundPlayEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, expectedRound int) {
+	log.Printf("[ROUND-END] Handling end of round for lobby %s (expected round: %d)",
+		lobbyID, expectedRound)
 
 	// Get the lobby from Redis
 	lobby, err := redisClient.GetGameLobby(lobbyID)
@@ -220,8 +227,12 @@ func HandleRoundEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string,
 		return
 	}
 
-	// If GameRoundTimeout is zero, it means the round has already ended
-	if lobby.GameRoundTimeout.IsZero() {
+	// Validate the round number
+	if lobby.CurrentRound != expectedRound {
+		log.Printf("[ROUND-END-WARN] Round mismatch - current: %d, expected: %d. Ignoring stale timeout.",
+			lobby.CurrentRound, expectedRound)
+		return
+	} else if lobby.GameRoundTimeout.IsZero() {
 		log.Printf("[ROUND-END-INFO] Round already ended for lobby %s, skipping", lobbyID)
 		return
 	}
@@ -343,11 +354,14 @@ func StartShopTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID strin
 
 	// Start the timeout goroutine
 	go func() {
+		// Capture the expected round for the next blind (current round)
+		currentRound := lobby.CurrentRound
+
 		// TODO, change the timeout value
 		time.Sleep(1 * time.Minute)
 
 		// Advance to the next blind
-		AdvanceToNextBlind(redisClient, db, lobbyID, sio, false)
+		AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, false, currentRound)
 	}()
 
 	log.Printf("[SHOP-TIMEOUT] Shop timeout started for lobby %s", lobbyID)

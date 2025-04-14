@@ -356,7 +356,7 @@ func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, usern
 			log.Printf("[ROUND-CHECK] All players (%d/%d) have finished their round in lobby %s. Ending round.",
 				lobby.TotalPlayersFinishedRound, lobby.PlayerCount, lobbyID)
 
-			game_flow.HandleRoundEnd(redisClient, db, lobbyID, sio)
+			game_flow.HandleRoundPlayEnd(redisClient, db, lobbyID, sio, lobby.CurrentRound)
 		}
 	}
 }

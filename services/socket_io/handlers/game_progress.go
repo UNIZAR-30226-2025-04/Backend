@@ -98,7 +98,7 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 				lobby.TotalProposedBlinds, lobby.PlayerCount)
 
 			// Start the round immediately instead of waiting for timeout
-			go game_flow.AdvanceToNextRoundPlay(redisClient, db, lobbyID, sio)
+			go game_flow.AdvanceToNextRoundPlayIfUndone(redisClient, db, lobbyID, sio, lobby.CurrentRound)
 		}
 	}
 }
@@ -325,7 +325,7 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 				lobby.TotalPlayersFinishedShop, lobby.PlayerCount, lobby.CurrentRound)
 
 			// Advance to the next blind
-			game_flow.AdvanceToNextBlind(redisClient, db, lobbyID, sio, false)
+			game_flow.AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, false, lobby.CurrentRound)
 		}
 	}
 }
