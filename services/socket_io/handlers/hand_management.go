@@ -231,6 +231,19 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// Check if we should decrement the draws counter (defaults to true)
+		shouldDecrementCounter := true
+		if len(args) >= 2 {
+			// Try to get the decrement flag from the second argument
+			decrementArg, ok := args[1].(bool)
+			if ok {
+				shouldDecrementCounter = decrementArg
+				log.Printf("[DRAW-INFO] Using provided decrement flag: %v", shouldDecrementCounter)
+			} else {
+				log.Printf("[DRAW-WARNING] Invalid decrement flag type, expected boolean, got %T", args[1])
+			}
+		}
+
 		// 1. Get player data from Redis to extract lobby ID
 		player, err := redisClient.GetInGamePlayer(username)
 		if err != nil {
@@ -334,7 +347,17 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 		// 5. Update the player's deck in Redis
 		deck.RemoveCards(newCards)
 		player.CurrentDeck = deck.ToJSON()
-		player.DiscardsLeft--
+
+		// Only decrement the counter if the flag is true
+		if shouldDecrementCounter {
+			player.DiscardsLeft--
+			log.Printf("[DRAW-INFO] Decremented DiscardsLeft counter for user %s to %d",
+				username, player.DiscardsLeft)
+		} else {
+			log.Printf("[DRAW-INFO] Skipped decrementing DiscardsLeft counter for user %s (still %d)",
+				username, player.DiscardsLeft)
+		}
+
 		err = redisClient.UpdateDeckPlayer(*player)
 		if err != nil {
 			log.Printf("[DECK-ERROR] Error updating player data: %v", err)
@@ -353,13 +376,6 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 		// 7. Send the response to the client
 		client.Emit("drawed_cards", response)
 		log.Printf("[DRAW-SUCCESS] Sent updated deck to user %s (%d total cards)", username, response["deck_size"])
-
-		// 8. If the player has no draws left, emit a message
-		if player.DiscardsLeft <= 0 {
-			client.Emit("no_draws_left", gin.H{"message": "No draws left"})
-			log.Printf("[DRAW-NO-DRAWS] User %s has no draws left", username)
-			checkPlayerFinishedRound(redisClient, db, username, lobbyID, sio)
-		}
 	}
 }
 

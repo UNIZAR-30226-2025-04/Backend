@@ -376,7 +376,7 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			CurrentJokers:   nil,                          // Will be initialized when game starts
 			MostPlayedHand:  nil,                          // Will be initialized during game
 			HandPlaysLeft:   game_constants.TOTAL_HAND_PLAYS,
-			DiscardsLeft:    game_constants.TOTAL_DISCARDS + 1,
+			DiscardsLeft:    game_constants.TOTAL_DISCARDS,
 			Winner:          false,
 			CurrentPoints:   0,
 			TotalPoints:     0,
