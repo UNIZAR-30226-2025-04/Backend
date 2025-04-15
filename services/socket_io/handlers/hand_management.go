@@ -33,7 +33,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// 1. Check if the player is in the game
-		lobbyID := args[1].(string)
+		lobbyID := args[0].(string)
 
 		// Check player is in lobby
 		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
@@ -203,7 +203,7 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 			username, args, client.Id())
 
 		// 1. Check if the player is in the game
-		lobbyID := args[1].(string)
+		lobbyID := args[0].(string)
 
 		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
 		if err != nil {
