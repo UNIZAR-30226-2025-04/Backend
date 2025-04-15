@@ -108,6 +108,10 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("request_game_phase_player_info", handlers.HandleRequestGamePhaseInfo(redisClient, client, db, username))
 
 		client.On("continue_to_next_blind", handlers.HandleContinueToNextBlind(redisClient, client, db, username, sio_casted))
+
+		client.On("activate_modifiers", handlers.HandleActivateModifiers(redisClient, client, db, username, sio_casted))
+
+		client.On("send_modifiers", handlers.HandleSendModifiers(redisClient, client, db, username, sio_casted))
 	})
 
 	// NOTE: igual lo usamos en algún momento
