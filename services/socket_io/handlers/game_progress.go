@@ -71,6 +71,19 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// Increment the counter of proposed blinds (NEW, using a map to avoid same user incrementing the counter several times)
+		lobby.ProposedBlinds[username] = true
+		log.Printf("[BLIND] Player %s proposed blind. Total proposals: %d/%d",
+			username, len(lobby.ProposedBlinds), lobby.PlayerCount)
+
+		// Save the updated lobby
+		err = redisClient.SaveGameLobby(lobby)
+		if err != nil {
+			log.Printf("[BLIND-ERROR] Error saving game lobby: %v", err)
+			client.Emit("error", gin.H{"error": "Error saving game state"})
+			return
+		}
+
 		// Update current blind if this proposal is higher
 		if proposedBlind > currentBlind {
 			err := redisClient.SetCurrentBlind(lobbyID, proposedBlind, username)
@@ -87,20 +100,7 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			})
 		}
 
-		// Increment the counter of proposed blinds (NEW, using a map to avoid same user incrementing the counter several times)
-		lobby.ProposedBlinds[username] = true
-		log.Printf("[BLIND] Player %s proposed blind. Total proposals: %d/%d",
-			username, len(lobby.ProposedBlinds), lobby.PlayerCount)
-
-		// Save the updated lobby
-		err = redisClient.SaveGameLobby(lobby)
-		if err != nil {
-			log.Printf("[BLIND-ERROR] Error saving game lobby: %v", err)
-			client.Emit("error", gin.H{"error": "Error saving game state"})
-			return
-		}
-
-		// If all players have proposed, start the round
+		// If all players have proposed, start the round (no need to read the lobby again after calling redisClient.SetCurrentBlind)
 		if len(lobby.ProposedBlinds) >= lobby.PlayerCount {
 			log.Printf("[BLIND-COMPLETE] All players have proposed blinds (%d/%d). Starting round.",
 				len(lobby.ProposedBlinds), lobby.PlayerCount)
