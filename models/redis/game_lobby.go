@@ -49,6 +49,9 @@ type GameLobby struct {
 
 	// Add current phase tracking
 	CurrentPhase string `json:"current_phase"` // One of: none, blind, play_round, shop
+
+	// Current base blind proposed by the game
+	CurrentBaseBlind int `json:"current_base_blind"`
 }
 
 // CRITICAL: if maps were not initialized, they would be nil and cause panic

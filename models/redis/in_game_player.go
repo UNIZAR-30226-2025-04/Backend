@@ -19,4 +19,6 @@ type InGamePlayer struct {
 	TotalPoints   int `json:"total_points"`    // Matches in_game_players.total_points
 	HandPlaysLeft int `json:"hand_plays_left"` // Matches in_game_players.hand_plays_left
 	DiscardsLeft  int `json:"discards_left"`   // Matches in_game_players.discards_left
+	// Field to indicate if the player bet for the minimum blind in the current round
+	BetMinimumBlind bool `json:"bet_minimum_blind"`
 }

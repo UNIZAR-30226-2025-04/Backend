@@ -91,6 +91,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			GameRoundTimeout:     time.Time{},
 			ShopTimeout:          time.Time{},
 			CurrentPhase:         redis_models.PhaseNone, // Initialize with "none" phase
+			CurrentBaseBlind:     game_constants.BASE_BLIND,
 		}
 
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
@@ -367,18 +368,19 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 
 		// Create Redis InGamePlayer entry
 		redisPlayer := &redis_models.InGamePlayer{
-			Username:       username,
-			LobbyId:        lobbyID,
-			PlayersMoney:   10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
-			CurrentDeck:    poker.InitializePlayerDeck(), // Will be initialized when game starts
-			Modifiers:      nil,                          // Will be initialized when game starts
-			CurrentJokers:  nil,                          // Will be initialized when game starts
-			MostPlayedHand: nil,                          // Will be initialized during game
-			HandPlaysLeft:  game_constants.TOTAL_HAND_PLAYS,
-			DiscardsLeft:   game_constants.TOTAL_DISCARDS + 1,
-			Winner:         false,
-			CurrentPoints:  0,
-			TotalPoints:    0,
+			Username:        username,
+			LobbyId:         lobbyID,
+			PlayersMoney:    10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
+			CurrentDeck:     poker.InitializePlayerDeck(), // Will be initialized when game starts
+			Modifiers:       nil,                          // Will be initialized when game starts
+			CurrentJokers:   nil,                          // Will be initialized when game starts
+			MostPlayedHand:  nil,                          // Will be initialized during game
+			HandPlaysLeft:   game_constants.TOTAL_HAND_PLAYS,
+			DiscardsLeft:    game_constants.TOTAL_DISCARDS + 1,
+			Winner:          false,
+			CurrentPoints:   0,
+			TotalPoints:     0,
+			BetMinimumBlind: true,
 		}
 
 		if err := redisClient.SaveInGamePlayer(redisPlayer); err != nil {

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	game_constants "Nogler/constants/game"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
@@ -61,6 +62,37 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 		valid, err := socketio_utils.ValidateBlindPhase(redisClient, client, lobbyID)
 		if err != nil || !valid {
 			// Error already emitted in ValidateBlindPhase
+			return
+		}
+
+		// Get player data to update BetMinimumBlind field
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[BLIND-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting player data"})
+			return
+		}
+
+		// Check if proposed blind exceeds MAX_BLIND
+		if proposedBlind > game_constants.MAX_BLIND {
+			log.Printf("[BLIND] Player %s proposed blind %d exceeding MAX_BLIND, capping at %d",
+				username, proposedBlind, game_constants.MAX_BLIND)
+			proposedBlind = game_constants.MAX_BLIND
+			player.BetMinimumBlind = false
+		} else if proposedBlind < lobby.CurrentBaseBlind {
+			// If below base blind, set BetMinimumBlind to true
+			log.Printf("[BLIND] Player %s proposed blind %d below base blind %d, marking as min blind better",
+				username, proposedBlind, lobby.CurrentBaseBlind)
+			player.BetMinimumBlind = true
+		} else {
+			// Otherwise, they're not betting the minimum
+			player.BetMinimumBlind = false
+		}
+
+		// Save player data
+		if err := redisClient.SaveInGamePlayer(player); err != nil {
+			log.Printf("[BLIND-ERROR] Error saving player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error saving player data"})
 			return
 		}
 
