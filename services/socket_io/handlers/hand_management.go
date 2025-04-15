@@ -517,7 +517,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 		}
 
 		// Emit success response
-		client.Emit("modifier_activated", gin.H{
+		client.Emit("modifiers_activated", gin.H{
 			"modifiers": player.Modifiers,
 			"activated": player.ActivatedModifiers,
 		})
@@ -652,13 +652,13 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 		log.Printf("[MODIFIER-INFO] Activated modifiers for user %s: %v", receiver.Username, activated_modifiers)
 
 		// Notify the receiving player
-		sio.UserConnections[receiver.Username].Emit("modifier_received", gin.H{
+		sio.UserConnections[receiver.Username].Emit("modifiers_received", gin.H{
 			"modifiers": receiver.ReceivedModifiers,
 			"sender":    username,
 		})
 
 		// Notify the sender
-		client.Emit("modifier_sended", gin.H{
+		client.Emit("modifiers_sended", gin.H{
 			"modifiers": player.Modifiers,
 		})
 
