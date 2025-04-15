@@ -28,7 +28,7 @@ type GameLobby struct {
 	GameHasBegun         bool       `json:"game_has_begun"`         // Matches game_lobbies.game_has_begun
 	IsPublic             bool       `json:"is_public"`              // Matches game_lobbies.is_public
 	ShopState            *LobbyShop `json:"shop_state"`             // Matches game_lobbies.shop_state
-	CurrentBlind         int        `json:"current_blind"`          // Matches game_lobbies.current_blind
+	CurrentHighBlind     int        `json:"current_blind"`          // Matches game_lobbies.current_blind
 	NumberOfVotes        int        `json:"number_of_votes"`        // Matches game_lobbies.number_of_votes
 	HighestBlindProposer string     `json:"highest_blind_proposer"` // New field to track who proposed the highest blind
 

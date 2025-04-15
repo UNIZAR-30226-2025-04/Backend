@@ -118,7 +118,7 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// Update current blind if this proposal is higher
 		if proposedBlind > currentBlind {
-			err := redisClient.SetCurrentBlind(lobbyID, proposedBlind, username)
+			err := redisClient.SetCurrentHighBlind(lobbyID, proposedBlind, username)
 			if err != nil {
 				log.Printf("[BLIND-ERROR] Could not update current blind: %v", err)
 				client.Emit("error", gin.H{"error": "Error updating blind"})

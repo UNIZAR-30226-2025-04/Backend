@@ -24,7 +24,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 	}
 
 	highestBlindProposer := lobby.HighestBlindProposer
-	currentBlind := lobby.CurrentBlind
+	currentHighBlind := lobby.CurrentHighBlind
 	baseBlind := lobby.CurrentBaseBlind
 
 	if highestBlindProposer == "" {
@@ -49,18 +49,18 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 
 	// Apply elimination rules
 	if proposerPlayer != nil {
-		proposerReachedBlind := proposerPlayer.CurrentPoints >= currentBlind
+		proposerReachedBlind := proposerPlayer.CurrentPoints >= currentHighBlind
 
 		if !proposerReachedBlind {
 			// Only eliminate the highest blind proposer who failed to reach their proposed blind
 			eliminatedPlayers = append(eliminatedPlayers, highestBlindProposer)
 			log.Printf("[ELIMINATION] Player %s eliminated for not reaching their proposed blind of %d (scored %d)",
-				highestBlindProposer, currentBlind, proposerPlayer.CurrentPoints)
+				highestBlindProposer, currentHighBlind, proposerPlayer.CurrentPoints)
 		} else {
 			// Check each player based on their BetMinimumBlind status
 			for _, player := range players {
 				// Determine the target blind the player needs to reach
-				playerTargetBlind := currentBlind
+				playerTargetBlind := currentHighBlind
 				if player.BetMinimumBlind {
 					// If player bet minimum, they only need to reach the base blind
 					playerTargetBlind = baseBlind
@@ -68,7 +68,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 						player.Username, baseBlind)
 				} else {
 					log.Printf("[ELIMINATION-CHECK] Player %s bet higher, needs to reach %d points",
-						player.Username, currentBlind)
+						player.Username, currentHighBlind)
 				}
 
 				// Eliminate player if they didn't reach their target blind
@@ -106,7 +106,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 			sio.Sio_server.To(socket.Room(lobbyID)).Emit("players_eliminated", gin.H{
 				"eliminated_players": eliminatedPlayers,
 				"reason":             "blind_check",
-				"max_blind_value":    currentBlind,
+				"high_blind_value":   currentHighBlind,
 				"base_blind":         baseBlind,
 			})
 		}

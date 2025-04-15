@@ -80,7 +80,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			CreatedAt:            NewLobby.CreatedAt,
 			GameHasBegun:         false,
 			IsPublic:             isPublic,
-			CurrentBlind:         0,
+			CurrentHighBlind:     0,
 			NumberOfVotes:        0,
 			CurrentRound:         0,
 			ProposedBlinds:       make(map[string]bool),

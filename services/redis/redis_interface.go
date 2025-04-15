@@ -248,16 +248,16 @@ func (rc *RedisClient) GetCurrentBlind(lobbyId string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error getting lobby for current blind: %v", err)
 	}
-	return lobby.CurrentBlind, nil
+	return lobby.CurrentHighBlind, nil
 }
 
-func (rc *RedisClient) SetCurrentBlind(lobbyId string, blind int, proposerUsername string) error {
+func (rc *RedisClient) SetCurrentHighBlind(lobbyId string, blind int, proposerUsername string) error {
 	lobby, err := rc.GetGameLobby(lobbyId)
 	if err != nil {
 		return fmt.Errorf("error getting lobby for current blind: %v", err)
 	}
 
-	lobby.CurrentBlind = blind
+	lobby.CurrentHighBlind = blind
 	lobby.HighestBlindProposer = proposerUsername
 
 	return rc.SaveGameLobby(lobby)

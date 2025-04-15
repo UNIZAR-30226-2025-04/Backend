@@ -53,11 +53,11 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 		// Create a response with comprehensive game and player state
 		response := gin.H{
 			// Game state information
-			"phase":         lobby.CurrentPhase,
-			"timeout":       phaseTimeout,
-			"total_players": lobby.PlayerCount,
-			"current_round": lobby.CurrentRound,
-			"current_blind": lobby.CurrentBlind,
+			"phase":              lobby.CurrentPhase,
+			"timeout":            phaseTimeout,
+			"total_players":      lobby.PlayerCount,
+			"current_round":      lobby.CurrentRound,
+			"current_high_blind": lobby.CurrentHighBlind,
 
 			// Player-specific state
 			"player_data": gin.H{
