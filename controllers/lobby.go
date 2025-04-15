@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	game_constants "Nogler/constants/game"
 	"Nogler/middleware"
 	models "Nogler/models/postgres"
 	redis_models "Nogler/models/redis"
@@ -373,6 +374,8 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			Modifiers:      nil,                          // Will be initialized when game starts
 			CurrentJokers:  nil,                          // Will be initialized when game starts
 			MostPlayedHand: nil,                          // Will be initialized during game
+			HandPlaysLeft:  game_constants.TOTAL_HAND_PLAYS,
+			DiscardsLeft:   game_constants.TOTAL_DISCARDS + 1,
 		}
 
 		if err := redisClient.SaveInGamePlayer(redisPlayer); err != nil {

@@ -32,10 +32,22 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// 1. Check if the player is in the game
-		lobbyID := args[1].(string)
+		// 1. Get player data from Redis to extract lobby ID
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error al obtener los datos del jugador"})
+			return
+		}
 
-		// Check player is in lobby
+		lobbyID := player.LobbyId
+		if lobbyID == "" {
+			log.Printf("[HAND-ERROR] User %s is not in a lobby", username)
+			client.Emit("error", gin.H{"error": "You must join a lobby before playing hands"})
+			return
+		}
+
+		// Check player is in lobby (double check with PostgreSQL)
 		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
 		if err != nil {
 			log.Printf("[HAND-ERROR] Database error: %v", err)
@@ -57,12 +69,6 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// 2. Check if the player has enough plays left
-		player, err := redisClient.GetInGamePlayer(username)
-		if err != nil {
-			log.Printf("[HAND-ERROR] Error getting player data: %v", err)
-			client.Emit("error", gin.H{"error": "Error al obtener los datos del jugador"})
-			return
-		}
 		if player.HandPlaysLeft <= 0 {
 			log.Printf("[HAND-ERROR] No hand plays left %s", username)
 			client.Emit("error", gin.H{"error": "No hand plays left"})
@@ -111,7 +117,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			"points":          valorFinal,
 			"gold":            finalGold,
 			"jokersTriggered": jokersTriggered,
-			"left_plays":     player.HandPlaysLeft,
+			"left_plays":      player.HandPlaysLeft,
 			"message":         "¡Mano jugada con éxito!",
 		})
 
@@ -213,9 +219,28 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 		log.Printf("DrawCards request - User: %s, Args: %v, Socket ID: %s",
 			username, args, client.Id())
 
-		// 1. Check if the player is in the game
-		lobbyID := args[1].(string)
+		if len(args) < 1 {
+			log.Printf("[DRAW-ERROR] Missing arguments for user %s", username)
+			client.Emit("error", gin.H{"error": "Missing hand data"})
+			return
+		}
 
+		// 1. Get player data from Redis to extract lobby ID
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[DECK-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error al obtener los datos del jugador"})
+			return
+		}
+
+		lobbyID := player.LobbyId
+		if lobbyID == "" {
+			log.Printf("[DRAW-ERROR] User %s is not in a lobby", username)
+			client.Emit("error", gin.H{"error": "You must join a lobby before drawing cards"})
+			return
+		}
+
+		// Check player is in lobby (double check with PostgreSQL)
 		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
 		if err != nil {
 			log.Printf("[HAND-ERROR] Database error: %v", err)
@@ -236,15 +261,7 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// 2. Get player's deck from Redis
-		player, err := redisClient.GetInGamePlayer(username)
-		if err != nil {
-			log.Printf("[DECK-ERROR] Error getting player data: %v", err)
-			client.Emit("error", gin.H{"error": "Error al obtener el mazo"})
-			return
-		}
-
-		// Check if the user has enough draws left
+		// 2. Check if the user has enough draws left
 		if player.DiscardsLeft <= 0 {
 			log.Printf("[HAND-ERROR] No draws left for user %s", username)
 			client.Emit("error", gin.H{"error": "No draws left"})
@@ -324,7 +341,7 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 			"new_cards":   string(newCardsJson),
 			"total_cards": string(totalCardsJson),
 			"deck_size":   len(deck.TotalCards),
-			"left_draws": player.DiscardsLeft,
+			"left_draws":  player.DiscardsLeft,
 		}
 
 		// 7. Send the response to the client
