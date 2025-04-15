@@ -33,7 +33,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// 1. Check if the player is in the game
-		lobbyID := args[0].(string)
+		lobbyID := args[1].(string)
 
 		// Check player is in lobby
 		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
@@ -118,9 +118,10 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		if player.HandPlaysLeft <= 0 {
 			client.Emit("no_plays_left", gin.H{"message": "No hand plays left"})
 			log.Printf("[HAND-NO-PLAYS] User %s has no plays left", username)
-
-			checkPlayerFinishedRound(redisClient, db, username, lobbyID, sio)
 		}
+
+		// NOTE: check it outside the `if` sentence, since the player might have reached the blind
+		checkPlayerFinishedRound(redisClient, db, username, lobbyID, sio)
 
 		//logear en redis + pg cuanto ha puntuado supongo IMPORTANTEEEEEEEEEEEEEEEEEEEEEE
 
@@ -157,18 +158,27 @@ func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, usern
 		return
 	}
 
-	// Check if player has no plays and discards left
-	if player.HandPlaysLeft <= 0 && player.DiscardsLeft <= 0 {
-		log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays or discards left)", username)
+	// Get the lobby to check blind value
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[ROUND-CHECK-ERROR] Error getting lobby: %v", err)
+		return
+	}
 
-		// Get the lobby
-		lobby, err := redisClient.GetGameLobby(lobbyID)
-		if err != nil {
-			log.Printf("[ROUND-CHECK-ERROR] Error getting lobby: %v", err)
-			return
+	// Check if player has no plays and discards left OR has reached/exceeded the blind
+	if (player.HandPlaysLeft <= 0 && player.DiscardsLeft <= 0) || (player.CurrentPoints >= lobby.CurrentBlind) {
+		if player.CurrentPoints >= lobby.CurrentBlind {
+			log.Printf("[ROUND-CHECK] Player %s has reached the blind of %d with %d points",
+				username, lobby.CurrentBlind, player.CurrentPoints)
+		} else {
+			log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays or discards left)", username)
 		}
 
-		// Increment the counter of players who finished the round (NEW, using a map to avoid same user incrementing the counter several times)
+		// Mark player as finished in the lobby
+		if lobby.PlayersFinishedRound == nil {
+			lobby.PlayersFinishedRound = make(map[string]bool)
+		}
+
 		lobby.PlayersFinishedRound[username] = true
 		log.Printf("[ROUND-CHECK] Incremented finished players count to %d/%d for lobby %s",
 			len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
@@ -203,7 +213,7 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 			username, args, client.Id())
 
 		// 1. Check if the player is in the game
-		lobbyID := args[0].(string)
+		lobbyID := args[1].(string)
 
 		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
 		if err != nil {
