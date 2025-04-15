@@ -368,6 +368,12 @@ func FlushFive(h Hand) bool {
 // HighCard = 13
 
 func BestHand(h Hand) (int, int, int) {
+
+	// NEW: handle the case with empty cards to avoid panics
+	if len(h.Cards) <= 0 {
+		return 0, 0, 0
+	}
+
 	// Make a copy to avoid modifying original
 	tmp := Hand{Cards: make([]Card, len(h.Cards))}
 	copy(tmp.Cards, h.Cards)

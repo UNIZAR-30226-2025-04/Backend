@@ -29,39 +29,66 @@ func AnnounceWinner(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string,
 		return
 	}
 
-	var winner *redis_models.InGamePlayer
+	// Track the highest score and all players who achieved it
 	var highestPoints = -1
+	var winners []*redis_models.InGamePlayer
 
-	// Find the player with highest points
+	// First pass: find the highest score
 	for i := range players {
 		if players[i].CurrentPoints > highestPoints {
-			winner = &players[i]
 			highestPoints = players[i].CurrentPoints
 		}
 	}
 
-	winnerData := gin.H{
-		"winner_username": "No winner",
-		"points":          0,
-		"icon":            1, // Default icon
+	// Second pass: collect all players with the highest score
+	for i := range players {
+		if players[i].CurrentPoints == highestPoints {
+			// Make a copy of the player to avoid pointer issues
+			playerCopy := players[i]
+			winners = append(winners, &playerCopy)
+		}
 	}
 
-	if winner != nil {
-		// Get the winner's icon from PostgreSQL database
-		winnerIcon := utils.UserIcon(db, winner.Username)
+	// Prepare the winners data array
+	winnersData := []gin.H{}
 
-		winnerData = gin.H{
-			"winner_username": winner.Username,
-			"points":          winner.CurrentPoints,
-			"icon":            winnerIcon,
+	// If no winners were found (should be impossible), provide a default
+	if len(winners) == 0 {
+		winnersData = append(winnersData, gin.H{
+			"winner_username": "", // Empty username
+			"points":          0,
+			"icon":            1, // ANY icon
+		})
+	} else {
+		// Add all winners to the response
+		for _, winner := range winners {
+			// Get the winner's icon from PostgreSQL database
+			winnerIcon := utils.UserIcon(db, winner.Username)
+
+			winnersData = append(winnersData, gin.H{
+				"winner_username": winner.Username,
+				"points":          winner.CurrentPoints,
+				"icon":            winnerIcon,
+			})
+
+			log.Printf("[GAME-END] Winner: %s with %d points and icon %d",
+				winner.Username, winner.CurrentPoints, winnerIcon)
 		}
-		log.Printf("[GAME-END] Winner is %s with %d points and icon %d",
-			winner.Username, winner.CurrentPoints, winnerIcon)
+
+		if len(winners) > 1 {
+			log.Printf("[GAME-END] The game ended in a %d-way tie with %d points each",
+				len(winners), highestPoints)
+		} else {
+			log.Printf("[GAME-END] Winner is %s with %d points",
+				winners[0].Username, winners[0].CurrentPoints)
+		}
 	}
 
 	// Broadcast game end to all players
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("game_end", gin.H{
-		"winner":  winnerData,
+		"winners": winnersData, // Now an array of winners
+		"tie":     len(winners) > 1,
+		"points":  highestPoints,
 		"message": "The game has ended!",
 	})
 
