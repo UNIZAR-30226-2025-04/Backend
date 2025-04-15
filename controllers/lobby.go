@@ -376,6 +376,9 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			MostPlayedHand: nil,                          // Will be initialized during game
 			HandPlaysLeft:  game_constants.TOTAL_HAND_PLAYS,
 			DiscardsLeft:   game_constants.TOTAL_DISCARDS + 1,
+			Winner:         false,
+			CurrentPoints:  0,
+			TotalPoints:    0,
 		}
 
 		if err := redisClient.SaveInGamePlayer(redisPlayer); err != nil {
