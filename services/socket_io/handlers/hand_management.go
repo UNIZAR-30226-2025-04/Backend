@@ -166,7 +166,7 @@ func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, usern
 	}
 
 	// Check if player has no plays and discards left OR has reached/exceeded the blind
-	if (player.HandPlaysLeft <= 0 && player.DiscardsLeft <= 0) || (player.CurrentPoints >= lobby.CurrentBlind) {
+	if (player.HandPlaysLeft <= 0) || (player.CurrentPoints >= lobby.CurrentBlind) {
 		if player.CurrentPoints >= lobby.CurrentBlind {
 			log.Printf("[ROUND-CHECK] Player %s has reached the blind of %d with %d points",
 				username, lobby.CurrentBlind, player.CurrentPoints)
