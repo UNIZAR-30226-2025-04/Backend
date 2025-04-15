@@ -26,6 +26,7 @@ func BroadcastStartingNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lob
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("starting_next_blind", gin.H{
 		"lobby_id":     lobbyID,
 		"blind_number": lobby.CurrentRound,
+		"base_blind":   lobby.CurrentBaseBlind,
 		"message":      "Starting the blind proposal phase!",
 	})
 
