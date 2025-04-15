@@ -92,6 +92,12 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		if (hand.Cards == nil) || (len(hand.Cards) == 0) {
+			log.Printf("[HAND-ERROR] No cards in hand for user %s", username)
+			client.Emit("error", gin.H{"error": "No cards in hand"})
+			return
+		}
+
 		// 3. Calculate base points
 		fichas, mult, _ := poker.BestHand(hand)
 
