@@ -14,7 +14,7 @@ import (
 )
 
 // Function to handle game end and announce winner
-func AnnounceWinner(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
+func AnnounceWinners(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
 	log.Printf("[GAME-END] Game ending for lobby %s", lobbyID)
 
 	// Set the game phase to announce winner

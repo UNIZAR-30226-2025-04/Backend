@@ -24,7 +24,8 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 	}
 
 	highestBlindProposer := lobby.HighestBlindProposer
-	blind := lobby.CurrentBlind
+	currentBlind := lobby.CurrentBlind
+	baseBlind := lobby.CurrentBaseBlind
 
 	if highestBlindProposer == "" {
 		log.Printf("[ELIMINATION-INFO] No blind proposer found for lobby %s, skipping eliminations", lobbyID)
@@ -48,33 +49,50 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 
 	// Apply elimination rules
 	if proposerPlayer != nil {
-		proposerReachedBlind := proposerPlayer.CurrentPoints >= blind
+		proposerReachedBlind := proposerPlayer.CurrentPoints >= currentBlind
 
 		if !proposerReachedBlind {
-			// Only eliminate the highest blind proposer
+			// Only eliminate the highest blind proposer who failed to reach their proposed blind
 			eliminatedPlayers = append(eliminatedPlayers, highestBlindProposer)
 			log.Printf("[ELIMINATION] Player %s eliminated for not reaching their proposed blind of %d (scored %d)",
-				highestBlindProposer, blind, proposerPlayer.CurrentPoints)
+				highestBlindProposer, currentBlind, proposerPlayer.CurrentPoints)
 		} else {
-			// Eliminate all players who didn't reach the blind
+			// Check each player based on their BetMinimumBlind status
 			for _, player := range players {
-				if player.CurrentPoints < blind {
+				// Determine the target blind the player needs to reach
+				playerTargetBlind := currentBlind
+				if player.BetMinimumBlind {
+					// If player bet minimum, they only need to reach the base blind
+					playerTargetBlind = baseBlind
+					log.Printf("[ELIMINATION-CHECK] Player %s bet minimum, needs to reach %d points",
+						player.Username, baseBlind)
+				} else {
+					log.Printf("[ELIMINATION-CHECK] Player %s bet higher, needs to reach %d points",
+						player.Username, currentBlind)
+				}
+
+				// Eliminate player if they didn't reach their target blind
+				if player.CurrentPoints < playerTargetBlind {
 					eliminatedPlayers = append(eliminatedPlayers, player.Username)
-					log.Printf("[ELIMINATION] Player %s eliminated for not reaching the blind of %d (scored %d)",
-						player.Username, blind, player.CurrentPoints)
+					log.Printf("[ELIMINATION] Player %s eliminated for not reaching their target blind of %d (scored %d)",
+						player.Username, playerTargetBlind, player.CurrentPoints)
+				} else {
+					log.Printf("[ELIMINATION-SAFE] Player %s safe with %d points vs target of %d",
+						player.Username, player.CurrentPoints, playerTargetBlind)
 				}
 			}
 		}
 
-		// Remove eliminated players from Redis
-		for _, username := range eliminatedPlayers {
-			if err := redisClient.DeleteInGamePlayer(username, lobbyID); err != nil {
-				log.Printf("[ELIMINATION-ERROR] Error removing player %s: %v", username, err)
-			}
-		}
-
-		// Update player count
+		// Remove eliminated players from Redis and update game state
 		if len(eliminatedPlayers) > 0 {
+			// Remove eliminated players from Redis
+			for _, username := range eliminatedPlayers {
+				if err := redisClient.DeleteInGamePlayer(username, lobbyID); err != nil {
+					log.Printf("[ELIMINATION-ERROR] Error removing player %s: %v", username, err)
+				}
+			}
+
+			// Update player count
 			lobby.PlayerCount -= len(eliminatedPlayers)
 			if lobby.PlayerCount < 0 {
 				lobby.PlayerCount = 0
@@ -85,11 +103,11 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 			}
 
 			// Broadcast the eliminated players
-			// TODO, CHECK IF WE SHOULD BROADCAST OR SEND TO EACH PLAYER INDIVIDUALLY
 			sio.Sio_server.To(socket.Room(lobbyID)).Emit("players_eliminated", gin.H{
 				"eliminated_players": eliminatedPlayers,
 				"reason":             "blind_check",
-				"blind_value":        blind,
+				"max_blind_value":    currentBlind,
+				"base_blind":         baseBlind,
 			})
 		}
 	}

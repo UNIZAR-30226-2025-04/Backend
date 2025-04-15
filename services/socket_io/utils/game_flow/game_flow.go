@@ -299,9 +299,10 @@ func HandleRoundPlayEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 			lobby.PlayerCount, lobby.CurrentRound)
 
 		// Go to game end phase
-		end_game.AnnounceWinner(redisClient, db, lobbyID, sio)
+		end_game.AnnounceWinners(redisClient, db, lobbyID, sio)
 
 		// Short delay to ensure all clients receive the game_end event before cleanup
+		// TODO: move to constants file
 		time.Sleep(2 * time.Second)
 
 		// Clean up all game resources (ALL the players and the lobby from both redis and Postgres)
