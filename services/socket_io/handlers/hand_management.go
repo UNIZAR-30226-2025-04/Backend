@@ -111,6 +111,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			"points":          valorFinal,
 			"gold":            finalGold,
 			"jokersTriggered": jokersTriggered,
+			"left_plays":     player.HandPlaysLeft,
 			"message":         "¡Mano jugada con éxito!",
 		})
 
@@ -323,6 +324,7 @@ func HandleDrawCards(redisClient *redis.RedisClient, client *socket.Socket,
 			"new_cards":   string(newCardsJson),
 			"total_cards": string(totalCardsJson),
 			"deck_size":   len(deck.TotalCards),
+			"left_draws": player.DiscardsLeft,
 		}
 
 		// 7. Send the response to the client
