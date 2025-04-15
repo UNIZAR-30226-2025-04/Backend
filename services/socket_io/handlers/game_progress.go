@@ -24,7 +24,16 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		proposedBlind := args[0].(int)
+		// Assert as float64 first
+		proposedBlindFloat, ok := args[0].(float64)
+		if !ok {
+			log.Printf("[BLIND-ERROR] Invalid type for proposed blind: expected number, got %T", args[0])
+			client.Emit("error", gin.H{"error": "Invalid proposed blind value"})
+			return
+		}
+		// Convert float64 to int
+		proposedBlind := int(proposedBlindFloat)
+
 		lobbyID := args[1].(string)
 
 		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)

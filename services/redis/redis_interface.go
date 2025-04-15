@@ -93,15 +93,35 @@ func (rc *RedisClient) GetInGamePlayer(username string) (*redis_models.InGamePla
 	return &player, nil
 }
 
-// DeleteInGamePlayer removes a player's game state from Redis
-// Deletes the player's game state
+// DeleteInGamePlayer removes a player's game state from Redis and decrements the lobby player count
+// Returns: error if operation fails
 func (rc *RedisClient) DeleteInGamePlayer(username string, lobbyId string) error {
-	// Delete player game state only
+	// 1. Delete player game state
 	gameKey := redis_utils.FormatInGamePlayerKey(username)
 	err := rc.client.Del(rc.ctx, gameKey).Err()
 	if err != nil {
 		return fmt.Errorf("error deleting player data: %v", err)
 	}
+
+	// 2. Update player count in the lobby
+	lobby, err := rc.GetGameLobby(lobbyId)
+	if err != nil {
+		log.Printf("[DELETE-PLAYER-WARNING] Error getting lobby for player count update: %v", err)
+		return nil // Player was successfully deleted, which is the primary goal
+	}
+
+	// Decrement player count if positive
+	if lobby.PlayerCount > 0 {
+		lobby.PlayerCount--
+		log.Printf("[DELETE-PLAYER] Decremented player count for lobby %s to %d", lobbyId, lobby.PlayerCount)
+
+		// Save the updated lobby
+		if err := rc.SaveGameLobby(lobby); err != nil {
+			log.Printf("[DELETE-PLAYER-WARNING] Failed to update player count in Redis: %v", err)
+			// Still return nil since the player was deleted successfully
+		}
+	}
+
 	return nil
 }
 

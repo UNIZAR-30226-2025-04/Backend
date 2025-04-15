@@ -216,17 +216,6 @@ func HandleExitLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// Decrement player count in Redis
-		redisLobby, err := redisClient.GetGameLobby(lobbyID)
-		if err == nil && redisLobby.PlayerCount > 0 {
-			redisLobby.PlayerCount--
-			log.Printf("[EXIT] Decremented player count for lobby %s to %d", lobbyID, redisLobby.PlayerCount)
-			err = redisClient.SaveGameLobby(redisLobby)
-			if err != nil {
-				log.Printf("[EXIT-WARNING] Failed to update player count in Redis: %v", err)
-			}
-		}
-
 		// Remove player from Redis if exists
 		if redisClient != nil {
 			if err := redisClient.DeleteInGamePlayer(username, lobbyID); err != nil {
@@ -356,17 +345,6 @@ func HandleKickFromLobby(redisClient *redis.RedisClient, client *socket.Socket,
 			tx.Rollback()
 			client.Emit("error", gin.H{"error": "Error kicking user from lobby"})
 			return
-		}
-
-		// Decrement player count in Redis
-		redisLobby, err := redisClient.GetGameLobby(lobbyID)
-		if err == nil && redisLobby.PlayerCount > 0 {
-			redisLobby.PlayerCount--
-			log.Printf("[KICK] Decremented player count for lobby %s to %d", lobbyID, redisLobby.PlayerCount)
-			err = redisClient.SaveGameLobby(redisLobby)
-			if err != nil {
-				log.Printf("[KICK-WARNING] Failed to update player count in Redis: %v", err)
-			}
 		}
 
 		// Remove player from Redis if exists
