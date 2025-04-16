@@ -52,6 +52,11 @@ func AdvanceToNextBlindIfUndone(redisClient *redis.RedisClient, db *gorm.DB, lob
 		return fmt.Errorf("failed to increment round: %v", err)
 	}
 
+	// CRITICAL: AFTER CALLING IncrementGameRound, WE HAVE TO FETCH THE LOBBY AGAIN
+	// FROM REDIS, SINCE OTHERWISE WE'LL BE OVERWRITING THE OBJECT STORED BY IncrementGameRound
+	// TODO: check if we're making this same mistake somewhere else
+	lobby, err = redisClient.GetGameLobby(lobbyID)
+
 	// Calculate new base blind for the round: BASE_BLIND * 2^(round_number - 1)
 	newBaseBlind := game_constants.BASE_BLIND
 	for i := 1; i < newRound; i++ {
