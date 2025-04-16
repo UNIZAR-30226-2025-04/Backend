@@ -26,40 +26,55 @@ func AnnounceWinners(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string
 	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
 	if err != nil {
 		log.Printf("[GAME-END-ERROR] Error getting players: %v", err)
-		return
+		// Even if there's an error, continue with empty players list
+		players = []redis_models.InGamePlayer{}
+	}
+
+	// Get the lobby to check player count
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[GAME-END-ERROR] Error getting lobby: %v", err)
+		// Continue with available players
 	}
 
 	// Track the highest score and all players who achieved it
 	var highestPoints = -1
 	var winners []*redis_models.InGamePlayer
 
-	// First pass: find the highest score
-	for i := range players {
-		if players[i].CurrentPoints > highestPoints {
-			highestPoints = players[i].CurrentPoints
-		}
-	}
-
-	// Second pass: collect all players with the highest score
-	for i := range players {
-		if players[i].CurrentPoints == highestPoints {
-			// Make a copy of the player to avoid pointer issues
-			playerCopy := players[i]
-			winners = append(winners, &playerCopy)
-		}
-	}
-
 	// Prepare the winners data array
 	winnersData := []gin.H{}
 
-	// If no winners were found (should be impossible), provide a default
-	if len(winners) == 0 {
-		winnersData = append(winnersData, gin.H{
-			"winner_username": "", // Empty username
-			"points":          0,
-			"icon":            1, // ANY icon
+	// If no players remaining, handle the "all eliminated" case
+	if len(players) == 0 || (err == nil && lobby.PlayerCount == 0) {
+		log.Printf("[GAME-END] No winners for lobby %s (all players eliminated)", lobbyID)
+
+		// Emit game end event with no winners
+		sio.Sio_server.To(socket.Room(lobbyID)).Emit("game_end", gin.H{
+			"winners":    winnersData, // Empty array
+			"tie":        false,
+			"points":     0,
+			"no_winners": true, // Flag to indicate all players were eliminated
+			"message":    "The game has ended! All players were eliminated.",
 		})
 	} else {
+		// Normal game end with winners
+
+		// First pass: find the highest score
+		for i := range players {
+			if players[i].CurrentPoints > highestPoints {
+				highestPoints = players[i].CurrentPoints
+			}
+		}
+
+		// Second pass: collect all players with the highest score
+		for i := range players {
+			if players[i].CurrentPoints == highestPoints {
+				// Make a copy of the player to avoid pointer issues
+				playerCopy := players[i]
+				winners = append(winners, &playerCopy)
+			}
+		}
+
 		// Add all winners to the response
 		for _, winner := range winners {
 			// Get the winner's icon from PostgreSQL database
@@ -76,21 +91,23 @@ func AnnounceWinners(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string
 		}
 
 		if len(winners) > 1 {
+			// NOTE: RN, the only way to get > 1 winners is to end the game because of round limit
 			log.Printf("[GAME-END] The game ended in a %d-way tie with %d points each",
 				len(winners), highestPoints)
 		} else {
 			log.Printf("[GAME-END] Winner is %s with %d points",
 				winners[0].Username, winners[0].CurrentPoints)
 		}
-	}
 
-	// Broadcast game end to all players
-	sio.Sio_server.To(socket.Room(lobbyID)).Emit("game_end", gin.H{
-		"winners": winnersData, // Now an array of winners
-		"tie":     len(winners) > 1,
-		"points":  highestPoints,
-		"message": "The game has ended!",
-	})
+		// Broadcast game end to all players
+		sio.Sio_server.To(socket.Room(lobbyID)).Emit("game_end", gin.H{
+			"winners":    winnersData,
+			"tie":        len(winners) > 1,
+			"points":     highestPoints,
+			"no_winners": false,
+			"message":    "The game has ended!",
+		})
+	}
 
 	log.Printf("[GAME-END] Game ended for lobby %s", lobbyID)
 }
