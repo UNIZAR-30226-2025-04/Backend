@@ -11,7 +11,7 @@ import (
  * The type 'FriendshipRequest' represents a friendship request
  */
 type FriendshipRequest struct {
-  Sender    string    `gorm:"primaryKey;size:50;not null;index:idx_friend_request_sender"`
+	Sender    string    `gorm:"primaryKey;size:50;not null;index:idx_friend_request_sender"`
 	Recipient string    `gorm:"primaryKey;size:50;not null;index:idx_friend_request_recipient"`
 	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 
@@ -23,7 +23,7 @@ type FriendshipRequest struct {
 // GORM hook to ensure that both user's usernames are different
 func (fr *FriendshipRequest) BeforeSave(tx *gorm.DB) error {
 	if fr.Sender == fr.Recipient {
-		return errors.New("Cannot request friendship to oneself")
+		return errors.New("cannot request friendship to oneself")
 	}
 	return nil
 }

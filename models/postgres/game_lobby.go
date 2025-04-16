@@ -8,17 +8,17 @@ import (
 )
 
 /*
- * 'GameLobby' defines the structure of a Balatro game lobby.
+ * 'GameLobby' defines the structure of a Nogler game lobby.
  * It contains references to GameProfile and InGamePlayer
  */
 type GameLobby struct {
 	ID              string    `gorm:"primaryKey;size:50;not null"`
-  CreatorUsername string    `gorm:"size:50;index:idx_game_lobbies_creator"` // Clave ajena hacia GameProfile, con índice
+	CreatorUsername string    `gorm:"size:50;index:idx_game_lobbies_creator"` // Clave ajena hacia GameProfile, con índice
 	NumberOfRounds  int       `gorm:"default:0"`
 	TotalPoints     int       `gorm:"default:0"`
 	CreatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 	GameHasBegun    bool      `gorm:"default:false;index_idx_game_lobbies_active"` // Indicates if the game has started
-  IsPublic        bool      `gorm:"default:false;index:idx_game_lobbies_public"` // Indicates if the lobby is public
+	IsPublic        bool      `gorm:"default:false;index:idx_game_lobbies_public"` // Indicates if the lobby is public
 
 	// Relationships
 	Creator GameProfile `gorm:"foreignKey:CreatorUsername"`

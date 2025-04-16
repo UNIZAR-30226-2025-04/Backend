@@ -690,3 +690,51 @@ func SetLobbyVisibility(db *gorm.DB, redisClient *redis.RedisClient) gin.Handler
 		})
 	}
 }
+
+// CheckUserLobby Verfies if a user is in a lobby and returns the id of the lobby if true
+// @Summary Checks if user is in a lobby
+// @Description Returns true or false, and if true, return the id of the user the lobby is in, and if false, empty string
+// @Tags lobby
+// @Produce json
+// @Success 200 {object} object{in_lobby=boolean,lobby_id=string}
+// @Failure 400 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
+// @Router /auth/isUserInLobby [get]
+func IsUserInLobby(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("JWT error...")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		username := user.ProfileUsername
+
+		if username == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
+			return
+		}
+
+		var inGamePlayer models.InGamePlayer
+		if err := db.Where("username = ?", username).First(&inGamePlayer).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusOK, gin.H{"in_lobby": true, "lobby_id": ""})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting lobby"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"in_lobby": true,
+			"lobby_id": inGamePlayer.LobbyID,
+		})
+	}
+}
