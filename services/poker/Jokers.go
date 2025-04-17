@@ -24,6 +24,8 @@ var jokerTable = map[int]JokerFunc{
 	8:  Petpet,
 	9:  EmptyJoker,
 	10: TwoFriendsJoker,
+	11: LiriliLarila,
+	12: BIRDIFICATION,
 }
 
 func SolidSevenJoker(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
@@ -93,7 +95,38 @@ func TwoFriendsJoker(hand Hand, fichas int, mult int, gold int, used []bool, ind
 }
 
 func HellCowboy(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	return 1, 1, 1, used
+	used[index] = true
+	max := 0
+	for _, card := range hand.Cards {
+		if grade(card) > max {
+			max = grade(card)
+		}
+	}
+	return fichas, mult + max, gold, used
+}
+
+func LiriliLarila(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+	for _, card := range hand.Cards {
+		if grade(card) == 2 {
+			mult += 2
+		}
+	}
+	return fichas, mult * 2, gold, used
+}
+
+func BIRDIFICATION(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	var cardGrade int
+	for _, card := range hand.Cards {
+		cardGrade = grade(card)
+		switch cardGrade {
+		case 1, 4, 6, 7:
+			used[index] = true
+			fichas += 50
+		default:
+		}
+	}
+	return fichas, mult, gold, used
 }
 
 func ApplyJokers(hand Hand, js Jokers, initialFichas int, initialMult int, currentGold int) (int, int, int, []bool) {
