@@ -2,8 +2,10 @@ package play_round
 
 import (
 	redis_models "Nogler/models/redis"
+	poker "Nogler/services/poker"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -61,4 +63,43 @@ func BroadcastRoundStart(sio *socketio_types.SocketServer, lobbyID string, round
 
 	log.Printf("[ROUND-BROADCAST] Sent round start event to lobby %s with round %d and blind %d",
 		lobbyID, round, blind)
+}
+
+// Apply modifiers to all players
+func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) {
+	log.Printf("[MODIFIER-APPLY] Applying round modifiers for lobby %s", lobbyID)
+
+	// Get all players in the lobby
+	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
+	if err != nil {
+		log.Printf("[MODIFIER-APPLY-ERROR] Error getting players: %v", err)
+		return
+	}
+
+	// Apply modifiers to each player
+	for _, player := range players {
+		var activatedModifiers poker.Modifiers
+		if player.ActivatedModifiers != nil {
+			err = json.Unmarshal(player.ActivatedModifiers, &activatedModifiers)
+			if err != nil {
+				log.Printf("[HAND-ERROR] Error parsing activated modifiers: %v", err)
+				return
+			}
+		}
+		// Apply modifiers to the player
+		currentGold := 0
+		gold := poker.ApplyRoundModifiers(&activatedModifiers, currentGold)
+
+		if gold != currentGold {
+			//TODO: Update player's gold in Redis
+			// Notify player of gold change
+			sio.UserConnections[player.Username].Emit("round_modifier", gin.H{
+				"current_gold": gold,
+				"extra_gold":   gold - currentGold,
+			})
+
+		}
+	}
+
+	log.Printf("[MODIFIER-APPLY] Successfully applied modifiers for lobby %s", lobbyID)
 }
