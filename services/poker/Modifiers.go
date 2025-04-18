@@ -68,6 +68,7 @@ func Apply(modifier Modifier, hand Hand, bestHand Hand, fichas int, mult int, go
 	return fichas, mult, gold, modifier.LeftUses
 }
 
+// Modifiers at each play
 func ApplyModifiers(hand Hand, bestHand Hand, ms *Modifiers, initialFichas int, initialMult int, currentGold int) (int, int, int) {
 	currentFichas, currentMult, currentGold := initialFichas, initialMult, currentGold
 	finalFichas := initialFichas
@@ -89,6 +90,7 @@ func ApplyModifiers(hand Hand, bestHand Hand, ms *Modifiers, initialFichas int, 
 	return finalFichas, finalMult, finalGold
 }
 
+// Modifiers at the begining of the round
 func ApplyRoundModifiers(ms *Modifiers, currentGold int) int {
 	finalGold := currentGold
 	for _, modifierID := range ms.Modificadores {

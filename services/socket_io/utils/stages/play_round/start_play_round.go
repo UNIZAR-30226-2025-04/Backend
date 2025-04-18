@@ -98,7 +98,7 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 			}
 		}
 
-		currentGold := 0 // TODO: Get from Redis
+		currentGold := player.PlayersMoney
 
 		// Apply activated modifiers to the player
 		goldActivated := poker.ApplyRoundModifiers(&activatedModifiers, currentGold)
@@ -167,6 +167,7 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		}
 
 		// Update redis
+		player.PlayersMoney = goldReceived
 		err = redisClient.SaveInGamePlayer(&player)
 		if err != nil {
 			log.Printf("[HAND-ERROR] Error saving player data: %v", err)

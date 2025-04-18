@@ -617,7 +617,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		modifiers := args[1].([]redis.Modifier)
+		modifiers := args[1].([]poker.Modifier)
 
 		player, err := redisClient.GetInGamePlayer(username)
 		if err != nil {
@@ -632,7 +632,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		var player_modifiers []redis.Modifier
+		var player_modifiers []poker.Modifier
 		err = json.Unmarshal(player.Modifiers, &player_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
@@ -662,7 +662,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 		}
 
 		// Add the activated modifiers to the player
-		var activated_modifiers []redis.Modifier
+		var activated_modifiers []poker.Modifier
 		activated_modifiers = append(activated_modifiers, modifiers...)
 		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
 		if err != nil {
@@ -741,7 +741,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		modifiers := args[1].([]redis.Modifier)
+		modifiers := args[1].([]poker.Modifier)
 
 		player, err := redisClient.GetInGamePlayer(username)
 		if err != nil {
@@ -756,7 +756,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		var player_modifiers []redis.Modifier
+		var player_modifiers []poker.Modifier
 		err = json.Unmarshal(player.Modifiers, &player_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
@@ -821,7 +821,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// Add the activated modifiers to the player
-		var activated_modifiers []redis.Modifier
+		var activated_modifiers []poker.Modifier
 		activated_modifiers = append(activated_modifiers, modifiers...)
 		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
 		if err != nil {
