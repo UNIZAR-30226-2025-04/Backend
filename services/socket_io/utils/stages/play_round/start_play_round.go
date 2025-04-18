@@ -78,6 +78,7 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 
 	// Apply modifiers to each player
 	for _, player := range players {
+		// Activated modifiers
 		var activatedModifiers poker.Modifiers
 		if player.ActivatedModifiers != nil {
 			err = json.Unmarshal(player.ActivatedModifiers, &activatedModifiers)
@@ -86,19 +87,93 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 				return
 			}
 		}
-		// Apply modifiers to the player
-		currentGold := 0
-		gold := poker.ApplyRoundModifiers(&activatedModifiers, currentGold)
 
-		if gold != currentGold {
-			//TODO: Update player's gold in Redis
+		// Received modifiers
+		var receivedModifiers poker.Modifiers
+		if player.ReceivedModifiers != nil {
+			err = json.Unmarshal(player.ReceivedModifiers, &receivedModifiers)
+			if err != nil {
+				log.Printf("[HAND-ERROR] Error parsing activated modifiers: %v", err)
+				return
+			}
+		}
+
+		currentGold := 0 // TODO: Get from Redis
+
+		// Apply activated modifiers to the player
+		goldActivated := poker.ApplyRoundModifiers(&activatedModifiers, currentGold)
+
+		// Apply received modifiers to the player
+		goldReceived := poker.ApplyRoundModifiers(&receivedModifiers, goldActivated)
+
+		if goldActivated != currentGold {
 			// Notify player of gold change
 			sio.UserConnections[player.Username].Emit("round_modifier", gin.H{
-				"current_gold": gold,
-				"extra_gold":   gold - currentGold,
+				"current_gold": goldReceived,
+				"extra_gold":   goldReceived - currentGold,
 			})
-
 		}
+
+		// Delete modifiers if there are no more plays left of the activated modifiers
+		var remainingModifiers []poker.Modifier
+
+		var deletedModifiers []poker.Modifier
+
+		for _, modifier := range activatedModifiers.Modificadores {
+			if modifier.LeftUses != 0 {
+				remainingModifiers = append(remainingModifiers, modifier)
+			} else if modifier.LeftUses == 0 {
+				deletedModifiers = append(deletedModifiers, modifier)
+			}
+		}
+
+		activatedModifiers.Modificadores = remainingModifiers
+		player.ActivatedModifiers, err = json.Marshal(activatedModifiers)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error serializing activated modifiers: %v", err)
+			return
+		}
+
+		// Delete modifiers if there are no more plays left of the received modifiers
+		var remainingReceivedModifiers []poker.Modifier
+
+		var deletedReceiedModifiers []poker.Modifier
+
+		for _, modifier := range activatedModifiers.Modificadores {
+			if modifier.LeftUses != 0 {
+				remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
+			} else if modifier.LeftUses == 0 {
+				deletedReceiedModifiers = append(deletedReceiedModifiers, modifier)
+			}
+		}
+
+		receivedModifiers.Modificadores = remainingReceivedModifiers
+		player.ReceivedModifiers, err = json.Marshal(receivedModifiers)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error serializing received modifiers: %v", err)
+			return
+		}
+
+		// Emit the deleted modifiers to the client
+		if len(deletedModifiers) > 0 {
+			sio.UserConnections[player.Username].Emit("deleted_modifiers", gin.H{"deleted_activated_modifiers": deletedModifiers})
+			log.Printf("[HAND-INFO] Deleted modifiers for user %s: %v", player.Username, deletedModifiers)
+		}
+
+		// Emit the deleted received modifiers to the client
+		if len(deletedReceiedModifiers) > 0 {
+			sio.UserConnections[player.Username].Emit("deleted_modifiers", gin.H{"deleted_received_modifiers": deletedReceiedModifiers})
+			log.Printf("[HAND-INFO] Deleted received modifiers for user %s: %v", player.Username, deletedReceiedModifiers)
+		}
+
+		// Update redis
+		err = redisClient.SaveInGamePlayer(&player)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error saving player data: %v", err)
+			return
+		}
+		log.Printf("[HAND-INFO] Player %s updated with activated modifiers: %v", player.Username, activatedModifiers)
+
 	}
 
 	log.Printf("[MODIFIER-APPLY] Successfully applied modifiers for lobby %s", lobbyID)
