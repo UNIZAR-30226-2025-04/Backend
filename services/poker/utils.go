@@ -36,7 +36,6 @@ func InitializePlayerDeck() json.RawMessage {
 	return deck.ToJSON()
 }
 
-
 func generatePack() {
-      
+
 }

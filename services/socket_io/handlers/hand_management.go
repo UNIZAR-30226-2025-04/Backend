@@ -103,9 +103,125 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// 4. Apply jokers (passing the hand which contains the jokers)
 		finalFichas, finalMult, finalGold, jokersTriggered := poker.ApplyJokers(hand, hand.Jokers, fichas, mult, hand.Gold)
+
+		// 5. Apply modifiers
+		if player.MostPlayedHand != nil {
+			var mostPlayedHand poker.Hand
+			err = json.Unmarshal(player.MostPlayedHand, &mostPlayedHand)
+			if err != nil {
+				log.Printf("[HAND-ERROR] Error parsing most played hand: %v", err)
+				client.Emit("error", gin.H{"error": "Error parsing most played hand"})
+				return
+			}
+		}
+
+		var mostPlayedHand poker.Hand
+		if player.MostPlayedHand != nil {
+			err = json.Unmarshal(player.MostPlayedHand, &mostPlayedHand)
+			if err != nil {
+				log.Printf("[HAND-ERROR] Error parsing most played hand: %v", err)
+				client.Emit("error", gin.H{"error": "Error parsing most played hand"})
+				return
+			}
+		}
+
+		// Apply activated modifiers
+		var activatedModifiers poker.Modifiers
+		if player.ActivatedModifiers != nil {
+			err = json.Unmarshal(player.ActivatedModifiers, &activatedModifiers)
+			if err != nil {
+				log.Printf("[HAND-ERROR] Error parsing activated modifiers: %v", err)
+				client.Emit("error", gin.H{"error": "Error parsing activated modifiers"})
+				return
+			}
+		}
+
+		finalFichas, finalMult, finalGold = poker.ApplyModifiers(hand, mostPlayedHand, &activatedModifiers, finalFichas, finalMult, finalGold)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error applying modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error applying modifiers"})
+			return
+		}
+
+		// Json activated modifiers
+		activatedModifiersJson, err := json.Marshal(activatedModifiers)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error serializing activated modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error serializing activated modifiers"})
+			return
+		}
+
+		// Delete modifiers if there are no more plays left of the activated modifiers
+		var remainingModifiers []poker.Modifier
+
+		var deletedModifiers []poker.Modifier
+
+		for _, modifier := range activatedModifiers.Modificadores {
+			if modifier.LeftUses != 0 {
+				remainingModifiers = append(remainingModifiers, modifier)
+			} else if modifier.LeftUses == 0 {
+				deletedModifiers = append(deletedModifiers, modifier)
+			}
+		}
+
+		activatedModifiers.Modificadores = remainingModifiers
+		player.ActivatedModifiers, err = json.Marshal(activatedModifiers)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error serializing activated modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error serializing activated modifiers"})
+			return
+		}
+
+		// Apply received modifiers
+		var receivedModifiers poker.Modifiers
+		if player.ActivatedModifiers != nil {
+			err = json.Unmarshal(player.ReceivedModifiers, &receivedModifiers)
+			if err != nil {
+				log.Printf("[HAND-ERROR] Error parsing received modifiers: %v", err)
+				client.Emit("error", gin.H{"error": "Error parsing received modifiers"})
+				return
+			}
+		}
+
+		finalFichas, finalMult, finalGold = poker.ApplyModifiers(hand, mostPlayedHand, &activatedModifiers, finalFichas, finalMult, finalGold)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error applying modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error applying modifiers"})
+			return
+		}
+
 		valorFinal := finalFichas * finalMult
 
-		// 5. Update player data in Redis
+		// Json activated modifiers
+		receivedModifiersJson, err := json.Marshal(receivedModifiers)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error serializing received modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error serializing received modifiers"})
+			return
+		}
+
+		// Delete modifiers if there are no more plays left of the received modifiers
+		var remainingReceivedModifiers []poker.Modifier
+
+		var deletedReceiedModifiers []poker.Modifier
+
+		for _, modifier := range activatedModifiers.Modificadores {
+			if modifier.LeftUses != 0 {
+				remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
+			} else if modifier.LeftUses == 0 {
+				deletedReceiedModifiers = append(deletedReceiedModifiers, modifier)
+			}
+		}
+
+		receivedModifiers.Modificadores = remainingReceivedModifiers
+		player.ReceivedModifiers, err = json.Marshal(receivedModifiers)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error serializing received modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error serializing received modifiers"})
+			return
+		}
+
+		// 6. Update player data in Redis
 		player.CurrentPoints = valorFinal
 		player.TotalPoints += valorFinal
 		player.HandPlaysLeft--
@@ -118,19 +234,33 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// Log the result
 		log.Println("Jugador ha puntuado la friolera de:", valorFinal)
-		// 6. Emit success response
+		// 7. Emit success response
 		client.Emit("played_hand", gin.H{
-			"points":          valorFinal,
-			"gold":            finalGold,
-			"jokersTriggered": jokersTriggered,
-			"left_plays":      player.HandPlaysLeft,
-			"message":         "¡Mano jugada con éxito!",
+			"points":              valorFinal,
+			"gold":                finalGold,
+			"jokersTriggered":     jokersTriggered,
+			"left_plays":          player.HandPlaysLeft,
+			"activated_modifiers": string(activatedModifiersJson),
+			"received_modifiers":  string(receivedModifiersJson),
+			"message":             "¡Mano jugada con éxito!",
 		})
 
-		// 7. If the player has no plays left, emit a message
+		// 8. If the player has no plays left, emit a message
 		if player.HandPlaysLeft <= 0 {
 			client.Emit("no_plays_left", gin.H{"message": "No hand plays left"})
 			log.Printf("[HAND-NO-PLAYS] User %s has no plays left", username)
+		}
+
+		// 9. Emit the deleted modifiers to the client
+		if len(deletedModifiers) > 0 {
+			client.Emit("deleted_modifiers", gin.H{"deleted_activated_modifiers": deletedModifiers})
+			log.Printf("[HAND-INFO] Deleted modifiers for user %s: %v", username, deletedModifiers)
+		}
+
+		// 10. Emit the deleted received modifiers to the client
+		if len(deletedReceiedModifiers) > 0 {
+			client.Emit("deleted_modifiers", gin.H{"deleted_received_modifiers": deletedReceiedModifiers})
+			log.Printf("[HAND-INFO] Deleted received modifiers for user %s: %v", username, deletedReceiedModifiers)
 		}
 
 		// NOTE: check it outside the `if` sentence, since the player might have reached the blind
@@ -487,7 +617,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		modifiers := args[1].([]redis.Modifier)
+		modifiers := args[1].([]poker.Modifier)
 
 		player, err := redisClient.GetInGamePlayer(username)
 		if err != nil {
@@ -502,7 +632,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		var player_modifiers []redis.Modifier
+		var player_modifiers []poker.Modifier
 		err = json.Unmarshal(player.Modifiers, &player_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
@@ -532,7 +662,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 		}
 
 		// Add the activated modifiers to the player
-		var activated_modifiers []redis.Modifier
+		var activated_modifiers []poker.Modifier
 		activated_modifiers = append(activated_modifiers, modifiers...)
 		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
 		if err != nil {
@@ -611,7 +741,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		modifiers := args[1].([]redis.Modifier)
+		modifiers := args[1].([]poker.Modifier)
 
 		player, err := redisClient.GetInGamePlayer(username)
 		if err != nil {
@@ -626,7 +756,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		var player_modifiers []redis.Modifier
+		var player_modifiers []poker.Modifier
 		err = json.Unmarshal(player.Modifiers, &player_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
@@ -691,7 +821,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// Add the activated modifiers to the player
-		var activated_modifiers []redis.Modifier
+		var activated_modifiers []poker.Modifier
 		activated_modifiers = append(activated_modifiers, modifiers...)
 		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
 		if err != nil {

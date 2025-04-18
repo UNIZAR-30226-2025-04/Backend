@@ -195,6 +195,9 @@ func AdvanceToNextRoundPlayIfUndone(redisClient *redis.RedisClient, db *gorm.DB,
 		return
 	}
 
+	// Step 1.5: Apply round modifiers to all players
+	play_round.ApplyRoundModifiers(redisClient, lobbyID, sio)
+
 	// Step 2: Broadcast round start event
 	play_round.BroadcastRoundStart(sio, lobbyID, updatedLobby.CurrentRound, blind)
 
