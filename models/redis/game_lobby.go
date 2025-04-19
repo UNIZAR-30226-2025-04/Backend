@@ -20,17 +20,17 @@ const (
 
 // GameLobby represents a game lobby state
 type GameLobby struct {
-	Id                   string     `json:"id"`                     // Matches game_lobbies.id
-	CreatorUsername      string     `json:"creator_username"`       // Matches game_lobbies.creator_username
-	NumberOfRounds       int        `json:"number_of_rounds"`       // Matches game_lobbies.number_of_rounds
-	TotalPoints          int        `json:"total_points"`           // Matches game_lobbies.total_points
-	CreatedAt            time.Time  `json:"created_at"`             // Matches game_lobbies.created_at
-	GameHasBegun         bool       `json:"game_has_begun"`         // Matches game_lobbies.game_has_begun
-	IsPublic             bool       `json:"is_public"`              // Matches game_lobbies.is_public
-	ShopState            *LobbyShop `json:"shop_state"`             // Matches game_lobbies.shop_state
-	CurrentHighBlind     int        `json:"current_blind"`          // Matches game_lobbies.current_blind
-	NumberOfVotes        int        `json:"number_of_votes"`        // Matches game_lobbies.number_of_votes
-	HighestBlindProposer string     `json:"highest_blind_proposer"` // New field to track who proposed the highest blind
+	Id                   string    `json:"id"`                     // Matches game_lobbies.id
+	CreatorUsername      string    `json:"creator_username"`       // Matches game_lobbies.creator_username
+	NumberOfRounds       int       `json:"number_of_rounds"`       // Matches game_lobbies.number_of_rounds
+	TotalPoints          int       `json:"total_points"`           // Matches game_lobbies.total_points
+	CreatedAt            time.Time `json:"created_at"`             // Matches game_lobbies.created_at
+	GameHasBegun         bool      `json:"game_has_begun"`         // Matches game_lobbies.game_has_begun
+	IsPublic             bool      `json:"is_public"`              // Matches game_lobbies.is_public
+	ShopState            LobbyShop `json:"shop_state"`             // Matches game_lobbies.shop_state
+	CurrentHighBlind     int       `json:"current_blind"`          // Matches game_lobbies.current_blind
+	NumberOfVotes        int       `json:"number_of_votes"`        // Matches game_lobbies.number_of_votes
+	HighestBlindProposer string    `json:"highest_blind_proposer"` // New field to track who proposed the highest blind
 
 	// New fields
 	CurrentRound int `json:"current_round"`
@@ -68,10 +68,10 @@ func (l *GameLobby) EnsureMapsInitialized() {
 }
 
 type LobbyShop struct {
-	Rerolls         int        `json:"reroll_count"`
-	FixedPacks      []ShopItem `json:"fixed_packs"`
-	FixedModifiers  []ShopItem `json:"fixed_modifiers"`
-	RerollableItems []ShopItem `json:"rerollable_items"`
+	MaxReroll        int        `json:"max_rerolls"`
+	FixedPacks       []ShopItem `json:"fixed_packs"`
+	FixedModifiers   []ShopItem `json:"fixed_modifiers"`
+	RerollableJokers []ShopItem `json:"rerollable_items"`
 }
 type ShopItem struct {
 	ID       string       `json:"id"`

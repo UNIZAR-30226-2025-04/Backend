@@ -6,7 +6,9 @@ package utils
  * with the same format spec every time, potentially confusing the key format.
  */
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func FormatInGamePlayerKey(username string) string {
 	return fmt.Sprintf("player:%s:game", username)
@@ -14,4 +16,8 @@ func FormatInGamePlayerKey(username string) string {
 
 func FormatLobbyKey(lobbyId string) string {
 	return fmt.Sprintf("lobby:%s", lobbyId)
+}
+
+func FormatRerollJokers(lobbyID string, reroll int) string {
+	return fmt.Sprintf("lobby:%s:reroll:%d", lobbyID, reroll)
 }

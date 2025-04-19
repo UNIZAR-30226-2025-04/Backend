@@ -6,84 +6,174 @@ import (
 	redis_services "Nogler/services/redis"
 	"fmt"
 	"hash/fnv"
+	"log"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/zishang520/socket.io/v2/socket"
 	"golang.org/x/exp/rand"
 )
 
 const ( // Only used here, i think its good to see it here
+	numFixedPacks = 3
+	numModifiers  = 2
+	numJokers     = 3
 	minFixedPacks = 2
 	maxFixedPacks = 4
-	minModifiers  = 1
-	maxModifiers  = 3
 )
+
+// The Shop has (according to frontend)
+// 3 rellolable jokers
+// 2 Non rerollable consumables
+// 2 NOn rerollable packs
 
 func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
 	baseSeed := GenerateSeed(lobbyID, "shop", roundNumber)
 	rng := rand.New(rand.NewSource(baseSeed))
 
 	shop := &redis.LobbyShop{
-		Rerolls:         0,
-		FixedPacks:      generateFixedPacks(rng),
-		FixedModifiers:  generateFixedModifiers(rng),
-		RerollableItems: generateRerollableItems(rng, 4),
+		MaxRerrol:        0,
+		FixedPacks:       generateFixedPacks(rng),
+		FixedModifiers:   generateFixedModifiers(rng),
+		RerollableJokers: generateInitialJokers(rng, 3),
 	}
 
 	return shop, nil
 }
 
 func generateFixedPacks(rng *rand.Rand) []redis.ShopItem {
-	// Wrong, think a feasable number of packs generated per shop
-	// Could be managed by seing maxmoney, rounds maxmoneyplayer can reroll, and calc
-	count := minFixedPacks + rng.Intn(maxFixedPacks-minFixedPacks+1)
-	packs := make([]redis.ShopItem, count)
+
+	packs := make([]redis.ShopItem, numFixedPacks)
 
 	for i := range packs {
-		seed := rng.Int63()
 		packs[i] = redis.ShopItem{
-			ID:       fmt.Sprintf("fixed_pack_%d", i),
+			ID:       fmt.Sprintf("%d", i),
 			Type:     "pack",
 			Price:    CalculatePackPrice(3), // 3 should really be the number of items
-			PackSeed: seed,
+			PackSeed: rng.Int63(),
 		}
 	}
 	return packs
 }
 
+// TODO IMPORTANT change so that it  generates valid modifiers was done before modifiers were a thing, take a look at generateinitialjokers
 func generateFixedModifiers(rng *rand.Rand) []redis.ShopItem {
 	// Same count problem as fixedpacks
-	count := minModifiers + rng.Intn(maxModifiers-minModifiers+1)
-	modifiers := make([]redis.ShopItem, count)
+	modifiers := make([]redis.ShopItem, numModifiers)
 
 	for i := range modifiers {
 		modifiers[i] = redis.ShopItem{
-			ID:       fmt.Sprintf("fixed_mod_%d", i),
+			ID:       fmt.Sprintf("%d", i),
 			Type:     "modifier",
-			Price:    50 + rng.Intn(50),
+			Price:    2, // See how we calculate this price, probably another CalculateModPrice like the one above
 			PackSeed: rng.Int63(),
 		}
 	}
 	return modifiers
 }
 
-func RerollShopItems(redisClient *redis_services.RedisClient, lobbyID string) error {
-	// do stuff
-	return nil
+func generateInitialJokers(rng *rand.Rand, numJokers int) []redis.ShopItem {
+
+	totalWeight := 120 // CHANGE TO THE TOTAL WEIGHT + MOVE TO CONSTANTS
+
+	jokers := make([]redis.ShopItem, numJokers)
+	for i := range jokers {
+		randomWeight := rng.Intn(totalWeight)
+		remainingWeight := randomWeight
+
+		for _, joker := range JokerWeights {
+			if remainingWeight < joker.Weight {
+				jokers[i] = redis.ShopItem{
+					ID:       fmt.Sprintf("%d", joker.ID), // Unique ID
+					Type:     "joker",
+					Price:    calculateJokerPrice(joker.ID),
+					PackSeed: rng.Int63(),
+				}
+				break
+			}
+			remainingWeight -= joker.Weight
+		}
+	}
+	return jokers
 }
 
-func generateRerollableItems(rng *rand.Rand, count int) []redis.ShopItem {
-	// do stuff
+// Good way of calculating price, needs ordering of jokers by rarity, do same with probabilities instead of the "weight" thing
+func calculateJokerPrice(jokerID int) int {
+	// Simple tiered pricing based on weight ranges. Change this logically, just a placeholder for now but works for testiun
+	switch {
+	case jokerID <= 3: // Common jokers
+		return 3
+	case jokerID <= 7: // Uncommon
+		return 5
+	default: // Rare
+		return 8
+	}
+}
+
+// pasar el socket
+func RerollShopItems(redisClient *redis_services.RedisClient, lobbyID string, username string, client *socket.Socket, rng *rand.Rand) error {
+
+	// Recuperar del in_game_player el numero de rerolls
+	// Recuperar de la lobby el max rerolls
+	// Comparar
+
+	player, err := redisClient.GetInGamePlayer(username)
+	if err != nil {
+		log.Printf("[BLIND-ERROR] Error getting player data: %v", err)
+		client.Emit("error", gin.H{"error": "Error getting player data"})
+		return fmt.Errorf("error getting player data: %v", err)
+	}
+	gamePlayerRerrols := player.ShopRerolls + 1
+	player.ShopRerolls = gamePlayerRerrols
+
+	if err := redisClient.SaveInGamePlayer(player); err != nil {
+		log.Printf("[BLIND-ERROR] Error saving player data: %v", err)
+		client.Emit("error", gin.H{"error": "Error saving player data"})
+		return fmt.Errorf("error saving player data: %v", err)
+	}
+
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[BLIND-ERROR] Error getting game lobby: %v", err)
+		client.Emit("error", gin.H{"error": "Error getting game lobby"})
+		return fmt.Errorf("error getting game lobby: %v", err)
+	}
+	lobbyMaxRerrols := lobby.ShopState.MaxReroll
+
+	if gamePlayerRerrols > lobbyMaxRerrols {
+
+		newSeed := rng.Uint64()                          // Use the RNG's current seed
+		newSeed += uint64(lobby.NumberOfRounds) << 32    // Mix in round number
+		newSeed += uint64(lobby.ShopState.MaxReroll + 1) // Mix in reroll count
+		rng := rand.New(rand.NewSource(newSeed))
+
+		generateJokers(rng, 3)
+		redisClient.SaveRerollJokers()
+
+	} else {
+		jokers, err := redisClient.GetJokersFromRound(lobbyID)
+		if err != nil {
+			log.Printf("[BLIND-ERROR] Error getting jokers from this rounds shop: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting jokers from this rounds shop"})
+			return fmt.Errorf("error getting jokers: %v", err)
+		}
+
+		client.Emit("pack_opened", gin.H{
+			"jokers": jokers,
+		})
+	}
 	return nil
+
 }
 
 // Add a function that applies the probabilities of the groups (joker card modifier)
 
 // Add a function that calculates the probabilities of a given item in a group to appear
 
-func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.GameLobby, item redis.ShopItem) (*redis.PackContents, error) {
+func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.GameLobby, item redis.ShopItem, username string) (*redis.PackContents, error) {
 	// Unique key per pack state
 	packKey := fmt.Sprintf("lobby:%s:round:%d:reroll:%d:pack:%s",
-		lobby.Id, lobby.NumberOfRounds, lobby.ShopState.Rerolls, item.ID)
+		lobby.Id, lobby.NumberOfRounds, lobby.ShopState.MaxRerrol, item.ID)
 
 	// Try to get existing pack contents
 	existing, err := rc.GetPackContents(packKey)
@@ -154,30 +244,6 @@ func generateJokers(rng *rand.Rand, numJokers int) []poker.Jokers {
 	}
 
 	return jokers
-}
-
-func FindShopItem(lobby redis.GameLobby, packID int) (redis.ShopItem, bool) {
-	// Iterate over the shop items in the lobby
-	for _, item := range lobby.ShopState.FixedPacks {
-		if item.ID == fmt.Sprintf("fixed_pack_%d", packID) {
-			return item, true
-		}
-	}
-
-	for _, item := range lobby.ShopState.FixedModifiers {
-		if item.ID == fmt.Sprintf("fixed_mod_%d", packID) {
-			return item, true
-		}
-	}
-
-	for _, item := range lobby.ShopState.RerollableItems {
-		if item.ID == fmt.Sprintf("rerollable_item_%d", packID) {
-			return item, true
-		}
-	}
-
-	// If no match is found, return false
-	return redis.ShopItem{}, false
 }
 
 func GenerateSeed(parts ...interface{}) uint64 {

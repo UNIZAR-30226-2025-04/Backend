@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -300,4 +301,29 @@ func (rc *RedisClient) GetAllPlayersInLobby(lobbyId string) ([]redis_models.InGa
 	}
 
 	return players, nil
+}
+
+func (rc *RedisClient) SaveRerollJokers(jokers []int, lobbyID string) {
+	lobby, err := rc.GetGameLobby(lobbyID)
+	if err != nil {
+		fmt.Errorf("error ocurred fetching lobby: %v", err)
+	}
+	reroll := lobby.ShopState.MaxReroll + 1
+	key := redis_utils.FormatRerollJokers(lobbyID, reroll)
+
+	jokerString := ""
+	for _, joker := range jokers {
+		jokerString += strconv.Itoa(joker)
+	}
+
+	if err := rc.client.Set(rc.ctx, key, jokerString, 24*time.Hour).Err(); err != nil {
+		fmt.Errorf("Error writing rerolled jokers to Redis: %v", err)
+	}
+
+	lobby.ShopState.MaxReroll = reroll
+	rc.SaveGameLobby(lobby)
+}
+
+func (rc *RedisClient) GetJokersFromRound(lobbyID string) {
+
 }

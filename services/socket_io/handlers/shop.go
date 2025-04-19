@@ -70,18 +70,13 @@ func HandleOpenPack(redisClient *redis_services.RedisClient, client *socket.Sock
 			return
 		}
 
-		item, exists := shop.FindShopItem(*lobbyState, packID)
-		if !exists || item.Type != "pack" {
-			client.Emit("invalid_pack")
-			return
-		}
-
-		contents, err := shop.GetOrGeneratePackContents(redisClient, lobbyState, item)
+		contents, err := shop.GetOrGeneratePackContents(redisClient, lobbyState, item, username)
 		if err != nil {
 			client.Emit("pack_generation_failed")
 			return
 		}
 
+		// What does the pack contain (type) + id of that item in that type
 		client.Emit("pack_opened", gin.H{
 			"cards":  contents.Cards,
 			"jokers": contents.Jokers,
