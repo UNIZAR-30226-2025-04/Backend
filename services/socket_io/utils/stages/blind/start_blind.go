@@ -14,7 +14,7 @@ import (
 // Functions that are executed to start the next blind
 // ---------------------------------------------------------------
 
-func BroadcastStartingNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
+func BroadcastStartingNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, timeout int) {
 	// Get the game lobby from Redis
 	lobby, err := redisClient.GetGameLobby(lobbyID)
 	if err != nil {
@@ -27,6 +27,7 @@ func BroadcastStartingNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lob
 		"lobby_id":     lobbyID,
 		"blind_number": lobby.CurrentRound,
 		"base_blind":   lobby.CurrentBaseBlind,
+		"timeout":      timeout,
 		"message":      "Starting the blind proposal phase!",
 	})
 
