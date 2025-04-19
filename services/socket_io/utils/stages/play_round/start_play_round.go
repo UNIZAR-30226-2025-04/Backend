@@ -52,13 +52,14 @@ func PrepareRoundStart(redisClient *redis.RedisClient, lobbyID string) (*redis_m
 	return lobby, blind, nil
 }
 
-func BroadcastRoundStart(sio *socketio_types.SocketServer, lobbyID string, round int, blind int) {
+func BroadcastRoundStart(sio *socketio_types.SocketServer, lobbyID string, round int, blind int, timeout int) {
 	log.Printf("[ROUND-BROADCAST] Broadcasting round start event for lobby %s", lobbyID)
 
 	// Broadcast round start event to all players in the lobby
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("starting_round", gin.H{
 		"round_number": round,
 		"blind":        blind,
+		"timeout":      timeout,
 	})
 
 	log.Printf("[ROUND-BROADCAST] Sent round start event to lobby %s with round %d and blind %d",
@@ -103,7 +104,7 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		// Apply activated modifiers to the player
 		goldActivated := poker.ApplyRoundModifiers(&activatedModifiers, currentGold)
 
-		// Apply received modifiers to the player
+		// Apply received modifiers to the player (Currently there are no received modifiers that affect at the start of the round)
 		goldReceived := poker.ApplyRoundModifiers(&receivedModifiers, goldActivated)
 
 		if goldActivated != currentGold {

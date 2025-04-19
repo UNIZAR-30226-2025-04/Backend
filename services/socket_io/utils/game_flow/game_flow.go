@@ -19,6 +19,15 @@ import (
 )
 
 // ---------------------------------------------------------------
+// TIMEOUTS
+// ---------------------------------------------------------------
+const (
+	PLAY_ROUND_TIMEOUT = 2 * time.Minute
+	BLIND_TIMEOUT      = 20 * time.Second
+	SHOP_TIMEOUT       = 1 * time.Minute
+)
+
+// ---------------------------------------------------------------
 // Functions that are executed to start the next blind
 // ---------------------------------------------------------------
 
@@ -100,7 +109,7 @@ func AdvanceToNextBlindIfUndone(redisClient *redis.RedisClient, db *gorm.DB, lob
 	}
 
 	// Step 2: Broadcast the next blind phase event
-	blind.BroadcastStartingNextBlind(redisClient, db, lobbyID, sio)
+	blind.BroadcastStartingNextBlind(redisClient, db, lobbyID, sio, int(BLIND_TIMEOUT))
 
 	// Step 3: Start the blind timeout process
 	StartBlindTimeout(redisClient, db, lobbyID, sio, isFirstBlind)
@@ -153,7 +162,7 @@ func StartBlindTimeout(redisClient *redis.RedisClient,
 		currentRound := lobby.CurrentRound
 
 		// TODO, change the timeout value
-		time.Sleep(20 * time.Second)
+		time.Sleep(BLIND_TIMEOUT)
 
 		// Pass the expected round to AdvanceToNextRoundPlayIfUndone
 		AdvanceToNextRoundPlayIfUndone(redisClient, db, lobbyID, sio, currentRound)
@@ -199,7 +208,7 @@ func AdvanceToNextRoundPlayIfUndone(redisClient *redis.RedisClient, db *gorm.DB,
 	play_round.ApplyRoundModifiers(redisClient, lobbyID, sio)
 
 	// Step 2: Broadcast round start event
-	play_round.BroadcastRoundStart(sio, lobbyID, updatedLobby.CurrentRound, blind)
+	play_round.BroadcastRoundStart(sio, lobbyID, updatedLobby.CurrentRound, blind, int(PLAY_ROUND_TIMEOUT.Seconds()))
 
 	// Step 3: Start the round play timeout
 	StartRoundPlayTimeout(redisClient, db, lobbyID, sio)
@@ -241,7 +250,7 @@ func StartRoundPlayTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID 
 		currentRound := lobby.CurrentRound
 
 		// TODO, change the timeout value
-		time.Sleep(2 * time.Minute)
+		time.Sleep(PLAY_ROUND_TIMEOUT)
 
 		// Call the function to handle round end
 		HandleRoundPlayEnd(redisClient, db, lobbyID, sio, currentRound)
@@ -368,7 +377,7 @@ func AdvanceToShop(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, 
 	}
 
 	// Broadcast shop start to all players
-	shop.BroadcastStartingShop(sio, lobbyID, shopItems)
+	shop.BroadcastStartingShop(sio, lobbyID, shopItems, int(SHOP_TIMEOUT.Seconds()))
 
 	// Start the shop timeout
 	StartShopTimeout(redisClient, db, lobbyID, sio)
@@ -407,7 +416,7 @@ func StartShopTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID strin
 		currentRound := lobby.CurrentRound
 
 		// TODO, change the timeout value
-		time.Sleep(1 * time.Minute)
+		time.Sleep(SHOP_TIMEOUT)
 
 		// Advance to the next blind
 		AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, false, currentRound)
