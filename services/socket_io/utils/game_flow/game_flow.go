@@ -378,11 +378,13 @@ func AdvanceToShop(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, 
 		return
 	}
 
-	// Broadcast shop start to all players
-	shop.BroadcastStartingShop(sio, lobbyID, shopItems, int(SHOP_TIMEOUT.Seconds()))
-
 	// Start the shop timeout
+	// KEY: Start the timeout BEFORE sending the events, to send the actual timeout start date
+	// to the players
 	StartShopTimeout(redisClient, db, lobbyID, sio)
+
+	// Multicast shop start to all players
+	shop.MulticastStartingShop(sio, redisClient, lobbyID, shopItems)
 
 	log.Printf("[SHOP-ADVANCE] Successfully advanced lobby %s to shop phase", lobbyID)
 }

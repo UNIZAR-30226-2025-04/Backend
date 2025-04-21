@@ -13,7 +13,7 @@ import (
 // Functions that are executed to start the shop phase
 // ---------------------------------------------------------------
 
-func BroadcastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_services.RedisClient, lobbyID string, shopItems *redis.LobbyShop, timeout int) {
+func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_services.RedisClient, lobbyID string, shopItems *redis.LobbyShop) {
 	log.Printf("[SHOP-BROADCAST] Broadcasting shop start for lobby %s", lobbyID)
 
 	// Get the lobby to access the current round
@@ -41,11 +41,11 @@ func BroadcastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 
 		// Send personalized message to this player
 		playerSocket.Emit("starting_shop", gin.H{
-			"shop":          shopItems,
-			"timeout":       timeout,
-			"current_round": lobby.CurrentRound,
-			"money":         player.PlayersMoney,
-			"jokers":        player.CurrentJokers,
+			"shop":               shopItems,
+			"timeout_start_date": lobby.ShopTimeout,
+			"current_round":      lobby.CurrentRound,
+			"money":              player.PlayersMoney,
+			"jokers":             player.CurrentJokers,
 		})
 
 		log.Printf("[SHOP-BROADCAST] Sent personalized shop data to player %s", player.Username)
