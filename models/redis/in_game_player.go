@@ -4,9 +4,10 @@ import "encoding/json"
 
 // InGamePlayer represents a player's state during a game
 type InGamePlayer struct {
-	Username              string          `json:"username"`                // Matches game_profiles.username
-	LobbyId               string          `json:"lobby_id"`                // Matches game_lobbies.id
-	PlayersMoney          int             `json:"players_money"`           // Matches in_game_players.players_money
+	Username     string `json:"username"`      // Matches game_profiles.username
+	LobbyId      string `json:"lobby_id"`      // Matches game_lobbies.id
+	PlayersMoney int    `json:"players_money"` // Matches in_game_players.players_money
+	// TODO, do we need it?
 	PlayersRemainingCards int             `json:"current_remaining_cards"` // Cards remaining in deck (deck size - played cards - discarded cards)
 	CurrentDeck           json.RawMessage `json:"current_deck"`            // Temporary Redis field
 	CurrentHand           json.RawMessage `json:"current_hand"`            // Temporary Redis field

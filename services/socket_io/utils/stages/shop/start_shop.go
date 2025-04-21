@@ -2,25 +2,54 @@ package shop
 
 import (
 	"Nogler/models/redis"
+	redis_services "Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/zishang520/socket.io/v2/socket"
 )
 
 // ---------------------------------------------------------------
 // Functions that are executed to start the shop phase
 // ---------------------------------------------------------------
 
-func BroadcastStartingShop(sio *socketio_types.SocketServer, lobbyID string, shopItems *redis.LobbyShop, timeout int) {
+func BroadcastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_services.RedisClient, lobbyID string, shopItems *redis.LobbyShop, timeout int) {
 	log.Printf("[SHOP-BROADCAST] Broadcasting shop start for lobby %s", lobbyID)
 
-	// Broadcast shop start to all players
-	sio.Sio_server.To(socket.Room(lobbyID)).Emit("starting_shop", gin.H{
-		"shop":    shopItems,
-		"timeout": timeout,
-	})
+	// Get the lobby to access the current round
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[SHOP-BROADCAST-ERROR] Error getting lobby data: %v", err)
+		return
+	}
 
-	log.Printf("[SHOP-BROADCAST] Shop start broadcast sent to lobby %s", lobbyID)
+	// Get all players in the lobby
+	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
+	if err != nil {
+		log.Printf("[SHOP-BROADCAST-ERROR] Error getting players: %v", err)
+		return
+	}
+
+	// Send personalized message to each player
+	for _, player := range players {
+		// Get player's socket using GetConnection
+		playerSocket, exists := sio.GetConnection(player.Username)
+		if !exists {
+			log.Printf("[SHOP-BROADCAST-WARNING] Player %s has no active connection", player.Username)
+			continue
+		}
+
+		// Send personalized message to this player
+		playerSocket.Emit("starting_shop", gin.H{
+			"shop":          shopItems,
+			"timeout":       timeout,
+			"current_round": lobby.CurrentRound,
+			"money":         player.PlayersMoney,
+			"jokers":        player.CurrentJokers,
+		})
+
+		log.Printf("[SHOP-BROADCAST] Sent personalized shop data to player %s", player.Username)
+	}
+
+	log.Printf("[SHOP-BROADCAST] Shop start broadcast completed for lobby %s", lobbyID)
 }
