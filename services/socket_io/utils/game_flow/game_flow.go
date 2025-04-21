@@ -110,11 +110,11 @@ func AdvanceToNextBlindIfUndone(redisClient *redis.RedisClient, db *gorm.DB, lob
 		return err
 	}
 
-	// Step 2: Broadcast the next blind phase event
-	blind.BroadcastStartingNextBlind(redisClient, db, lobbyID, sio, int(BLIND_TIMEOUT.Seconds()))
-
-	// Step 3: Start the blind timeout process
+	// Step 2: Start the blind timeout process, BEFORE broadcasting the event so the timeout start date is updated
 	StartBlindTimeout(redisClient, db, lobbyID, sio, isFirstBlind)
+
+	// Step 3: Broadcast the next blind phase event
+	blind.BroadcastStartingNextBlind(redisClient, db, lobbyID, sio, int(BLIND_TIMEOUT.Seconds()))
 
 	return nil
 }

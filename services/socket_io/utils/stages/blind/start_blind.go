@@ -4,6 +4,7 @@ import (
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -24,11 +25,12 @@ func BroadcastStartingNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lob
 
 	// Broadcast starting_next_blind event to all players in the lobby
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("starting_next_blind", gin.H{
-		"lobby_id":     lobbyID,
-		"blind_number": lobby.CurrentRound,
-		"base_blind":   lobby.CurrentBaseBlind,
-		"timeout":      timeout,
-		"message":      "Starting the blind proposal phase!",
+		"lobby_id":           lobbyID,
+		"blind_number":       lobby.CurrentRound,
+		"base_blind":         lobby.CurrentBaseBlind,
+		"timeout":            timeout,
+		"timeout_start_date": lobby.BlindTimeout.Format(time.RFC3339),
+		"message":            "Starting the blind proposal phase!",
 	})
 
 	log.Printf("[NEXT-BLIND] Broadcast starting_next_blind event to lobby %s for round %d",
