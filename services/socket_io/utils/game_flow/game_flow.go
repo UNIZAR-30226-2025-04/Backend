@@ -25,6 +25,7 @@ const (
 	PLAY_ROUND_TIMEOUT = 2 * time.Minute
 	BLIND_TIMEOUT      = 20 * time.Second
 	SHOP_TIMEOUT       = 1 * time.Minute
+	VOUCHER_TIMEOUT    = 30 * time.Second // New timeout constant for voucher phase
 )
 
 // ---------------------------------------------------------------
@@ -412,15 +413,100 @@ func StartShopTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID strin
 
 	// Start the timeout goroutine
 	go func() {
-		// Capture the expected round for the next blind (current round)
+		// Capture the expected round for the vouchers phase
 		currentRound := lobby.CurrentRound
 
 		// TODO, change the timeout value
 		time.Sleep(SHOP_TIMEOUT)
 
-		// Advance to the next blind
-		AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, false, currentRound)
+		// Advance to vouchers phase instead of directly to blinds
+		AdvanceToVouchersIfUndone(redisClient, db, lobbyID, sio, currentRound)
 	}()
 
 	log.Printf("[SHOP-TIMEOUT] Shop timeout started for lobby %s", lobbyID)
+}
+
+// ---------------------------------------------------------------
+// Functions that handle the vouchers phase
+// ---------------------------------------------------------------
+
+// AdvanceToVouchersIfUndone transitions the game from shop phase to vouchers phase
+func AdvanceToVouchersIfUndone(
+	redisClient *redis.RedisClient,
+	db *gorm.DB,
+	lobbyID string,
+	sio *socketio_types.SocketServer,
+	expectedRound int,
+) {
+	log.Printf("[VOUCHER-ADVANCE] Advancing to vouchers phase for lobby %s (expected round: %d)",
+		lobbyID, expectedRound)
+
+	// Get the lobby to validate state
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[VOUCHER-ADVANCE-ERROR] Error getting lobby: %v", err)
+		return
+	}
+
+	// Validate the round number to avoid stale timeouts
+	if lobby.CurrentRound != expectedRound {
+		log.Printf("[VOUCHER-ADVANCE-WARN] Round mismatch - current: %d, expected: %d. Ignoring stale timeout.",
+			lobby.CurrentRound, expectedRound)
+		return
+	}
+
+	// Only advance if shop phase actually timed out
+	if lobby.ShopTimeout.IsZero() {
+		log.Printf("[VOUCHER-ADVANCE-INFO] Shop not timed out for lobby %s, skipping", lobbyID)
+		return
+	}
+
+	// Update the current phase to vouchers
+	if err := socketio_utils.SetGamePhase(redisClient, lobbyID, redis_models.PhaseVouchers); err != nil {
+		log.Printf("[VOUCHER-ADVANCE-ERROR] Error setting vouchers phase: %v", err)
+		return
+	}
+
+	// TODO: Reset voucher-related counters when they're added to the GameLobby struct
+	// TODO: Initialize voucher state if needed
+	// TODO: Broadcast voucher phase start event to clients
+
+	// Start the voucher timeout instead of immediately chaining to blind phase
+	StartVoucherTimeout(redisClient, db, lobbyID, sio, expectedRound)
+}
+
+// StartVoucherTimeout starts a timeout for the vouchers phase
+func StartVoucherTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer, expectedRound int) {
+	log.Printf("[VOUCHER-TIMEOUT] Starting voucher timeout for lobby %s", lobbyID)
+
+	// Get the game lobby from Redis
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[VOUCHER-TIMEOUT-ERROR] Error getting lobby: %v", err)
+		return
+	}
+
+	// Reset the shop timeout to indicate shop phase has completely ended
+	lobby.ShopTimeout = time.Time{}
+
+	// Save the updated lobby
+	err = redisClient.SaveGameLobby(lobby)
+	if err != nil {
+		log.Printf("[VOUCHER-TIMEOUT-ERROR] Error saving voucher timeout: %v", err)
+		return
+	}
+
+	// Start the timeout goroutine
+	go func() {
+		// Capture the current round
+		currentRound := lobby.CurrentRound
+
+		// Wait for the voucher timeout duration
+		time.Sleep(VOUCHER_TIMEOUT)
+
+		// Advance to the next blind phase
+		AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, false, currentRound)
+	}()
+
+	log.Printf("[VOUCHER-TIMEOUT] Voucher timeout started for lobby %s", lobbyID)
 }

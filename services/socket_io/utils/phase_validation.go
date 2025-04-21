@@ -53,7 +53,7 @@ func ValidateBlindPhase(redisClient *redis.RedisClient, client *socket.Socket, l
 	return ValidateGamePhase(redisClient, client, lobbyID, redis_models.PhaseBlind)
 }
 
-// ValidateModifiersPhase specifically validates that the game is in the modifiers phase
-func ValidateModifiersPhase(redisClient *redis.RedisClient, client *socket.Socket, lobbyID string) (bool, error) {
-	return ValidateGamePhase(redisClient, client, lobbyID, redis_models.PhaseModifiers)
+// ValidateVouchersPhase specifically validates that the game is in the modifiers phase
+func ValidateVouchersPhase(redisClient *redis.RedisClient, client *socket.Socket, lobbyID string) (bool, error) {
+	return ValidateGamePhase(redisClient, client, lobbyID, redis_models.PhaseVouchers)
 }

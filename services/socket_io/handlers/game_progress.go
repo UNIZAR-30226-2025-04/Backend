@@ -161,10 +161,10 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 			return
 		}
 
-		// Validate shop phase
-		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
+		// KEY, NEW: this event should only be emitted by clients during the VOUCHERS phase
+		valid, err := socketio_utils.ValidateVouchersPhase(redisClient, client, lobbyID)
 		if err != nil || !valid {
-			// Error already emitted in ValidateShopPhase
+			// Error already emitted in ValidateVouchersPhase
 			return
 		}
 

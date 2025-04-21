@@ -61,15 +61,16 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 
 			// Player-specific state
 			"player_data": gin.H{
-				"username":        player.Username,
-				"players_money":   player.PlayersMoney,
-				"current_deck":    player.CurrentDeck,
-				"modifiers":       player.Modifiers,
-				"current_jokers":  player.CurrentJokers,
-				"current_points":  player.CurrentPoints,
-				"total_points":    player.TotalPoints,
-				"hand_plays_left": player.HandPlaysLeft,
-				"discards_left":   player.DiscardsLeft,
+				"username":             player.Username,
+				"players_money":        player.PlayersMoney,
+				"remaining_deck_cards": player.PlayersRemainingCards,
+				"current_hand":         player.CurrentHand,
+				"modifiers":            player.Modifiers,
+				"current_jokers":       player.CurrentJokers,
+				"current_points":       player.CurrentPoints,
+				"total_points":         player.TotalPoints,
+				"hand_plays_left":      player.HandPlaysLeft,
+				"discards_left":        player.DiscardsLeft,
 			},
 		}
 
@@ -82,6 +83,12 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 		case redis_models.PhaseShop:
 			response["shop_items"] = lobby.ShopState
 			response["players_finished_shop"] = len(lobby.PlayersFinishedShop)
+		// NEW: vouchers phase info
+		case redis_models.PhaseVouchers:
+			response["player_vouchers"] = player.Modifiers
+			response["player_active_vouchers"] = player.ActivatedModifiers
+			response["player_received_vouchers"] = player.ReceivedModifiers
+			response["players_finished_vouchers"] = len(lobby.PlayersFinishedVouchers)
 		}
 
 		// Send the comprehensive game state

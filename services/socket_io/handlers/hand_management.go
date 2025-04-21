@@ -707,7 +707,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 		}
 
 		// Validate modifiers phase
-		valid, err := socketio_utils.ValidateModifiersPhase(redisClient, client, lobbyID)
+		valid, err := socketio_utils.ValidateVouchersPhase(redisClient, client, lobbyID)
 		if err != nil || !valid {
 			return
 		}
@@ -830,8 +830,8 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// Validate modifiers phase
-		valid, err := socketio_utils.ValidateModifiersPhase(redisClient, client, lobbyID)
+		// Validate vouchers phase
+		valid, err := socketio_utils.ValidateVouchersPhase(redisClient, client, lobbyID)
 		if err != nil || !valid {
 			return
 		}
@@ -930,6 +930,9 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			client.Emit("error", gin.H{"error": "Error processing modifiers"})
 			return
 		}
+
+		// TODO: con esto no estaríamos mezclando los modificadores recibidos con los activados
+		// (que igual el usuario ha activado por sí mismo)?
 		receiver.ReceivedModifiers = activated_modifiersJSON
 		log.Printf("[MODIFIER-INFO] Activated modifiers for user %s: %v", receiver.Username, activated_modifiers)
 

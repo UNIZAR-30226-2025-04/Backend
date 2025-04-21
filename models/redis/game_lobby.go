@@ -14,7 +14,7 @@ const (
 	PhaseBlind     = "blind"
 	PhasePlayRound = "play_round"
 	PhaseShop      = "shop"
-	PhaseModifiers = "modifiers"
+	PhaseVouchers  = "vouchers"
 	AnnounceWinner = "announce_winner"
 )
 
@@ -36,9 +36,10 @@ type GameLobby struct {
 	CurrentRound int `json:"current_round"`
 
 	// Replace counters with maps of usernames to track who has completed each action
-	ProposedBlinds       map[string]bool `json:"proposed_blinds"`        // Map of usernames who have proposed blinds
-	PlayersFinishedRound map[string]bool `json:"players_finished_round"` // Map of usernames who have finished the round
-	PlayersFinishedShop  map[string]bool `json:"players_finished_shop"`  // Map of usernames who have finished shopping
+	ProposedBlinds          map[string]bool `json:"proposed_blinds"`           // Map of usernames who have proposed blinds
+	PlayersFinishedRound    map[string]bool `json:"players_finished_round"`    // Map of usernames who have finished the round
+	PlayersFinishedShop     map[string]bool `json:"players_finished_shop"`     // Map of usernames who have finished shopping
+	PlayersFinishedVouchers map[string]bool `json:"players_finished_vouchers"` // Map of usernames who have finished the vouchers phase
 
 	PlayerCount int `json:"player_count"` // New field to track number of players
 
@@ -64,6 +65,9 @@ func (l *GameLobby) EnsureMapsInitialized() {
 	}
 	if l.PlayersFinishedShop == nil {
 		l.PlayersFinishedShop = make(map[string]bool)
+	}
+	if l.PlayersFinishedVouchers == nil {
+		l.PlayersFinishedVouchers = make(map[string]bool)
 	}
 }
 
