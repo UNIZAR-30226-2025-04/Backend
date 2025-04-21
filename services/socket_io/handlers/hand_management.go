@@ -600,8 +600,8 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// 6. Prepare the response with the full deck state
 		response := gin.H{
-			"current_hand": player.CurrentHand,
-			"left_draws":   player.DiscardsLeft,
+			"current_hand":  player.CurrentHand,
+			"left_discards": player.DiscardsLeft,
 		}
 
 		// 7. Send the response to the client
