@@ -473,7 +473,6 @@ func HandleGetCards(redisClient *redis.RedisClient, client *socket.Socket,
 		response := gin.H{
 			"new_cards":    newCards,
 			"current_hand": hand,
-			"total_cards":  deck.TotalCards,
 			"deck_size":    len(deck.TotalCards),
 		}
 
@@ -561,24 +560,33 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// 3. Determine how many cards the player needs
-		cardsNeeded := len(discards)
-		if cardsNeeded <= 0 {
-			client.Emit("error", gin.H{"error": "El jugador ya tiene suficientes cartas"})
-			return
-		}
-
-		// 4. Get the necessary cards
-		newCards := deck.Draw(cardsNeeded)
-		if newCards == nil {
-			client.Emit("error", gin.H{"error": "No hay suficientes cartas disponibles en el mazo"})
+		// Get the current hand
+		var hand []poker.Card
+		err = json.Unmarshal(player.CurrentHand, &hand)
+		if err != nil {
+			log.Printf("[GET_CARDS-ERROR] Error unmarshaling current hand: %v", err)
+			client.Emit("error", gin.H{"error": "Error processing current hand"})
 			return
 		}
 
 		// 5. Update the player's info in Redis
 		deck.PlayedCards = append(deck.PlayedCards, discards...)
-		deck.RemoveCards(newCards)
-		player.CurrentDeck = deck.ToJSON()
+
+		// Remove the discarded cards from the hand
+		for _, card := range discards {
+			for i, c := range hand {
+				if c.Suit == card.Suit && c.Rank == card.Rank {
+					hand = append(hand[:i], hand[i+1:]...)
+					break
+				}
+			}
+		}
+		player.CurrentHand, err = json.Marshal(hand)
+		if err != nil {
+			log.Printf("[DISCARD-ERROR] Error serializing current hand: %v", err)
+			client.Emit("error", gin.H{"error": "Error serializing current hand"})
+			return
+		}
 
 		// Update discards left
 		player.DiscardsLeft--
@@ -592,10 +600,8 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// 6. Prepare the response with the full deck state
 		response := gin.H{
-			"new_cards":   newCards,
-			"total_cards": deck.TotalCards,
-			"deck_size":   len(deck.TotalCards),
-			"left_draws":  player.DiscardsLeft,
+			"current_hand": player.CurrentHand,
+			"left_draws":   player.DiscardsLeft,
 		}
 
 		// 7. Send the response to the client
