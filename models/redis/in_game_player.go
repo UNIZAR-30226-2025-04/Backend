@@ -8,6 +8,7 @@ type InGamePlayer struct {
 	LobbyId            string          `json:"lobby_id"`            // Matches game_lobbies.id
 	PlayersMoney       int             `json:"players_money"`       // Matches in_game_players.players_money
 	CurrentDeck        json.RawMessage `json:"current_deck"`        // Temporary Redis field
+	CurrentHand        json.RawMessage `json:"current_hand"`        // Temporary Redis field
 	Modifiers          json.RawMessage `json:"modifiers"`           // Temporary Redis field
 	ActivatedModifiers json.RawMessage `json:"activated_modifiers"` // Temporary Redis field
 	ReceivedModifiers  json.RawMessage `json:"received_modifiers"`  // Temporary Redis field

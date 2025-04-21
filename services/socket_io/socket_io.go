@@ -97,7 +97,9 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		// Play a hand and recieve the type of hand and the points scored
 		client.On("play_hand", handlers.HandlePlayHand(redisClient, client, db, username, sio_casted))
 
-		client.On("draw_cards", handlers.HandleDrawCards(redisClient, client, db, username, sio_casted))
+		client.On("get_cards", handlers.HandleGetCards(redisClient, client, db, username, sio_casted))
+
+		client.On("discard_cards", handlers.HandleDiscardCards(redisClient, client, db, username, sio_casted))
 
 		client.On("get_full_deck", handlers.HandleGetFullDeck(redisClient, client, db, username))
 
