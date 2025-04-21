@@ -469,16 +469,26 @@ func HandleGetCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// Get the lobby to retrieve current phase
+		lobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[GET_CARDS-ERROR] Error getting lobby: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving game phase"})
+			return
+		}
+
 		// 6. Prepare the response with the full deck state
 		response := gin.H{
-			"new_cards":    newCards,
-			"current_hand": hand,
-			"deck_size":    len(deck.TotalCards),
+			"new_cards":     newCards,
+			"current_hand":  hand,
+			"deck_size":     len(deck.TotalCards),
+			"current_phase": lobby.CurrentPhase, // Add the current phase
 		}
 
 		// 7. Send the response to the client
 		client.Emit("got_cards", response)
-		log.Printf("[GET_CARDS-SUCCESS] Sent updated deck to user %s (%d total cards)", username, response["deck_size"])
+		log.Printf("[GET_CARDS-SUCCESS] Sent updated deck to user %s (%d total cards, phase: %s)",
+			username, response["deck_size"], lobby.CurrentPhase)
 	}
 }
 
