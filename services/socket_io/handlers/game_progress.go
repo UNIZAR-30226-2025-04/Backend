@@ -127,8 +127,9 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 
 			// Broadcast the new blind value to everyone in the lobby
 			sio.Sio_server.To(socket.Room(lobbyID)).Emit("blind_updated", gin.H{
-				"new_blind":   proposedBlind,
-				"proposed_by": username,
+				"old_max_blind": currentBlind,
+				"new_blind":     proposedBlind,
+				"proposed_by":   username,
 			})
 		}
 
