@@ -58,19 +58,22 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			"total_players":      lobby.PlayerCount,
 			"current_round":      lobby.CurrentRound,
 			"current_high_blind": lobby.CurrentHighBlind,
+			"current_base_blind": lobby.CurrentBaseBlind,
+			"max_rounds":         lobby.MaxRounds,
 
 			// Player-specific state
 			"player_data": gin.H{
-				"username":             player.Username,
-				"players_money":        player.PlayersMoney,
-				"remaining_deck_cards": player.PlayersRemainingCards,
-				"current_hand":         player.CurrentHand,
-				"modifiers":            player.Modifiers,
-				"current_jokers":       player.CurrentJokers,
-				"current_points":       player.CurrentPoints,
-				"total_points":         player.TotalPoints,
-				"hand_plays_left":      player.HandPlaysLeft,
-				"discards_left":        player.DiscardsLeft,
+				"username":      player.Username,
+				"players_money": player.PlayersMoney,
+				// TODO: see in_game_player.go
+				// "remaining_deck_cards": player.PlayersRemainingCards,
+				"current_hand":    player.CurrentHand,
+				"modifiers":       player.Modifiers,
+				"current_jokers":  player.CurrentJokers,
+				"current_points":  player.CurrentPoints,
+				"total_points":    player.TotalPoints,
+				"hand_plays_left": player.HandPlaysLeft,
+				"discards_left":   player.DiscardsLeft,
 			},
 		}
 

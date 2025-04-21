@@ -75,7 +75,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		redisLobby := &redis_models.GameLobby{
 			Id:                   NewLobby.ID,
 			CreatorUsername:      username,
-			NumberOfRounds:       0,
+			MaxRounds:            game_constants.MaxGameRounds,
 			TotalPoints:          0,
 			CreatedAt:            NewLobby.CreatedAt,
 			GameHasBegun:         false,
@@ -368,20 +368,21 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 
 		// Create Redis InGamePlayer entry
 		redisPlayer := &redis_models.InGamePlayer{
-			Username:              username,
-			LobbyId:               lobbyID,
-			PlayersMoney:          10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
-			CurrentDeck:           poker.InitializePlayerDeck(), // Will be initialized when game starts
-			PlayersRemainingCards: 52,
-			Modifiers:             nil, // Will be initialized when game starts
-			CurrentJokers:         nil, // Will be initialized when game starts
-			MostPlayedHand:        nil, // Will be initialized during game
-			HandPlaysLeft:         game_constants.TOTAL_HAND_PLAYS,
-			DiscardsLeft:          game_constants.TOTAL_DISCARDS,
-			Winner:                false,
-			CurrentPoints:         0,
-			TotalPoints:           0,
-			BetMinimumBlind:       true,
+			Username:     username,
+			LobbyId:      lobbyID,
+			PlayersMoney: 10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
+			CurrentDeck:  poker.InitializePlayerDeck(), // Will be initialized when game starts
+			// TODO: see in_game_player.go
+			// PlayersRemainingCards: 52,
+			Modifiers:       nil, // Will be initialized when game starts
+			CurrentJokers:   nil, // Will be initialized when game starts
+			MostPlayedHand:  nil, // Will be initialized during game
+			HandPlaysLeft:   game_constants.TOTAL_HAND_PLAYS,
+			DiscardsLeft:    game_constants.TOTAL_DISCARDS,
+			Winner:          false,
+			CurrentPoints:   0,
+			TotalPoints:     0,
+			BetMinimumBlind: true,
 		}
 
 		if err := redisClient.SaveInGamePlayer(redisPlayer); err != nil {
@@ -409,7 +410,7 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			"lobby_info": gin.H{
 				"id":             redisLobby.Id,
 				"creator":        redisLobby.CreatorUsername,
-				"number_rounds":  redisLobby.NumberOfRounds,
+				"number_rounds":  redisLobby.MaxRounds,
 				"total_points":   redisLobby.TotalPoints,
 				"game_has_begun": redisLobby.GameHasBegun,
 				"public":         redisLobby.IsPublic,

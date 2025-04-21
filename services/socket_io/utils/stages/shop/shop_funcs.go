@@ -83,7 +83,7 @@ func generateRerollableItems(rng *rand.Rand, count int) []redis.ShopItem {
 func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.GameLobby, item redis.ShopItem) (*redis.PackContents, error) {
 	// Unique key per pack state
 	packKey := fmt.Sprintf("lobby:%s:round:%d:reroll:%d:pack:%s",
-		lobby.Id, lobby.NumberOfRounds, lobby.ShopState.Rerolls, item.ID)
+		lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, item.ID)
 
 	// Try to get existing pack contents
 	existing, err := rc.GetPackContents(packKey)

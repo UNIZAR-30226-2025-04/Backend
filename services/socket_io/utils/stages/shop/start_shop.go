@@ -14,19 +14,19 @@ import (
 // ---------------------------------------------------------------
 
 func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_services.RedisClient, lobbyID string, shopItems *redis.LobbyShop) {
-	log.Printf("[SHOP-BROADCAST] Broadcasting shop start for lobby %s", lobbyID)
+	log.Printf("[SHOP-MULTICAST] Broadcasting shop start for lobby %s", lobbyID)
 
 	// Get the lobby to access the current round
 	lobby, err := redisClient.GetGameLobby(lobbyID)
 	if err != nil {
-		log.Printf("[SHOP-BROADCAST-ERROR] Error getting lobby data: %v", err)
+		log.Printf("[SHOP-MULTICAST-ERROR] Error getting lobby data: %v", err)
 		return
 	}
 
 	// Get all players in the lobby
 	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
 	if err != nil {
-		log.Printf("[SHOP-BROADCAST-ERROR] Error getting players: %v", err)
+		log.Printf("[SHOP-MULTICAST-ERROR] Error getting players: %v", err)
 		return
 	}
 
@@ -35,7 +35,7 @@ func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 		// Get player's socket using GetConnection
 		playerSocket, exists := sio.GetConnection(player.Username)
 		if !exists {
-			log.Printf("[SHOP-BROADCAST-WARNING] Player %s has no active connection", player.Username)
+			log.Printf("[SHOP-MULTICAST-WARNING] Player %s has no active connection", player.Username)
 			continue
 		}
 
@@ -48,8 +48,8 @@ func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 			"jokers":             player.CurrentJokers,
 		})
 
-		log.Printf("[SHOP-BROADCAST] Sent personalized shop data to player %s", player.Username)
+		log.Printf("[SHOP-MULTICAST] Sent personalized shop data to player %s", player.Username)
 	}
 
-	log.Printf("[SHOP-BROADCAST] Shop start broadcast completed for lobby %s", lobbyID)
+	log.Printf("[SHOP-MULTICAST] Shop start broadcast completed for lobby %s", lobbyID)
 }
