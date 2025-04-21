@@ -168,10 +168,10 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 			return
 		}
 
-		// Increment the finished shop counter (NEW, using maps now)
-		lobby.PlayersFinishedShop[username] = true
+		// Increment the finished vouchers counter (NEW, using maps now)
+		lobby.PlayersFinishedVouchers[username] = true
 		log.Printf("[NEXT-BLIND] Player %s ready for next blind. Total ready: %d/%d",
-			username, len(lobby.PlayersFinishedShop), lobby.PlayerCount)
+			username, len(lobby.PlayersFinishedVouchers), lobby.PlayerCount)
 
 		// Save the updated lobby
 		err = redisClient.SaveGameLobby(lobby)
@@ -182,12 +182,61 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 		}
 
 		// If all players are ready, broadcast the starting_next_blind event
-		if len(lobby.PlayersFinishedShop) >= lobby.PlayerCount {
+		if len(lobby.PlayersFinishedVouchers) >= lobby.PlayerCount {
 			log.Printf("[NEXT-BLIND-COMPLETE] All players ready for next blind (%d/%d), round %d.",
-				len(lobby.PlayersFinishedShop), lobby.PlayerCount, lobby.CurrentRound)
+				len(lobby.PlayersFinishedVouchers), lobby.PlayerCount, lobby.CurrentRound)
 
 			// Advance to the next blind
 			game_flow.AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, false, lobby.CurrentRound)
+		}
+	}
+}
+
+func HandleContinueToVouchers(redisClient *redis.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		if len(args) < 1 {
+			log.Printf("[VOUCHERS-ERROR] Missing lobby ID for user %s", username)
+			client.Emit("error", gin.H{"error": "Missing lobby ID"})
+			return
+		}
+
+		lobbyID := args[0].(string)
+		log.Printf("[VOUCHERS] User %s requesting to continue to vouchers phase in lobby %s", username, lobbyID)
+
+		// Validate the user and lobby
+		lobby, err := socketio_utils.ValidateLobbyAndUser(redisClient, client, db, username, lobbyID)
+		if err != nil {
+			return
+		}
+
+		// Validate shop phase - this endpoint should only be called during SHOP phase
+		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidateShopPhase
+			return
+		}
+
+		// Increment the finished shop counter
+		lobby.PlayersFinishedShop[username] = true
+		log.Printf("[VOUCHERS] Player %s ready for vouchers phase. Total ready: %d/%d",
+			username, len(lobby.PlayersFinishedShop), lobby.PlayerCount)
+
+		// Save the updated lobby
+		err = redisClient.SaveGameLobby(lobby)
+		if err != nil {
+			log.Printf("[VOUCHERS-ERROR] Error saving game lobby: %v", err)
+			client.Emit("error", gin.H{"error": "Error saving game state"})
+			return
+		}
+
+		// If all players are ready, advance to the vouchers phase
+		if len(lobby.PlayersFinishedShop) >= lobby.PlayerCount {
+			log.Printf("[VOUCHERS-COMPLETE] All players ready for vouchers phase (%d/%d), round %d.",
+				len(lobby.PlayersFinishedShop), lobby.PlayerCount, lobby.CurrentRound)
+
+			// Use game_flow to advance to vouchers phase
+			game_flow.AdvanceToVouchersIfUndone(redisClient, db, lobbyID, sio, lobby.CurrentRound)
 		}
 	}
 }

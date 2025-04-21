@@ -47,6 +47,7 @@ type GameLobby struct {
 	BlindTimeout     time.Time `json:"blind_timeout"`
 	GameRoundTimeout time.Time `json:"game_round_timeout"`
 	ShopTimeout      time.Time `json:"shop_timeout"`
+	VouchersTimeout  time.Time `json:"vouchers_timeout"`
 
 	// Add current phase tracking
 	CurrentPhase string `json:"current_phase"` // One of: none, blind, play_round, shop

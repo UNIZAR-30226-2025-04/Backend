@@ -114,6 +114,9 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("activate_modifiers", handlers.HandleActivateModifiers(redisClient, client, db, username, sio_casted))
 
 		client.On("send_modifiers", handlers.HandleSendModifiers(redisClient, client, db, username, sio_casted))
+
+		// Add this inside the connection handler, with your other socket events
+		client.On("continue_to_vouchers", handlers.HandleContinueToVouchers(redisClient, client, db, username, sio_casted))
 	})
 
 	// NOTE: igual lo usamos en algún momento

@@ -10,6 +10,7 @@ import (
 	"Nogler/services/socket_io/utils/stages/end_game"
 	"Nogler/services/socket_io/utils/stages/play_round"
 	"Nogler/services/socket_io/utils/stages/shop"
+	"Nogler/services/socket_io/utils/stages/vouchers.go"
 	"Nogler/utils"
 	"fmt"
 	"log"
@@ -461,18 +462,31 @@ func AdvanceToVouchersIfUndone(
 		return
 	}
 
-	// Update the current phase to vouchers
+	// Reset voucher-related counters and shop timeout
+	lobby.PlayersFinishedVouchers = make(map[string]bool)
+	// Move shop timeout reset here from StartVoucherTimeout
+	lobby.ShopTimeout = time.Time{}
+
+	// Save the lobby with these changes before setting the new phase
+	if err := redisClient.SaveGameLobby(lobby); err != nil {
+		log.Printf("[VOUCHER-ADVANCE-ERROR] Error saving lobby with reset voucher counters: %v", err)
+		return
+	}
+
+	// AFTER saving the initial changes, update the current phase to vouchers
+	// This avoids the phase change being overwritten
 	if err := socketio_utils.SetGamePhase(redisClient, lobbyID, redis_models.PhaseVouchers); err != nil {
 		log.Printf("[VOUCHER-ADVANCE-ERROR] Error setting vouchers phase: %v", err)
 		return
 	}
 
-	// TODO: Reset voucher-related counters when they're added to the GameLobby struct
-	// TODO: Initialize voucher state if needed
-	// TODO: Broadcast voucher phase start event to clients
-
-	// Start the voucher timeout instead of immediately chaining to blind phase
+	// Start the voucher timeout
+	// NOTE: Since we have to send the timeout start date to the players, we should
+	// start the timeout BEFORE we send the starting_vouchers event
 	StartVoucherTimeout(redisClient, db, lobbyID, sio, expectedRound)
+
+	// Broadcast voucher phase start event to all clients
+	vouchers.MulticastStartingVouchers(sio, redisClient, db, lobbyID)
 }
 
 // StartVoucherTimeout starts a timeout for the vouchers phase
@@ -486,8 +500,8 @@ func StartVoucherTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID st
 		return
 	}
 
-	// Reset the shop timeout to indicate shop phase has completely ended
-	lobby.ShopTimeout = time.Time{}
+	// Set the voucher timeout start date to now
+	lobby.VouchersTimeout = time.Now()
 
 	// Save the updated lobby
 	err = redisClient.SaveGameLobby(lobby)
