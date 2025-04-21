@@ -5,6 +5,7 @@ import (
 	redis_services "Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,7 +14,7 @@ import (
 // Functions that are executed to start the shop phase
 // ---------------------------------------------------------------
 
-func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_services.RedisClient, lobbyID string, shopItems *redis.LobbyShop) {
+func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_services.RedisClient, lobbyID string, shopItems *redis.LobbyShop, timeout int) {
 	log.Printf("[SHOP-MULTICAST] Broadcasting shop start for lobby %s", lobbyID)
 
 	// Get the lobby to access the current round
@@ -42,7 +43,8 @@ func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 		// Send personalized message to this player
 		playerSocket.Emit("starting_shop", gin.H{
 			"shop":               shopItems,
-			"timeout_start_date": lobby.ShopTimeout,
+			"timeout":            timeout,
+			"timeout_start_date": lobby.ShopTimeout.Format(time.RFC3339),
 			"current_round":      lobby.CurrentRound,
 			"money":              player.PlayersMoney,
 			"jokers":             player.CurrentJokers,

@@ -6,6 +6,7 @@ import (
 	"Nogler/utils"
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -13,7 +14,7 @@ import (
 
 // MulticastStartingVouchers sends a notification to all players in the lobby
 // that the vouchers phase has begun
-func MulticastStartingVouchers(sio *socketio_types.SocketServer, redisClient *redis.RedisClient, db *gorm.DB, lobbyID string) {
+func MulticastStartingVouchers(sio *socketio_types.SocketServer, redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, timeout int) {
 	log.Printf("[VOUCHER-MULTICAST] Sending vouchers phase start event for lobby %s", lobbyID)
 
 	// Get the game lobby from Redis
@@ -58,7 +59,8 @@ func MulticastStartingVouchers(sio *socketio_types.SocketServer, redisClient *re
 			// Emit personalized event to this player
 			socket.Emit("starting_vouchers", gin.H{
 				"vouchers":           modifiers,
-				"timeout_start_date": lobby.VouchersTimeout,
+				"timeout":            timeout,
+				"timeout_start_date": lobby.VouchersTimeout.Format(time.RFC3339),
 				"current_round":      lobby.CurrentRound,
 				"users_in_lobby":     usersInLobby,
 			})

@@ -52,14 +52,22 @@ func PrepareRoundStart(redisClient *redis.RedisClient, lobbyID string) (*redis_m
 	return lobby, blind, nil
 }
 
-func BroadcastRoundStart(sio *socketio_types.SocketServer, lobbyID string, round int, blind int, timeout int) {
+func BroadcastRoundStart(sio *socketio_types.SocketServer, redisClient *redis.RedisClient, lobbyID string, round int, blind int, timeout int) {
 	log.Printf("[ROUND-BROADCAST] Broadcasting round start event for lobby %s", lobbyID)
+
+	// Get the game lobby from Redis
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[ROUND-BROADCAST-ERROR] Error getting lobby info: %v", err)
+		return
+	}
 
 	// Broadcast round start event to all players in the lobby
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("starting_round", gin.H{
-		"round_number": round,
-		"blind":        blind,
-		"timeout":      timeout,
+		"round_number":       round,
+		"blind":              blind,
+		"timeout":            timeout,
+		"timeout_start_date": lobby.GameRoundTimeout.Format(time.RFC3339),
 	})
 
 	log.Printf("[ROUND-BROADCAST] Sent round start event to lobby %s with round %d and blind %d",

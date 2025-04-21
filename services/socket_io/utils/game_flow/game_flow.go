@@ -209,11 +209,11 @@ func AdvanceToNextRoundPlayIfUndone(redisClient *redis.RedisClient, db *gorm.DB,
 	// Step 1.5: Apply round modifiers to all players
 	play_round.ApplyRoundModifiers(redisClient, lobbyID, sio)
 
-	// Step 2: Broadcast round start event
-	play_round.BroadcastRoundStart(sio, lobbyID, updatedLobby.CurrentRound, blind, int(PLAY_ROUND_TIMEOUT.Seconds()))
-
-	// Step 3: Start the round play timeout
+	// Step 2: Start the round play timeout, BEFORE BroadcastRoundStart to send the updated timeout start date to the players
 	StartRoundPlayTimeout(redisClient, db, lobbyID, sio)
+
+	// Step 3: Broadcast round start event
+	play_round.BroadcastRoundStart(sio, redisClient, lobbyID, updatedLobby.CurrentRound, blind, int(PLAY_ROUND_TIMEOUT.Seconds()))
 
 	log.Printf("[ROUND-PLAY-ADVANCE-SUCCESS] Advanced lobby %s to round play phase", lobbyID)
 }
@@ -384,7 +384,7 @@ func AdvanceToShop(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, 
 	StartShopTimeout(redisClient, db, lobbyID, sio)
 
 	// Multicast shop start to all players
-	shop.MulticastStartingShop(sio, redisClient, lobbyID, shopItems)
+	shop.MulticastStartingShop(sio, redisClient, lobbyID, shopItems, int(SHOP_TIMEOUT.Seconds()))
 
 	log.Printf("[SHOP-ADVANCE] Successfully advanced lobby %s to shop phase", lobbyID)
 }
@@ -488,7 +488,7 @@ func AdvanceToVouchersIfUndone(
 	StartVoucherTimeout(redisClient, db, lobbyID, sio, expectedRound)
 
 	// Broadcast voucher phase start event to all clients
-	vouchers.MulticastStartingVouchers(sio, redisClient, db, lobbyID)
+	vouchers.MulticastStartingVouchers(sio, redisClient, db, lobbyID, int(VOUCHER_TIMEOUT.Seconds()))
 }
 
 // StartVoucherTimeout starts a timeout for the vouchers phase
