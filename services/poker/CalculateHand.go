@@ -193,20 +193,28 @@ func countRanks(h Hand) map[int]int {
 
 // -------------------------------------------------------------------------------------------------
 
-func Pair(h Hand) bool {
+func Pair(h Hand) ([]Card, bool) {
 	cardCount := make(map[string]int)
 	for _, card := range h.Cards {
 		cardCount[card.Rank]++
 	}
-	for _, count := range cardCount {
+
+	var scoringCards []Card
+	for rank, count := range cardCount {
 		if count == 2 {
-			return true
+			// Find the cards that match this rank
+			for _, card := range h.Cards {
+				if card.Rank == rank {
+					scoringCards = append(scoringCards, card)
+				}
+			}
+			return scoringCards, true
 		}
 	}
-	return false
+	return nil, false
 }
 
-func TwoPair(h Hand) bool {
+func TwoPair(h Hand) ([]Card, bool) {
 	// Create a map to count the occurrences of each rank
 	cardCount := make(map[string]int)
 	for _, card := range h.Cards {
@@ -214,65 +222,98 @@ func TwoPair(h Hand) bool {
 	}
 
 	// Count how many pairs we have
+	var scoringCards []Card
 	pairCount := 0
-	for _, count := range cardCount {
+	for rank, count := range cardCount {
 		if count == 2 {
 			pairCount++
+			// Find the cards that match this rank
+			for _, card := range h.Cards {
+				if card.Rank == rank {
+					scoringCards = append(scoringCards, card)
+				}
+			}
 		}
 	}
 
 	// If there are exactly two pairs, return true
-	return pairCount == 2
+	if pairCount == 2 {
+		return scoringCards, true
+	}
+	return nil, false
 }
 
-func ThreeOfAKind(h Hand) bool {
+func ThreeOfAKind(h Hand) ([]Card, bool) {
 	cardCount := make(map[string]int)
 	for _, card := range h.Cards {
 		cardCount[card.Rank]++
 	}
-	for _, count := range cardCount {
-		if count == 2 {
-			return true
+
+	var scoringCards []Card
+	for rank, count := range cardCount {
+		if count == 3 {
+			// Find the cards that match this rank
+			for _, card := range h.Cards {
+				if card.Rank == rank {
+					scoringCards = append(scoringCards, card)
+				}
+			}
+			return scoringCards, true
 		}
 	}
-	return false
+	return nil, false
 }
 
-func FullHouse(h Hand) bool {
+func FullHouse(h Hand) ([]Card, bool) {
 	// Create a map to count the occurrences of each rank
 	cardCount := make(map[string]int)
 	for _, card := range h.Cards {
 		cardCount[card.Rank]++
 	}
 
-	// Flags to track if we found three of a kind and a pair
-	hasThree := false
-	hasTwo := false
+	var threeCards []Card
+	var twoCards []Card
 
 	// Check the counts to identify a three of a kind and a pair
-	for _, count := range cardCount {
+	for rank, count := range cardCount {
 		if count == 3 {
-			hasThree = true
+			// Find the cards that match this rank
+			for _, card := range h.Cards {
+				if card.Rank == rank {
+					threeCards = append(threeCards, card)
+				}
+			}
 		} else if count == 2 {
-			hasTwo = true
+			// Find the cards that match this rank
+			for _, card := range h.Cards {
+				if card.Rank == rank {
+					twoCards = append(twoCards, card)
+				}
+			}
 		}
 	}
 
 	// A full house requires exactly one three of a kind and one pair
-	return hasThree && hasTwo
-}
-
-func Flush(h Hand) bool {
-	suit := h.Cards[0].Suit
-	for _, c := range h.Cards[1:] {
-		if c.Suit != suit {
-			return false
-		}
+	if len(threeCards) == 3 && len(twoCards) == 2 {
+		return append(threeCards, twoCards...), true
 	}
-	return true
+	return nil, false
 }
 
-func Straight(h Hand) bool {
+func Flush(h Hand) ([]Card, bool) {
+	suit := h.Cards[0].Suit
+
+	var scoringCards []Card
+	for _, c := range h.Cards {
+		if c.Suit != suit {
+			return nil, false
+		}
+		scoringCards = append(scoringCards, c)
+	}
+	return scoringCards, true
+}
+
+func Straight(h Hand) ([]Card, bool) {
 	// Create sorted copy
 	tmp := Hand{Cards: make([]Card, len(h.Cards))}
 	copy(tmp.Cards, h.Cards)
@@ -292,38 +333,83 @@ func Straight(h Hand) bool {
 				sort.Ints(grades)
 				for i := 0; i < len(grades)-1; i++ {
 					if grades[i+1]-grades[i] != 1 {
-						return false
+						return nil, false
 					}
 				}
-				return true
+				return tmp.Cards, true
 			}
-			return false
+			return nil, false
 		}
 	}
-	return true
+	return tmp.Cards, true
 }
 
-func StraightFlush(h Hand) bool {
-	return Straight(h) && Flush(h)
+func StraightFlush(h Hand) ([]Card, bool) {
+	straightCards, isStraight := Straight(h)
+	flushCards, isFlush := Flush(h)
+
+	if isStraight && isFlush {
+		// Filter the cards that are both in the straight and flush
+		var scoringCards []Card
+		for _, card := range straightCards {
+			for _, flushCard := range flushCards {
+				if card.Rank == flushCard.Rank && card.Suit == flushCard.Suit {
+					scoringCards = append(scoringCards, card)
+				}
+			}
+		}
+
+		// If the number of cards in scoringCards is equal to the number of cards in straightCards, return them
+		if len(scoringCards) == len(straightCards) {
+			return scoringCards, true
+		}
+	}
+	return nil, false
 }
 
-func FiveOfAKind(h Hand) bool {
-	return grade(h.Cards[0]) == grade(h.Cards[1]) && grade(h.Cards[1]) == grade(h.Cards[2]) && grade(h.Cards[2]) == grade(h.Cards[3]) && grade(h.Cards[3]) == grade(h.Cards[4])
+func FiveOfAKind(h Hand) ([]Card, bool) {
+	cardCount := make(map[string]int)
+	for _, card := range h.Cards {
+		cardCount[card.Rank]++
+	}
+
+	// Check if any rank has 5 cards
+	for rank, count := range cardCount {
+		if count == 5 {
+			var scoringCards []Card
+			for _, card := range h.Cards {
+				// Check if the card matches the rank
+				if card.Rank == rank {
+					scoringCards = append(scoringCards, card)
+				}
+			}
+			return scoringCards, true
+		}
+	}
+	return nil, false
 }
 
-func FourOfAKind(h Hand) bool {
+func FourOfAKind(h Hand) ([]Card, bool) {
 	counts := countRanks(h)
-	for _, v := range counts {
+
+	for rank, v := range counts {
 		if v == 4 {
-			return true
+			var scoringCards []Card
+			for _, card := range h.Cards {
+				if grade(card) == rank {
+					scoringCards = append(scoringCards, card)
+				}
+			}
+			return scoringCards, true
 		}
 	}
-	return false
+	return nil, false
 }
 
-func RoyalFlush(h Hand) bool {
-	if !StraightFlush(h) {
-		return false
+func RoyalFlush(h Hand) ([]Card, bool) {
+	straightFlushCards, isStraightFlush := StraightFlush(h)
+	if !isStraightFlush {
+		return nil, false
 	}
 
 	// Check for 10-J-Q-K-A
@@ -335,19 +421,31 @@ func RoyalFlush(h Hand) bool {
 
 	for rank := range required {
 		if !grades[rank] {
-			return false
+			return nil, false
 		}
 	}
-	return true
+	return straightFlushCards, true
 }
 
-func FlushHouse(h Hand) bool {
-	return Flush(h) && FullHouse(h)
+func FlushHouse(h Hand) ([]Card, bool) {
+	flushCards, isFlush := Flush(h)
+	fullHouseCards, isFullHouse := FullHouse(h)
+
+	if isFlush && isFullHouse {
+		return append(flushCards, fullHouseCards...), true
+	}
+	return nil, false
 }
 
 // Flush + todas iguales
-func FlushFive(h Hand) bool {
-	return FiveOfAKind(h) && Flush(h)
+func FlushFive(h Hand) ([]Card, bool) {
+	fiveOfAKindCards, isFiveOfAKind := FiveOfAKind(h)
+	flushCards, isFlush := Flush(h)
+
+	if isFiveOfAKind && isFlush {
+		return append(fiveOfAKindCards, flushCards...), true
+	}
+	return nil, false
 }
 
 // EL ÚLTIMO INT QUE DEVUELVE SIGNIFICA LO SIGUIENTE:
@@ -367,11 +465,11 @@ func FlushFive(h Hand) bool {
 // Pair = 12
 // HighCard = 13
 
-func BestHand(h Hand) (int, int, int) {
+func BestHand(h Hand) (int, int, int, []Card) {
 
 	// NEW: handle the case with empty cards to avoid panics
 	if len(h.Cards) <= 0 {
-		return 0, 0, 0
+		return 0, 0, 0, nil
 	}
 
 	// Make a copy to avoid modifying original
@@ -382,31 +480,43 @@ func BestHand(h Hand) (int, int, int) {
 	// Check for the strongest hand first and return as soon as we find one
 
 	switch {
-	case RoyalFlush(tmp):
-		return TypeMap["RoyalFlush"].First, TypeMap["RoyalFlush"].Second, 1
-	case StraightFlush(tmp):
-		return TypeMap["StraightFlush"].First, TypeMap["StraightFlush"].Second, 2
-	case FiveOfAKind(tmp):
-		return TypeMap["FiveOfAKind"].First, TypeMap["FiveOfAKind"].Second, 3
-	case FlushFive(tmp):
-		return TypeMap["FlushFive"].First, TypeMap["FlushFive"].Second, 4
-	case FlushHouse(tmp):
-		return TypeMap["FluushHouse"].First, TypeMap["FlushHouse"].Second, 5
-	case FourOfAKind(tmp):
-		return TypeMap["FourOfAKind"].First, TypeMap["FourOfAKind"].Second, 6
-	case FullHouse(tmp):
-		return TypeMap["FullHouse"].First, TypeMap["FullHouse"].Second, 7
-	case Flush(tmp):
-		return TypeMap["Flush"].First, TypeMap["Flush"].Second, 8
-	case Straight(tmp):
-		return TypeMap["Straight"].First, TypeMap["Straight"].Second, 9
-	case ThreeOfAKind(tmp):
-		return TypeMap["ThreeOfAKind"].First, TypeMap["ThreeOfAKind"].Second, 10
-	case TwoPair(tmp):
-		return TypeMap["TwoPair"].First, TypeMap["TwoPair"].Second, 11
-	case Pair(tmp):
-		return TypeMap["Pair"].First, TypeMap["Pair"].Second, 12
+	case func(cards []Card, ok bool) bool { return ok }(RoyalFlush(tmp)):
+		scoringCards, _ := RoyalFlush(tmp)
+		return TypeMap["RoyalFlush"].First, TypeMap["RoyalFlush"].Second, 1, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(StraightFlush(tmp)):
+		scoringCards, _ := StraightFlush(tmp)
+		return TypeMap["StraightFlush"].First, TypeMap["StraightFlush"].Second, 2, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(FiveOfAKind(tmp)):
+		scoringCards, _ := FiveOfAKind(tmp)
+		return TypeMap["FiveOfAKind"].First, TypeMap["FiveOfAKind"].Second, 3, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(FlushFive(tmp)):
+		scoringCards, _ := FlushFive(tmp)
+		return TypeMap["FlushFive"].First, TypeMap["FlushFive"].Second, 4, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(FlushHouse(tmp)):
+		scoringCards, _ := FlushHouse(tmp)
+		return TypeMap["FlushHouse"].First, TypeMap["FlushHouse"].Second, 5, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(FourOfAKind(tmp)):
+		scoringCards, _ := FourOfAKind(tmp)
+		return TypeMap["FourOfAKind"].First, TypeMap["FourOfAKind"].Second, 6, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(FullHouse(tmp)):
+		scoringCards, _ := FullHouse(tmp)
+		return TypeMap["FullHouse"].First, TypeMap["FullHouse"].Second, 7, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(Flush(tmp)):
+		scoringCards, _ := Flush(tmp)
+		return TypeMap["Flush"].First, TypeMap["Flush"].Second, 8, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(Straight(tmp)):
+		scoringCards, _ := Straight(tmp)
+		return TypeMap["Straight"].First, TypeMap["Straight"].Second, 9, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(ThreeOfAKind(tmp)):
+		scoringCards, _ := ThreeOfAKind(tmp)
+		return TypeMap["ThreeOfAKind"].First, TypeMap["ThreeOfAKind"].Second, 10, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(TwoPair(tmp)):
+		scoringCards, _ := TwoPair(tmp)
+		return TypeMap["TwoPair"].First, TypeMap["TwoPair"].Second, 11, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(Pair(tmp)):
+		scoringCards, _ := Pair(tmp)
+		return TypeMap["Pair"].First, TypeMap["Pair"].Second, 12, scoringCards
 	default:
-		return TypeMap["HighCard"].First, TypeMap["HighCard"].Second, 13
+		return TypeMap["HighCard"].First, TypeMap["HighCard"].Second, 13, tmp.Cards
 	}
 }

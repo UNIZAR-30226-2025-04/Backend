@@ -99,7 +99,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// 3. Calculate base points
-		fichas, mult, _ := poker.BestHand(hand)
+		fichas, mult, handType, scored_cards := poker.BestHand(hand)
 
 		// 4. Apply jokers (passing the hand which contains the jokers)
 		finalFichas, finalMult, finalGold, jokersTriggered := poker.ApplyJokers(hand, hand.Jokers, fichas, mult, hand.Gold)
@@ -236,10 +236,25 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 				PlayedCards: make([]poker.Card, 0),
 			}
 		}
+
+		// Get new cards from the deck
+		newCards := deck.Draw(len(hand.Cards))
+		if newCards == nil {
+			client.Emit("error", gin.H{"error": "There are not enough cards available in the deck"})
+			return
+		}
+		// Add the new cards to the hand
+		currentHand = append(currentHand, newCards...)
+		player.CurrentHand, err = json.Marshal(currentHand)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error serializing current hand: %v", err)
+			client.Emit("error", gin.H{"error": "Error serializing current hand"})
+			return
+		}
 		// Add the played hand to the played cards
 		deck.PlayedCards = append(deck.PlayedCards, hand.Cards...)
 		// Remove the played hand from the deck
-		deck.RemoveCards(hand.Cards)
+		deck.RemoveCards(newCards)
 		player.CurrentDeck = deck.ToJSON()
 
 		player.CurrentPoints = valorFinal
@@ -258,10 +273,16 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		client.Emit("played_hand", gin.H{
 			"points":              valorFinal,
 			"gold":                finalGold,
+			"hand_type":           handType,
 			"jokersTriggered":     jokersTriggered,
 			"left_plays":          player.HandPlaysLeft,
 			"activated_modifiers": activatedModifiers,
 			"received_modifiers":  receivedModifiers,
+			"played_cards":        len(deck.PlayedCards),
+			"unplayed_cards":      len(deck.TotalCards),
+			"new_cards":           newCards,
+			"scored_cards":        scored_cards,
+			"card_points":         fichas,
 			"message":             "¡Mano jugada con éxito!",
 		})
 
