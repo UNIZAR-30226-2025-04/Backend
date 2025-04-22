@@ -271,7 +271,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		log.Println("Jugador ha puntuado la friolera de:", valorFinal)
 		// 7. Emit success response
 		client.Emit("played_hand", gin.H{
-			"points":              valorFinal,
+			"total_score":         valorFinal,
 			"gold":                finalGold,
 			"hand_type":           handType,
 			"jokersTriggered":     jokersTriggered,
@@ -279,10 +279,12 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			"activated_modifiers": activatedModifiers,
 			"received_modifiers":  receivedModifiers,
 			"played_cards":        len(deck.PlayedCards),
-			"unplayed_cards":      len(deck.TotalCards),
+			"unplayed_cards":      len(deck.TotalCards) + len(player.CurrentHand),
 			"new_cards":           newCards,
 			"scored_cards":        scored_cards,
 			"card_points":         fichas,
+			"red_score":           finalMult,
+			"blue_score":          finalFichas,
 			"message":             "¡Mano jugada con éxito!",
 		})
 
@@ -656,7 +658,7 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			"current_hand":    player.CurrentHand,
 			"left_discards":   player.DiscardsLeft,
 			"played_cards":    len(deck.PlayedCards),
-			"unplayed_cards":  len(deck.TotalCards),
+			"unplayed_cards":  len(deck.TotalCards) + len(player.CurrentHand),
 			"new_cards":       newCards,
 		}
 
