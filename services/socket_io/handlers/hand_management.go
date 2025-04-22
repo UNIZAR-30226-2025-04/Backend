@@ -563,10 +563,20 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 		}
 
-		discards, ok := args[0].([]poker.Card)
-		if !ok {
-			log.Printf("[DISCARD-ERROR] Invalid argument type for user %s. Expected []poker.Card, got %T", username, args[0])
-			client.Emit("error", gin.H{"error": "Formato de datos inválido"})
+		discards := args[0].(map[string]interface{}) // Argument is expected to be a map (which is a generic object)
+		discardsJson, err := json.Marshal(discards)  // Convert the argument to JSON
+		if err != nil {
+			log.Printf("[DISCARD-ERROR] Error al convertir la mano a JSON: %v", err)
+			client.Emit("error", gin.H{"error": "Error al convertir la mano"})
+			return
+		}
+
+		// Parse the JSON into the poker.Hand struct
+		var discard []poker.Card
+		err = json.Unmarshal(discardsJson, &discard)
+		if err != nil {
+			log.Printf("[DISCARD-ERROR] Error al parsear la mano: %v", err)
+			client.Emit("error", gin.H{"error": "Error al procesar la mano"})
 			return
 		}
 
@@ -580,10 +590,10 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// 5. Update the player's info in Redis
-		deck.PlayedCards = append(deck.PlayedCards, discards...)
+		deck.PlayedCards = append(deck.PlayedCards, discard...)
 
 		// Remove the discarded cards from the hand
-		for _, card := range discards {
+		for _, card := range discard {
 			for i, c := range hand {
 				if c.Suit == card.Suit && c.Rank == card.Rank {
 					hand = append(hand[:i], hand[i+1:]...)
