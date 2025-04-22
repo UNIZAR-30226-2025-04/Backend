@@ -53,7 +53,8 @@ func PoorJoker(hand Hand, fichas int, mult int, gold int, used []bool, index int
 }
 
 func CarbSponge(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	if ThreeOfAKind(hand) {
+	_, isThreeOfAKing := ThreeOfAKind(hand)
+	if isThreeOfAKing {
 		used[index] = true
 		return fichas, mult * 3, gold, used
 	}

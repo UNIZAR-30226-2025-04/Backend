@@ -49,7 +49,8 @@ func CoinPurse(hand Hand, bestHand Hand, leftUses int, fichas int, mult int, gol
 
 // +15 Chips to all Flush hands
 func LuckyGlove(hand Hand, bestHand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
-	if Flush(hand) {
+	_, isFlush := Flush(hand)
+	if isFlush {
 		return fichas + 15, mult, gold, leftUses - 1
 	}
 	return fichas, mult, gold, leftUses - 1
