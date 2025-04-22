@@ -589,8 +589,17 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// 5. Update the player's info in Redis
+		// 5. Get new cards from the deck
+		newCards := deck.Draw(len(discard))
+		if newCards == nil {
+			client.Emit("error", gin.H{"error": "There are not enough cards available in the deck"})
+			return
+		}
+
+		// 6. Update the player's info in Redis
 		deck.PlayedCards = append(deck.PlayedCards, discard...)
+		deck.RemoveCards(newCards)
+		player.CurrentDeck = deck.ToJSON()
 
 		// Remove the discarded cards from the hand
 		for _, card := range discard {
@@ -607,6 +616,8 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			client.Emit("error", gin.H{"error": "Error serializing current hand"})
 			return
 		}
+		// Add the new cards to the hand
+		hand = append(hand, newCards...)
 
 		// Update discards left
 		player.DiscardsLeft--
@@ -618,13 +629,17 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// 6. Prepare the response with the full deck state
+		// 7. Prepare the response with the full deck state
 		response := gin.H{
-			"current_hand":  player.CurrentHand,
-			"left_discards": player.DiscardsLeft,
+			"cards_discarded": discard,
+			"current_hand":    player.CurrentHand,
+			"left_discards":   player.DiscardsLeft,
+			"played_cards":    len(deck.PlayedCards),
+			"unplayed_cards":  len(deck.TotalCards),
+			"new_cards":       newCards,
 		}
 
-		// 7. Send the response to the client
+		// 8. Send the response to the client
 		client.Emit("discarded_cards", response)
 		log.Printf("[DISCARD-SUCCESS] Sent updated deck to user %s (%d total cards)", username, response["deck_size"])
 	}
