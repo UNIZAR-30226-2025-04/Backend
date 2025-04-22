@@ -563,8 +563,8 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 		}
 
-		discards := args[0].(map[string]interface{}) // Argument is expected to be a map (which is a generic object)
-		discardsJson, err := json.Marshal(discards)  // Convert the argument to JSON
+		discards := args[0].([]interface{})         // Argument is expected to be a map (which is a generic object)
+		discardsJson, err := json.Marshal(discards) // Convert the argument to JSON
 		if err != nil {
 			log.Printf("[DISCARD-ERROR] Error al convertir la mano a JSON: %v", err)
 			client.Emit("error", gin.H{"error": "Error al convertir la mano"})
