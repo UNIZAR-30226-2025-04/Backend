@@ -215,12 +215,6 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 				}
 			}
 		}
-		player.CurrentHand, err = json.Marshal(currentHand)
-		if err != nil {
-			log.Printf("[HAND-ERROR] Error serializing current hand: %v", err)
-			client.Emit("error", gin.H{"error": "Error serializing current hand"})
-			return
-		}
 
 		var deck *poker.Deck
 		if player.CurrentDeck != nil {
@@ -279,7 +273,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			"activated_modifiers": activatedModifiers,
 			"received_modifiers":  receivedModifiers,
 			"played_cards":        len(deck.PlayedCards),
-			"unplayed_cards":      len(deck.TotalCards) + len(player.CurrentHand),
+			"unplayed_cards":      len(deck.TotalCards) + len(currentHand),
 			"new_cards":           newCards,
 			"scored_cards":        scored_cards,
 			"card_points":         fichas,
@@ -633,14 +627,14 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 				}
 			}
 		}
+		// Add the new cards to the hand
+		hand = append(hand, newCards...)
 		player.CurrentHand, err = json.Marshal(hand)
 		if err != nil {
 			log.Printf("[DISCARD-ERROR] Error serializing current hand: %v", err)
 			client.Emit("error", gin.H{"error": "Error serializing current hand"})
 			return
 		}
-		// Add the new cards to the hand
-		hand = append(hand, newCards...)
 
 		// Update discards left
 		player.DiscardsLeft--
@@ -658,7 +652,7 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			"current_hand":    player.CurrentHand,
 			"left_discards":   player.DiscardsLeft,
 			"played_cards":    len(deck.PlayedCards),
-			"unplayed_cards":  len(deck.TotalCards) + len(player.CurrentHand),
+			"unplayed_cards":  len(deck.TotalCards) + len(hand),
 			"new_cards":       newCards,
 		}
 
