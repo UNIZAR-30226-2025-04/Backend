@@ -10,7 +10,7 @@ import (
 	"Nogler/services/socket_io/utils/stages/end_game"
 	"Nogler/services/socket_io/utils/stages/play_round"
 	"Nogler/services/socket_io/utils/stages/shop"
-	"Nogler/services/socket_io/utils/stages/vouchers.go"
+	"Nogler/services/socket_io/utils/stages/vouchers"
 	"Nogler/utils"
 	"fmt"
 	"log"
@@ -330,6 +330,7 @@ func HandleRoundPlayEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 	} else {
 		// Continue with shop phase
 		AdvanceToShop(redisClient, db, lobbyID, sio)
+
 	}
 
 	log.Printf("[ROUND-END] Round ended for lobby %s", lobbyID)

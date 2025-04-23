@@ -59,13 +59,13 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// Validate blind phase
-		valid, err := socketio_utils.ValidateBlindPhase(redisClient, client, lobbyID)
+		valid, err := socketio_utils.ValidateVouchersPhase(redisClient, client, lobbyID)
 		if err != nil || !valid {
 			// Error already emitted in ValidateBlindPhase
 			return
 		}
 
-		// Get player data to update BetMinimumBlind field
+		// Get player data to apply the voucher?
 		player, err := redisClient.GetInGamePlayer(username)
 		if err != nil {
 			log.Printf("[BLIND-ERROR] Error getting player data: %v", err)

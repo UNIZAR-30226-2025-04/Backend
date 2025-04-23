@@ -1,6 +1,7 @@
 package play_round
 
 import (
+	game_constants "Nogler/constants/game"
 	redis_models "Nogler/models/redis"
 	poker "Nogler/services/poker"
 	"Nogler/services/redis"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/zishang520/socket.io/v2/socket"
 )
 
 // ---------------------------------------------------------------
@@ -62,13 +62,43 @@ func BroadcastRoundStart(sio *socketio_types.SocketServer, redisClient *redis.Re
 		return
 	}
 
-	// Broadcast round start event to all players in the lobby
-	sio.Sio_server.To(socket.Room(lobbyID)).Emit("starting_round", gin.H{
-		"round_number":       round,
-		"blind":              blind,
-		"timeout":            timeout,
-		"timeout_start_date": lobby.GameRoundTimeout.Format(time.RFC3339),
-	})
+	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
+	if err != nil {
+		log.Printf("[SHOP-MULTICAST-ERROR] Error getting players: %v", err)
+		return
+	}
+
+	// Send personalized message to each player
+	for _, player := range players {
+		// Get player's socket using GetConnection
+		playerSocket, exists := sio.GetConnection(player.Username)
+		if !exists {
+			log.Printf("[SHOP-MULTICAST-WARNING] Player %s has no active connection", player.Username)
+			continue
+		}
+
+		var deckSize int = 0
+		if player.CurrentDeck != nil {
+			deck, _ := poker.DeckFromJSON(player.CurrentDeck)
+			deckSize = len(deck.TotalCards)
+		}
+
+		// Send personalized message to this player
+		playerSocket.Emit("starting_round", gin.H{
+			"round_number":       round,
+			"blind":              blind,
+			"timeout":            timeout,
+			"timeout_start_date": lobby.GameRoundTimeout.Format(time.RFC3339),
+			"total_hand_plays":   game_constants.TOTAL_HAND_PLAYS,
+			"total_discards":     game_constants.TOTAL_DISCARDS,
+			"current_pot":        lobby.CurrentRound + lobby.CurrentRound/2 + 1, // NOTE: formula specified in constants/game/constants.go
+			"current_jokers":     player.CurrentJokers,
+			"active_vouchers":    player.ActivatedModifiers,
+			"current_deck_size":  deckSize,
+		})
+
+		log.Printf("[SHOP-MULTICAST] Sent personalized shop data to player %s", player.Username)
+	}
 
 	log.Printf("[ROUND-BROADCAST] Sent round start event to lobby %s with round %d and blind %d",
 		lobbyID, round, blind)

@@ -103,8 +103,6 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		client.On("get_full_deck", handlers.HandleGetFullDeck(redisClient, client, db, username))
 
-		client.On("open_pack", handlers.HandleOpenPack(redisClient, client, db, username))
-
 		client.On("propose_blind", handlers.HandleProposeBlind(redisClient, client, db, username, sio_casted))
 
 		client.On("request_game_phase_player_info", handlers.HandleRequestGamePhaseInfo(redisClient, client, db, username))
@@ -118,6 +116,19 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("continue_to_vouchers", handlers.HandleContinueToVouchers(redisClient, client, db, username, sio_casted))
 
 		client.On("get_phase_timeout", handlers.HandleGetPhaseTimeout(redisClient, client, db, username))
+
+		client.On("play_voucher", handlers.HandlePlayVoucher(redisClient, client, db, username, sio_casted))
+
+		client.On("buy_joker", handlers.HandleBuyJoker(redisClient, client, db, username, sio_casted))
+
+		client.On("buy_voucher", handlers.HandleBuyVoucher(redisClient, client, db, username, sio_casted))
+
+		client.On("open_pack", handlers.HandleOpenPack(redisClient, client, db, username))
+
+		client.On("get_from_pack", handlers.HandleGetFromPack(redisClient, client, db, username))
+
+		client.On("rerroll_shop", handlers.HandleRerollShop(redisClient, client, db, username, sio_casted))
+
 	})
 
 	// NOTE: igual lo usamos en algún momento
