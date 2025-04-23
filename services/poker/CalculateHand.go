@@ -65,7 +65,7 @@ func NewStandardDeck() *Deck {
 	// Iterate over SuitMap and RankMap keys
 	for suit := range SuitMap {
 		for rank := range RankMap {
-			total = append(total, Card{Rank: rank, Suit: suit})
+			total = append(total, Card{Rank: rank, Suit: suit, Enhancement: 0})
 		}
 	}
 
