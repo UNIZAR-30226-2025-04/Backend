@@ -19,8 +19,9 @@ type Deck struct {
 
 // Define a Card struct with a Rank and suit
 type Card struct {
-	Rank string
-	Suit string
+	Rank        string
+	Suit        string
+	Enhancement int // 0 nada 1 = +30 chips; 2 = +4 mult
 }
 
 // Cards A, 2, 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K
@@ -519,4 +520,17 @@ func BestHand(h Hand) (int, int, int, []Card) {
 	default:
 		return TypeMap["HighCard"].First, TypeMap["HighCard"].Second, 13, tmp.Cards
 	}
+}
+
+func ApplyEnhancements(fichas int, mult int, cards []Card) (int, int) {
+	for _, card := range cards {
+		switch card.Enhancement {
+		case 1:
+			fichas += 30
+		case 2:
+			mult += 4
+		default:
+		}
+	}
+	return fichas, mult
 }

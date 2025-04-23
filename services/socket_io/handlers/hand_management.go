@@ -101,8 +101,10 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		// 3. Calculate base points
 		fichas, mult, handType, scored_cards := poker.BestHand(hand)
 
+		enhancedFichas, enhancedMult := poker.ApplyEnhancements(fichas, mult, scored_cards)
+
 		// 4. Apply jokers (passing the hand which contains the jokers)
-		finalFichas, finalMult, finalGold, jokersTriggered := poker.ApplyJokers(hand, hand.Jokers, fichas, mult, hand.Gold)
+		finalFichas, finalMult, finalGold, jokersTriggered := poker.ApplyJokers(hand, hand.Jokers, enhancedFichas, enhancedMult, hand.Gold)
 
 		// 5. Apply modifiers
 
