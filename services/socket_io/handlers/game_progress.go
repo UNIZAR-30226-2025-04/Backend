@@ -59,7 +59,7 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// Validate blind phase
-		valid, err := socketio_utils.ValidateVouchersPhase(redisClient, client, lobbyID)
+		valid, err := socketio_utils.ValidateBlindPhase(redisClient, client, lobbyID)
 		if err != nil || !valid {
 			// Error already emitted in ValidateBlindPhase
 			return
