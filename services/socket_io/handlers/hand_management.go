@@ -8,7 +8,6 @@ import (
 	"Nogler/services/socket_io/utils/game_flow"
 	"Nogler/utils"
 	"encoding/json"
-	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -1007,50 +1006,51 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 	}
 }
 
+/*
 func HandlePlayVoucher(redisClient *redis.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
+			if len(args) < 3 {
+				log.Printf("[VOUCHER-ERROR] Faltan argumentos para usuario %s", username)
+				client.Emit("error", gin.H{"error": "Faltan parametros"})
+				return
+			}
 
-		if len(args) < 3 {
-			log.Printf("[VOUCHER-ERROR] Faltan argumentos para usuario %s", username)
-			client.Emit("error", gin.H{"error": "Faltan parametros"})
-			return
-		}
+			// Assert as float64 first
+			voucher_id_float, ok := args[0].(float64)
+			if !ok {
+				log.Printf("[VOUCHER-ERROR] Invalid type for proposed blind: expected number, got %T", args[0])
+				client.Emit("error", gin.H{"error": "Summoned voucher ID is not valid"})
+				return
+			}
+			// Convert float64 to int
+			voucher_id := int(voucher_id_float)
 
-		// Assert as float64 first
-		voucher_id_float, ok := args[0].(float64)
-		if !ok {
-			log.Printf("[VOUCHER-ERROR] Invalid type for proposed blind: expected number, got %T", args[0])
-			client.Emit("error", gin.H{"error": "Summoned voucher ID is not valid"})
-			return
-		}
-		// Convert float64 to int
-		voucher_id := int(voucher_id_float)
+			vector_de_usuarios := args[1].(string) // Asumiré que es un string, entiendo q es un JSOBN
 
-		vector_de_usuarios := args[1].(string) // Asumiré que es un string, entiendo q es un JSOBN
+			lobbyID := args[2].(string)
 
-		lobbyID := args[2].(string)
+			// Get the lobby
+			lobby, err := redisClient.GetGameLobby(lobbyID)
+			if err != nil {
+				return nil, fmt.Errorf("error getting lobby: %v", err)
+			}
 
-		// Get the lobby
-		lobby, err := redisClient.GetGameLobby(lobbyID)
-		if err != nil {
-			return nil, fmt.Errorf("error getting lobby: %v", err)
-		}
+			// Check if user_vector is empty, in which case it will affect himself
 
-		// Check if user_vector is empty, in which case it will affect himself
+			if len(vector_de_usuarios) == 0 { // Se lo aplica a si mismo
+				voucherMap[voucher_id]()
+			} else {
+				// Aplica al resto
+				//Parsear
+				//
+			}
 
-		if len(vector_de_usuarios) == 0 { // Se lo aplica a si mismo
-			voucherMap[voucher_id]()
-		} else {
-			// Aplica al resto
-			//Parsear
-			//
-		}
-
-		// Broadcast the eliminated players
-		sio.Sio_server.To(socket.Room(lobbyID)).Emit("recive_voucher", gin.H{
-			"voucher_id": voucher_id,
-			"username":   username,
-		})
+			// Broadcast the eliminated players
+			sio.Sio_server.To(socket.Room(lobbyID)).Emit("recive_voucher", gin.H{
+				"voucher_id": voucher_id,
+				"username":   username,
+			})
 	}
 }
+*/

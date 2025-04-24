@@ -302,8 +302,12 @@ func FullHouse(h Hand) ([]Card, bool) {
 }
 
 func Flush(h Hand) ([]Card, bool) {
-	suit := h.Cards[0].Suit
+	// Check if the hand has at least 5 cards
+	if len(h.Cards) < 5 {
+		return nil, false
+	}
 
+	suit := h.Cards[0].Suit
 	var scoringCards []Card
 	for _, c := range h.Cards {
 		if c.Suit != suit {
@@ -315,6 +319,11 @@ func Flush(h Hand) ([]Card, bool) {
 }
 
 func Straight(h Hand) ([]Card, bool) {
+	// Check if the hand has at least 5 cards
+	if len(h.Cards) < 5 {
+		return nil, false
+	}
+
 	// Create sorted copy
 	tmp := Hand{Cards: make([]Card, len(h.Cards))}
 	copy(tmp.Cards, h.Cards)
@@ -449,6 +458,17 @@ func FlushFive(h Hand) ([]Card, bool) {
 	return nil, false
 }
 
+// HighCard
+func HighCard(h Hand) ([]Card, bool) {
+	// Sort the cards in descending order
+	sort.Slice(h.Cards, func(i, j int) bool {
+		return grade(h.Cards[i]) > grade(h.Cards[j])
+	})
+
+	// Return the highest card
+	return h.Cards[:1], true
+}
+
 // EL ÚLTIMO INT QUE DEVUELVE SIGNIFICA LO SIGUIENTE:
 //
 // Es un valor que se asocia a un tipo de mano. Esta fijado de la siguiente forma:
@@ -517,8 +537,12 @@ func BestHand(h Hand) (int, int, int, []Card) {
 	case func(cards []Card, ok bool) bool { return ok }(Pair(tmp)):
 		scoringCards, _ := Pair(tmp)
 		return TypeMap["Pair"].First, TypeMap["Pair"].Second, 12, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(HighCard(tmp)):
+		scoringCards, _ := HighCard(tmp)
+		return TypeMap["HighCard"].First, TypeMap["HighCard"].Second, 13, scoringCards
 	default:
-		return TypeMap["HighCard"].First, TypeMap["HighCard"].Second, 13, tmp.Cards
+		// If no hand is found, return 0
+		return 0, 0, 0, nil
 	}
 }
 

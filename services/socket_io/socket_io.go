@@ -117,17 +117,17 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		client.On("get_phase_timeout", handlers.HandleGetPhaseTimeout(redisClient, client, db, username))
 
-		client.On("play_voucher", handlers.HandlePlayVoucher(redisClient, client, db, username, sio_casted))
+		//client.On("play_voucher", handlers.HandlePlayVoucher(redisClient, client, db, username, sio_casted))
 
-		client.On("buy_joker", handlers.HandleBuyJoker(redisClient, client, db, username, sio_casted))
+		//client.On("buy_joker", handlers.HandleBuyJoker(redisClient, client, db, username, sio_casted))
 
-		client.On("buy_voucher", handlers.HandleBuyVoucher(redisClient, client, db, username, sio_casted))
+		//client.On("buy_voucher", handlers.HandleBuyVoucher(redisClient, client, db, username, sio_casted))
 
 		client.On("open_pack", handlers.HandleOpenPack(redisClient, client, db, username))
 
-		client.On("get_from_pack", handlers.HandleGetFromPack(redisClient, client, db, username))
+		//client.On("get_from_pack", handlers.HandleGetFromPack(redisClient, client, db, username))
 
-		client.On("rerroll_shop", handlers.HandleRerollShop(redisClient, client, db, username, sio_casted))
+		//client.On("rerroll_shop", handlers.HandleRerollShop(redisClient, client, db, username, sio_casted))
 
 	})
 
