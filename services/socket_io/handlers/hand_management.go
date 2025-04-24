@@ -976,8 +976,13 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// Add the activated modifiers to the player
-		var activated_modifiers []poker.Modifier
-		activated_modifiers = append(activated_modifiers, modifiers...)
+		var activated_modifiers []poker.ReceivedModifier
+		for _, modifier := range modifiers {
+			activated_modifiers = append(activated_modifiers, poker.ReceivedModifier{
+				Modifier: modifier,
+				Sender:   username,
+			})
+		}
 		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)

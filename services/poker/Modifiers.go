@@ -25,6 +25,11 @@ type Modifiers struct {
 	Modificadores []Modifier
 }
 
+type ReceivedModifier struct {
+	Modifier Modifier `json:"modifier"`
+	Sender   string   `json:"sender"`
+}
+
 type ModifierFunc func(hand Hand, bestHand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int)
 
 var modifierTable = map[int]ModifierFunc{

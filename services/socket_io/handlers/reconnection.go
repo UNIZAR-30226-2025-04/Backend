@@ -7,6 +7,8 @@ import (
 	"log"
 	"time"
 
+	"Nogler/services/poker"
+
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
 	"gorm.io/gorm"
@@ -35,6 +37,17 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			log.Printf("[PHASE-INFO-ERROR] Error getting player data: %v", err)
 			client.Emit("error", gin.H{"error": "Error retrieving player data"})
 			return
+		}
+
+		// Get current deck
+		var deck *poker.Deck
+		if player.CurrentDeck != nil {
+			deck, err = poker.DeckFromJSON(player.CurrentDeck)
+			if err != nil {
+				log.Printf("[DISCARD-ERROR] Error parsing deck: %v", err)
+				client.Emit("error", gin.H{"error": "Error al procesar el mazo"})
+				return
+			}
 		}
 
 		// Determine which timeout to return based on the current phase
@@ -75,6 +88,12 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 				"total_points":    player.TotalPoints,
 				"hand_plays_left": player.HandPlaysLeft,
 				"discards_left":   player.DiscardsLeft,
+
+				"played_cards":      len(deck.PlayedCards),
+				"unplayed_cards":    len(deck.TotalCards) + 8,
+				"vouchers":          player.Modifiers,
+				"active_vouchers":   player.ActivatedModifiers,
+				"received_vouchers": player.ReceivedModifiers,
 			},
 		}
 
