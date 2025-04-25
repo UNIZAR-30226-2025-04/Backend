@@ -414,6 +414,7 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 	// Convert selected card map to poker.Card
 	rankInterface, hasRank := selectedCardMap["Rank"]
 	suitInterface, hasSuit := selectedCardMap["Suit"]
+	enhancementInterface, hasEnhancement := selectedCardMap["Enhancement"]
 
 	if !hasRank || !hasSuit {
 		return nil, fmt.Errorf("selected card is missing rank or suit")
@@ -426,9 +427,17 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		return nil, fmt.Errorf("card rank and suit must be strings")
 	}
 
+	// Create the card with Enhancement if available
 	selectedCard := poker.Card{
 		Rank: rank,
 		Suit: suit,
+	}
+
+	// Add enhancement if present
+	if hasEnhancement {
+		if enhancementValue, ok := enhancementInterface.(float64); ok {
+			selectedCard.Enhancement = int(enhancementValue)
+		}
 	}
 
 	// Get pack contents
@@ -441,7 +450,8 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 	// Verify the selected card exists in the pack
 	cardFound := false
 	for _, card := range packContents.Cards {
-		if card.Rank == selectedCard.Rank && card.Suit == selectedCard.Suit {
+		// TODO, check if we should really check enhancement
+		if card.Rank == selectedCard.Rank && card.Suit == selectedCard.Suit && card.Enhancement == selectedCard.Enhancement {
 			cardFound = true
 			break
 		}
