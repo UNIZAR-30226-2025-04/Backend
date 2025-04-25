@@ -300,7 +300,7 @@ func HandleRoundPlayEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 	}
 
 	// Process eliminations based on blind achievement
-	_, err = play_round.HandlePlayerEliminations(redisClient, lobbyID, sio)
+	_, err = play_round.HandlePlayerEliminations(redisClient, lobbyID, sio, db)
 	if err != nil {
 		log.Printf("[ELIMINATION-ERROR] Error handling player eliminations: %v", err)
 	}

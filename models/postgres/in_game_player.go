@@ -8,6 +8,7 @@ import (
  * 'InGamePlayer' represents the state of a player in a game. It contains
  * references to GameLobby and GameProfile
  */
+// TODO: use it when a player wins / loses a game
 type InGamePlayer struct {
 	// NOTE: composite primary key definition
 	LobbyID        string         `gorm:"primaryKey;size:50;not null"`

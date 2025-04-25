@@ -1,6 +1,7 @@
 package play_round
 
 import (
+	postgres_models "Nogler/models/postgres"
 	redis_models "Nogler/models/redis"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
@@ -9,11 +10,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
+	"gorm.io/gorm"
 )
 
 // Separate function to handle player eliminations based on blind achievement
 // TODO: REVISE!!
-func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) ([]string, error) {
+func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer, db *gorm.DB) ([]string, error) {
 	// List to track eliminated players
 	var eliminatedPlayers []string
 
@@ -113,10 +115,18 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 
 	// Remove eliminated players from Redis and update game state
 	if len(eliminatedPlayers) > 0 {
-		// Remove eliminated players from Redis
+		// Remove eliminated players from Redis and PostgreSQL
 		for _, username := range eliminatedPlayers {
+			// Delete from Redis
 			if err := redisClient.DeleteInGamePlayer(username, lobbyID); err != nil {
-				log.Printf("[ELIMINATION-ERROR] Error removing player %s: %v", username, err)
+				log.Printf("[ELIMINATION-ERROR] Error removing player %s from Redis: %v", username, err)
+			}
+
+			// Delete from PostgreSQL
+			if err := db.Where("lobby_id = ? AND username = ?", lobbyID, username).Delete(&postgres_models.InGamePlayer{}).Error; err != nil {
+				log.Printf("[ELIMINATION-ERROR] Error removing player %s from PostgreSQL: %v", username, err)
+			} else {
+				log.Printf("[ELIMINATION] Successfully removed player %s from PostgreSQL", username)
 			}
 		}
 

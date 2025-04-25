@@ -78,6 +78,7 @@ type LobbyShop struct {
 	FixedModifiers  []ShopItem `json:"fixed_modifiers"`
 	RerollableItems []ShopItem `json:"rerollable_items"`
 }
+
 type ShopItem struct {
 	ID         string       `json:"id"`
 	Type       string       `json:"type"` // "card", "joker", "pack", "modifier"
