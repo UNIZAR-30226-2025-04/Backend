@@ -697,6 +697,7 @@ func SetLobbyVisibility(db *gorm.DB, redisClient *redis.RedisClient) gin.Handler
 // @Summary Checks if user is in a lobby
 // @Description Returns true or false, and if true, return the id of the user the lobby is in, and if false, empty string
 // @Tags lobby
+// @Param Authorization header string true "Bearer JWT token"
 // @Produce json
 // @Success 200 {object} object{in_lobby=boolean,lobby_id=string}
 // @Failure 400 {object} object{error=string}
