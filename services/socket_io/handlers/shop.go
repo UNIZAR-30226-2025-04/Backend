@@ -2,7 +2,6 @@ package handlers
 
 import (
 	game_constants "Nogler/constants/game"
-	"Nogler/models/postgres"
 
 	"Nogler/services/poker"
 	redis_services "Nogler/services/redis"
@@ -21,41 +20,51 @@ import (
 // Also, the user will send a selection event, with the selected jokers and cards. We should
 // validate that he has actually bought the pack and that the selected items were in that pack,
 // and then add those items to the player's inventory.
-func HandleOpenPack(redisClient *redis_services.RedisClient, client *socket.Socket,
+func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string) func(args ...interface{}) {
 	return func(args ...interface{}) {
-
 		log.Printf("OpenPack iniciado - Usuario: %s, Args: %v, Socket ID: %s",
 			username, args, client.Id())
 
-		if len(args) < 2 {
+		if len(args) < 2 { // Changed from 1 to 2 to require pack ID and price
 			log.Printf("[HAND-ERROR] Faltan argumentos para usuario %s", username)
-			client.Emit("error", gin.H{"error": "Falta el pack a abrir o la lobby ID"})
+			client.Emit("error", gin.H{"error": "Falta el pack a abrir o el precio"})
 			return
 		}
 
-		// Handle pack ID (JavaScript numbers come as float64 says depsik)
+		// Handle pack ID (JavaScript numbers come as float64)
 		packIDFloat, ok := args[0].(float64)
 		if !ok {
 			client.Emit("error", gin.H{"error": "El pack ID debe ser un número"})
 			return
 		}
-
 		packID := int(packIDFloat) // Convert to int
-		lobbyID := args[1].(string)
 
-		log.Printf("[INFO] Obteniendo información del lobby ID: %s para usuario: %s", lobbyID, username)
-
-		// Check if lobby exists
-		var lobby postgres.GameLobby
-		if err := db.Where("id = ?", lobbyID).First(&lobby).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				client.Emit("error", gin.H{"error": "Lobby not found"})
-			} else {
-				client.Emit("error", gin.H{"error": "Database error"})
-			}
+		// Get client-provided price
+		priceFloat, ok := args[1].(float64)
+		if !ok {
+			client.Emit("error", gin.H{"error": "El precio debe ser un número"})
 			return
 		}
+		clientPrice := int(priceFloat) // Convert to int
+
+		// Get player state first to extract lobby ID
+		playerState, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Error getting player state: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving player state"})
+			return
+		}
+
+		// Extract lobby ID from player state
+		lobbyID := playerState.LobbyId
+		if lobbyID == "" {
+			log.Printf("[SHOP-ERROR] Player %s not associated with any lobby", username)
+			client.Emit("error", gin.H{"error": "Player not in a lobby"})
+			return
+		}
+
+		log.Printf("[INFO] Obteniendo información del lobby ID: %s para usuario: %s", lobbyID, username)
 
 		// Validate that we are in the shop phase
 		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
@@ -83,20 +92,43 @@ func HandleOpenPack(redisClient *redis_services.RedisClient, client *socket.Sock
 			return
 		}
 
+		// Validate the purchase
+		if err := shop.ValidatePurchase(item, game_constants.PACK_TYPE, clientPrice, playerState); err != nil {
+			log.Printf("[SHOP-ERROR] Purchase validation failed: %v", err)
+			client.Emit("purchase_failed", gin.H{"error": err.Error()})
+			return
+		}
+
 		contents, err := shop.GetOrGeneratePackContents(redisClient, lobbyState, item)
 		if err != nil {
 			client.Emit("pack_generation_failed")
 			return
 		}
 
-		client.Emit("pack_opened", gin.H{
-			"cards":  contents.Cards,
-			"jokers": contents.Jokers,
+		// Update player's LastPurchasedPackItemId and deduct money
+		// NOTE: potential exploit by not sending a pack selection event and
+		// then reusing this same id during the next round. Already fixed by resetting
+		// LastPurchasedPackItemId to -1 when starting the shop phase
+		playerState.LastPurchasedPackItemId = packID
+		playerState.PlayersMoney -= item.Price // Deduct the money
+
+		// Save the updated player state
+		if err := redisClient.SaveInGamePlayer(playerState); err != nil {
+			log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+			client.Emit("error", gin.H{"error": "Failed to save purchase"})
+			return
+		}
+
+		client.Emit("purchased_pack", gin.H{
+			"cards":           contents.Cards,
+			"jokers":          contents.Jokers,
+			"remaining_money": playerState.PlayersMoney, // Include remaining money in response
 		})
 	}
 }
 
-// TODO, document
+// TODO: set playerState.LastPurchasedPackItemId to -1 upon ending the pack selection event
+
 func HandleBuyJoker(redisClient *redis_services.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
@@ -197,7 +229,6 @@ func HandleBuyJoker(redisClient *redis_services.RedisClient, client *socket.Sock
 	}
 }
 
-// TODO, document
 func HandleBuyVoucher(redisClient *redis_services.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
