@@ -76,7 +76,7 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 		// Check if proposed blind exceeds MAX_BLIND
 		if proposedBlind > game_constants.MAX_BLIND {
 			log.Printf("[BLIND] Player %s proposed blind %d exceeding MAX_BLIND, capping at %d",
-				username, proposedBlind, game_constants.MAX_BLIND)
+				username, proposedBlind, int(game_constants.MAX_BLIND))
 			proposedBlind = game_constants.MAX_BLIND
 			player.BetMinimumBlind = false
 		} else if proposedBlind < lobby.CurrentBaseBlind {
@@ -131,6 +131,12 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 				"new_blind":     proposedBlind,
 				"proposed_by":   username,
 			})
+		}
+
+		// If the game is against AI, propose the blind for the AI player
+		if lobby.IsPublic == 2 {
+			ProposeBlindAI(redisClient, client, lobbyID, sio)
+			return
 		}
 
 		// If all players have proposed, start the round (no need to read the lobby again after calling redisClient.SetCurrentBlind)

@@ -39,10 +39,12 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		}
 
 		// Parse public parameter with default to false (private)
-		isPublic := false
+		isPublic := 0
 		publicParam := c.PostForm("public")
 		if publicParam == "true" {
-			isPublic = true
+			isPublic = 1
+		} else if publicParam == "AI" {
+			isPublic = 2
 		}
 
 		var user models.User
@@ -101,6 +103,35 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating lobby in Redis"})
 			return
+		}
+
+		if isPublic == 2 {
+			// Create Redis InGamePlayer entry (AI player)
+			redisAIPlayer := &redis_models.InGamePlayer{
+				Username:     "Noglerinho",
+				LobbyId:      NewLobby.ID,
+				PlayersMoney: 10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
+				CurrentDeck:  poker.InitializePlayerDeck(), // Will be initialized when game starts
+				// TODO: see in_game_player.go
+				// PlayersRemainingCards: 52,
+				Modifiers:       nil, // Will be initialized when game starts
+				CurrentJokers:   nil, // Will be initialized when game starts
+				MostPlayedHand:  nil, // Will be initialized during game
+				HandPlaysLeft:   game_constants.TOTAL_HAND_PLAYS,
+				DiscardsLeft:    game_constants.TOTAL_DISCARDS,
+				Winner:          false,
+				CurrentPoints:   0,
+				TotalPoints:     0,
+				BetMinimumBlind: true,
+				IsBot:           true,
+			}
+
+			// Save the AI player in Redis
+			err = redisClient.SaveInGamePlayer(redisAIPlayer)
+			if err != nil {
+				log.Printf("[AI-ERROR] Error saving player: %v", err)
+				return
+			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -672,7 +703,7 @@ func SetLobbyVisibility(db *gorm.DB, redisClient *redis.RedisClient) gin.Handler
 			return
 		}
 
-		redisLobby.IsPublic = isPublic
+		redisLobby.IsPublic = 1
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update Redis lobby"})
@@ -738,6 +769,119 @@ func IsUserInLobby(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"in_lobby": true,
 			"lobby_id": inGamePlayer.LobbyID,
+		})
+	}
+}
+
+// @Summary Creates a new lobby to play againts AI
+// @Description Returns the id of a new created lobby
+// @Tags lobby
+// @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @Param public formData boolean false "Set to true for public lobby, false or omitted for private lobby"
+// @Success 200 {object} object{message=string,lobby_id=string}
+// @Failure 400 {object} object{error=string}
+// @Failure 401 {object} object{error=string}
+// @Failure 500 {object} object{error=string}
+// @Router /auth/CreateLobby [post]
+// @Security ApiKeyAuth
+func CreateLobbyAI(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		email, err := middleware.JWT_decoder(c)
+		if err != nil {
+			log.Print("Error en jwt...")
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found: invalid email"})
+			return
+		}
+
+		username := user.ProfileUsername
+		if username == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
+			return
+		}
+
+		// Create lobby with public/private setting
+		NewLobby := models.GameLobby{
+			CreatorUsername: username,
+			NumberOfRounds:  0,
+			TotalPoints:     0,
+			IsPublic:        2, // AI
+		}
+
+		if err := db.Create(&NewLobby).Error; err != nil {
+			log.Printf("Failed to create lobby: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating lobby"})
+			return
+		}
+
+		// Create corresponding Redis lobby with matching public/private setting
+		redisLobby := &redis_models.GameLobby{
+			Id:                   NewLobby.ID,
+			CreatorUsername:      username,
+			MaxRounds:            game_constants.MaxGameRounds,
+			TotalPoints:          0,
+			CreatedAt:            NewLobby.CreatedAt,
+			GameHasBegun:         false,
+			IsPublic:             2,
+			CurrentHighBlind:     0,
+			NumberOfVotes:        0,
+			CurrentRound:         0,
+			ProposedBlinds:       make(map[string]bool),
+			PlayersFinishedRound: make(map[string]bool),
+			PlayersFinishedShop:  make(map[string]bool),
+			PlayerCount:          1,
+			BlindTimeout:         time.Time{},
+			GameRoundTimeout:     time.Time{},
+			ShopTimeout:          time.Time{},
+			CurrentPhase:         redis_models.PhaseNone, // Initialize with "none" phase
+			CurrentBaseBlind:     game_constants.BASE_BLIND,
+		}
+
+		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
+			log.Printf("Failed to create lobby in Redis: %v", err)
+			if err := db.Delete(&NewLobby).Error; err != nil {
+				log.Printf("Failed to rollback PostgreSQL lobby creation: %v", err)
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating lobby in Redis"})
+			return
+		}
+
+		// Create Redis InGamePlayer entry (AI player)
+		redisAIPlayer := &redis_models.InGamePlayer{
+			Username:     "Noglerinho",
+			LobbyId:      NewLobby.ID,
+			PlayersMoney: 10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
+			CurrentDeck:  poker.InitializePlayerDeck(), // Will be initialized when game starts
+			// TODO: see in_game_player.go
+			// PlayersRemainingCards: 52,
+			Modifiers:       nil, // Will be initialized when game starts
+			CurrentJokers:   nil, // Will be initialized when game starts
+			MostPlayedHand:  nil, // Will be initialized during game
+			HandPlaysLeft:   game_constants.TOTAL_HAND_PLAYS,
+			DiscardsLeft:    game_constants.TOTAL_DISCARDS,
+			Winner:          false,
+			CurrentPoints:   0,
+			TotalPoints:     0,
+			BetMinimumBlind: true,
+			IsBot:           true,
+		}
+
+		// Save the AI player in Redis
+		err = redisClient.SaveInGamePlayer(redisAIPlayer)
+		if err != nil {
+			log.Printf("[AI-ERROR] Error saving player: %v", err)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"lobby_id": NewLobby.ID,
+			"message":  "Lobby created successfully",
+			"public":   2,
 		})
 	}
 }
