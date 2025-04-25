@@ -133,12 +133,6 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			})
 		}
 
-		// If the game is against AI, propose the blind for the AI player
-		if lobby.IsPublic == 2 {
-			ProposeBlindAI(redisClient, client, lobbyID, sio)
-			return
-		}
-
 		// If all players have proposed, start the round (no need to read the lobby again after calling redisClient.SetCurrentBlind)
 		if len(lobby.ProposedBlinds) >= lobby.PlayerCount {
 			log.Printf("[BLIND-COMPLETE] All players have proposed blinds (%d/%d). Starting round.",

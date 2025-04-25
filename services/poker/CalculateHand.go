@@ -184,6 +184,12 @@ func sortCards(h *Hand) {
 	})
 }
 
+func SortCards(cards []Card) {
+	sort.Slice(cards, func(i, j int) bool {
+		return grade(cards[i]) < grade(cards[j])
+	})
+}
+
 func countRanks(h Hand) map[int]int {
 	counts := make(map[int]int)
 	for _, c := range h.Cards {

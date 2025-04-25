@@ -1,0 +1,497 @@
+package game_flow
+
+import (
+	game_constants "Nogler/constants/game"
+	"Nogler/services/poker"
+	"Nogler/services/redis"
+	socketio_types "Nogler/services/socket_io/types"
+	socketio_utils "Nogler/services/socket_io/utils"
+	"encoding/json"
+	"log"
+	"math/rand"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/zishang520/socket.io/v2/socket"
+	"gorm.io/gorm"
+)
+
+const username = "Noglerinho" // AI username
+
+func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+
+		log.Printf("[AI-BLIND] %s is proposing a blind", username)
+
+		// Get the lobby from Redis
+		lobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[AI-BLIND-ERROR] Error getting game lobby: %v", err)
+			return
+		}
+
+		// Validate blind phase
+		valid, err := socketio_utils.ValidateBlindPhase(redisClient, nil, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidateBlindPhase
+			return
+		}
+
+		AI, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[AI-BLIND-ERROR] Error getting player data: %v", err)
+			return
+		}
+
+		// Generate a random blind
+		AIMoney := AI.PlayersMoney
+		proposedBlind := AIMoney/2 + rand.Intn(AIMoney-AIMoney/2+1)
+
+		// Check if proposed blind exceeds MAX_BLIND
+		if proposedBlind > game_constants.MAX_BLIND {
+			log.Printf("[AI-BLIND] Player %s proposed blind %d exceeding MAX_BLIND, capping at %d",
+				username, proposedBlind, int(game_constants.MAX_BLIND))
+			proposedBlind = game_constants.MAX_BLIND
+			AI.BetMinimumBlind = false
+		} else if proposedBlind < lobby.CurrentBaseBlind {
+			// If below base blind, set BetMinimumBlind to true
+			log.Printf("[AI-BLIND] Player %s proposed blind %d below base blind %d, marking as min blind better",
+				username, proposedBlind, lobby.CurrentBaseBlind)
+			AI.BetMinimumBlind = true
+		} else {
+			// Otherwise, they're not betting the minimum
+			AI.BetMinimumBlind = false
+		}
+
+		// Save player data
+		if err := redisClient.SaveInGamePlayer(AI); err != nil {
+			log.Printf("[AI-BLIND-ERROR] Error saving player data: %v", err)
+			return
+		}
+
+		currentBlind, err := redisClient.GetCurrentBlind(lobbyID)
+		if err != nil {
+			log.Printf("[AI-BLIND-ERROR] Error getting current blind: %v", err)
+			return
+		}
+
+		// Increment the counter of proposed blinds (NEW, using a map to avoid same user incrementing the counter several times)
+		lobby.ProposedBlinds[username] = true
+		log.Printf("[BLIND] Player %s proposed blind. Total proposals: %d/%d",
+			username, len(lobby.ProposedBlinds), lobby.PlayerCount)
+
+		// Save the updated lobby
+		err = redisClient.SaveGameLobby(lobby)
+		if err != nil {
+			log.Printf("[AI-BLIND-ERROR] Error saving game lobby: %v", err)
+			return
+		}
+
+		// Update current blind if this proposal is higher
+		if proposedBlind > currentBlind {
+			err := redisClient.SetCurrentHighBlind(lobbyID, proposedBlind, username)
+			if err != nil {
+				log.Printf("[AI-BLIND-ERROR] Could not update current blind: %v", err)
+				return
+			}
+
+			// Simulate a delay for the AI to propose the blind
+			time.Sleep(2 * time.Second)
+
+			// Broadcast the new blind value to everyone in the lobby
+			sio.Sio_server.To(socket.Room(lobbyID)).Emit("AI_blind_updated", gin.H{
+				"old_max_blind": currentBlind,
+				"new_blind":     proposedBlind,
+				"proposed_by":   username,
+			})
+		}
+	}
+}
+
+func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("PlayHandsAI started - Usuario: %s, Args: %v",
+			username, args)
+
+		// 1. Get player data from Redis to extract lobby ID
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error getting player data: %v", err)
+			return
+		}
+
+		lobbyID := player.LobbyId
+		if lobbyID == "" {
+			log.Printf("[HAND-ERROR] User %s is not in a lobby", username)
+			return
+		}
+
+		// Validate play round phase
+		valid, err := socketio_utils.ValidatePlayRoundPhase(redisClient, nil, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidatePlayRoundPhase
+			return
+		}
+
+		for i := 0; i < 6; i++ {
+
+			// 2. Check if the player has enough plays left
+			if player.HandPlaysLeft <= 0 {
+				log.Printf("[HAND-ERROR] No hand plays left %s", username)
+				return
+			}
+
+			// Get the current hand from Redis
+			var currentHand []poker.Card
+			err = json.Unmarshal(player.CurrentHand, &currentHand)
+			if err != nil {
+				log.Printf("[HAND-ERROR] Error parsing the hand %v", err)
+				return
+			}
+
+			// 3. Calculate base points
+
+			// Generate all combinations of 4 cards from the current hand
+			combinations := poker.GenerateHands(currentHand, 4)
+
+			// Iterate through all combinations to find the best hand
+			var bestTokens, bestMult int = 0, 0
+			var bestHandType int
+			var bestScoredCards []poker.Card
+			var bestHand poker.Hand
+
+			var jokers poker.Jokers
+			err = json.Unmarshal(player.CurrentJokers, &jokers)
+			if err != nil {
+				log.Printf("[HAND-ERROR] Error parsing jokers: %v", err)
+				return
+			}
+
+			for _, combination := range combinations {
+				hand := poker.Hand{
+					Cards:  combination,
+					Jokers: jokers,
+					Gold:   player.PlayersMoney,
+				}
+				tokens, mult, handType, scoredCards := poker.BestHand(hand)
+				if tokens*mult > bestTokens*bestMult {
+					bestTokens = tokens
+					bestMult = mult
+					bestHandType = handType
+					bestScoredCards = scoredCards
+					bestHand = hand
+				}
+			}
+
+			if bestHandType > 10 && player.DiscardsLeft > 0 {
+				// Get 1 or 2 or 3 worst cards to discard
+				size := rand.Intn(3) + 1
+				poker.SortCards(currentHand)
+				worstCards := currentHand[:size]
+				DiscardCards(redisClient, lobbyID, worstCards) // Discard the worst cards
+				continue
+			}
+
+			enhancedFichas, enhancedMult := poker.ApplyEnhancements(bestTokens, bestMult, bestScoredCards)
+
+			// 4. Apply jokers (passing the hand which contains the jokers)
+			finalFichas, finalMult, finalGold, _ := poker.ApplyJokers(bestHand, bestHand.Jokers, enhancedFichas, enhancedMult, bestHand.Gold)
+
+			// 5. Apply modifiers
+
+			// Get the most played hand from the player
+			var mostPlayedHand poker.Hand
+			if player.MostPlayedHand != nil {
+				err = json.Unmarshal(player.MostPlayedHand, &mostPlayedHand)
+				if err != nil {
+					log.Printf("[AI-HAND-ERROR] Error parsing most played hand: %v", err)
+					return
+				}
+			}
+
+			// Apply activated modifiers
+			var activatedModifiers poker.Modifiers
+			if player.ActivatedModifiers != nil {
+				err = json.Unmarshal(player.ActivatedModifiers, &activatedModifiers)
+				if err != nil {
+					log.Printf("[AI-HAND-ERROR] Error parsing activated modifiers: %v", err)
+					return
+				}
+			}
+
+			finalFichas, finalMult, finalGold = poker.ApplyModifiers(bestHand, mostPlayedHand, &activatedModifiers, finalFichas, finalMult, finalGold)
+			if err != nil {
+				log.Printf("[AI-HAND-ERROR] Error applying modifiers: %v", err)
+				return
+			}
+
+			// Delete modifiers if there are no more plays left of the activated modifiers
+			var remainingModifiers []poker.Modifier
+
+			var deletedModifiers []poker.Modifier
+
+			for _, modifier := range activatedModifiers.Modificadores {
+				if modifier.LeftUses != 0 {
+					remainingModifiers = append(remainingModifiers, modifier)
+				} else if modifier.LeftUses == 0 {
+					deletedModifiers = append(deletedModifiers, modifier)
+				}
+			}
+
+			activatedModifiers.Modificadores = remainingModifiers
+			player.ActivatedModifiers, err = json.Marshal(activatedModifiers)
+			if err != nil {
+				log.Printf("[AI-HAND-ERROR] Error serializing activated modifiers: %v", err)
+				return
+			}
+
+			// Apply received modifiers
+			var receivedModifiers poker.Modifiers
+			if player.ActivatedModifiers != nil {
+				err = json.Unmarshal(player.ReceivedModifiers, &receivedModifiers)
+				if err != nil {
+					log.Printf("[AI-HAND-ERROR] Error parsing received modifiers: %v", err)
+					return
+				}
+			}
+
+			finalFichas, finalMult, finalGold = poker.ApplyModifiers(bestHand, mostPlayedHand, &activatedModifiers, finalFichas, finalMult, finalGold)
+			if err != nil {
+				log.Printf("[AI-HAND-ERROR] Error applying modifiers: %v", err)
+				return
+			}
+
+			valorFinal := finalFichas * finalMult
+
+			// Delete modifiers if there are no more plays left of the received modifiers
+			var remainingReceivedModifiers []poker.Modifier
+
+			var deletedReceiedModifiers []poker.Modifier
+
+			for _, modifier := range activatedModifiers.Modificadores {
+				if modifier.LeftUses != 0 {
+					remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
+				} else if modifier.LeftUses == 0 {
+					deletedReceiedModifiers = append(deletedReceiedModifiers, modifier)
+				}
+			}
+
+			receivedModifiers.Modificadores = remainingReceivedModifiers
+			player.ReceivedModifiers, err = json.Marshal(receivedModifiers)
+			if err != nil {
+				log.Printf("[AI-HAND-ERROR] Error serializing received modifiers: %v", err)
+				return
+			}
+
+			// 6. Update player data in Redis
+			// Delete the played hand from the current hand
+			for _, card := range bestHand.Cards {
+				for i, c := range currentHand {
+					if c.Suit == card.Suit && c.Rank == card.Rank {
+						currentHand = append(currentHand[:i], currentHand[i+1:]...)
+						break
+					}
+				}
+			}
+
+			var deck *poker.Deck
+			if player.CurrentDeck != nil {
+				deck, err = poker.DeckFromJSON(player.CurrentDeck)
+				if err != nil {
+					log.Printf("[AI-DECK-ERROR] Error parsing deck: %v", err)
+					return
+				}
+			} else {
+				deck = &poker.Deck{
+					TotalCards:  make([]poker.Card, 0),
+					PlayedCards: make([]poker.Card, 0),
+				}
+			}
+
+			// Get new cards from the deck
+			newCards := deck.Draw(len(bestHand.Cards))
+			if newCards == nil {
+				log.Printf("[AI-DECK-ERROR] Not enough cards in the deck")
+				return
+			}
+			// Add the new cards to the hand
+			currentHand = append(currentHand, newCards...)
+			player.CurrentHand, err = json.Marshal(currentHand)
+			if err != nil {
+				log.Printf("[AI-HAND-ERROR] Error serializing current hand: %v", err)
+				return
+			}
+			// Add the played hand to the played cards
+			deck.PlayedCards = append(deck.PlayedCards, bestHand.Cards...)
+			// Remove the played hand from the deck
+			deck.RemoveCards(newCards)
+			player.CurrentDeck = deck.ToJSON()
+
+			player.CurrentPoints = valorFinal
+			player.TotalPoints += valorFinal
+			player.HandPlaysLeft--
+			err = redisClient.UpdateDeckPlayer(*player)
+			if err != nil {
+				log.Printf("[AI-HAND-ERROR] Error updating player data: %v", err)
+				return
+			}
+
+			// Log the result
+			log.Println("Jugador ha puntuado la friolera de:", valorFinal)
+			// 7. Emit success response (FRONTEND WILL USE IT??????? SOME OF THEM????)
+			/*
+				client.Emit("AI_played_hand", gin.H{
+					"total_score":         valorFinal,
+					"gold":                finalGold,
+					"jokersTriggered":     jokersTriggered,
+					"left_plays":          player.HandPlaysLeft,
+					"activated_modifiers": activatedModifiers,
+					"received_modifiers":  receivedModifiers,
+					"played_cards":        len(deck.PlayedCards),
+					"unplayed_cards":      len(deck.TotalCards) + len(currentHand),
+					"new_cards":           newCards,
+					"red_score":           finalMult,
+					"blue_score":          finalFichas,
+				})
+			*/
+
+			// NOTE: check it outside the `if` sentence, since the player might have reached the blind
+			checkAIFinishedRound(redisClient, db, username, lobbyID, sio)
+		}
+	}
+}
+
+func DiscardCards(redisClient *redis.RedisClient, lobbyID string, discard []poker.Card) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("DiscardCardsAI request - User: %s, Args: %v",
+			username, args)
+
+		// 1. Get player data from Redis to extract lobby ID
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[DISCARD-ERROR] Error getting player data: %v", err)
+			return
+		}
+
+		// Validate play round phase
+		valid, err := socketio_utils.ValidatePlayRoundPhase(redisClient, nil, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidatePlayRoundPhase
+			return
+		}
+
+		var deck *poker.Deck
+		if player.CurrentDeck != nil {
+			deck, err = poker.DeckFromJSON(player.CurrentDeck)
+			if err != nil {
+				log.Printf("[AI-DISCARD-ERROR] Error parsing deck: %v", err)
+				return
+			}
+		} else {
+			deck = &poker.Deck{
+				TotalCards:  make([]poker.Card, 0),
+				PlayedCards: make([]poker.Card, 0),
+			}
+		}
+
+		// Get the current hand
+		var hand []poker.Card
+		err = json.Unmarshal(player.CurrentHand, &hand)
+		if err != nil {
+			log.Printf("[AI-GET_CARDS-ERROR] Error unmarshaling current hand: %v", err)
+			return
+		}
+
+		// 5. Get new cards from the deck
+		newCards := deck.Draw(len(discard))
+		if newCards == nil {
+			return
+		}
+
+		// 6. Update the player's info in Redis
+		deck.PlayedCards = append(deck.PlayedCards, discard...)
+		deck.RemoveCards(newCards)
+		player.CurrentDeck = deck.ToJSON()
+
+		// Remove the discarded cards from the hand
+		for _, card := range discard {
+			for i, c := range hand {
+				if c.Suit == card.Suit && c.Rank == card.Rank {
+					hand = append(hand[:i], hand[i+1:]...)
+					break
+				}
+			}
+		}
+		// Add the new cards to the hand
+		hand = append(hand, newCards...)
+		player.CurrentHand, err = json.Marshal(hand)
+		if err != nil {
+			log.Printf("[AI-DISCARD-ERROR] Error serializing current hand: %v", err)
+			return
+		}
+
+		// Update discards left
+		player.DiscardsLeft--
+
+		err = redisClient.UpdateDeckPlayer(*player)
+		if err != nil {
+			log.Printf("[AI-DISCARD-ERROR] Error updating player data: %v", err)
+			return
+		}
+
+		log.Printf("[AI-DISCARD-SUCCESS] Sent updated deck to user %s (%d total cards)", username)
+	}
+}
+
+func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, username string, lobbyID string, sio *socketio_types.SocketServer) {
+
+	log.Printf("[AI-ROUND-CHECK] Checking if player %s has finished round in lobby %s", username, lobbyID)
+
+	// Get player from Redis
+	player, err := redisClient.GetInGamePlayer(username)
+	if err != nil {
+		log.Printf("[ROUND-CHECK-ERROR] Error getting player data: %v", err)
+		return
+	}
+
+	// Get the lobby to check blind value
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[ROUND-CHECK-ERROR] Error getting lobby: %v", err)
+		return
+	}
+
+	// Check if player has no plays and discards left OR has reached/exceeded the blind
+	if (player.HandPlaysLeft <= 0) || (player.CurrentPoints >= lobby.CurrentHighBlind) {
+		if player.CurrentPoints >= lobby.CurrentHighBlind {
+			log.Printf("[ROUND-CHECK] Player %s has reached the blind of %d with %d points",
+				username, lobby.CurrentHighBlind, player.CurrentPoints)
+		} else {
+			log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays or discards left)", username)
+		}
+
+		// Mark player as finished in the lobby
+		if lobby.PlayersFinishedRound == nil {
+			lobby.PlayersFinishedRound = make(map[string]bool)
+		}
+
+		lobby.PlayersFinishedRound[username] = true
+		log.Printf("[ROUND-CHECK] Incremented finished players count to %d/%d for lobby %s",
+			len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
+
+		// Save the updated lobby
+		err = redisClient.SaveGameLobby(lobby)
+		if err != nil {
+			log.Printf("[ROUND-CHECK-ERROR] Error saving lobby: %v", err)
+			return
+		}
+
+		// If all players have finished the round, end it
+		if len(lobby.PlayersFinishedRound) >= lobby.PlayerCount {
+			log.Printf("[ROUND-CHECK] All players (%d/%d) have finished their round in lobby %s. Ending round.",
+				len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
+
+			HandleRoundPlayEnd(redisClient, db, lobbyID, sio, lobby.CurrentRound)
+		}
+	}
+}
