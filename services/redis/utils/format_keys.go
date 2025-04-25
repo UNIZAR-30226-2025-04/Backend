@@ -15,3 +15,7 @@ func FormatInGamePlayerKey(username string) string {
 func FormatLobbyKey(lobbyId string) string {
 	return fmt.Sprintf("lobby:%s", lobbyId)
 }
+
+func FormatPackKey(lobbyId string, maxRounds int, rerrolls int, itemId int) string {
+	return fmt.Sprintf("lobby:%s:round:%d:reroll:%d:pack:%d", lobbyId, maxRounds, rerrolls, itemId)
+}

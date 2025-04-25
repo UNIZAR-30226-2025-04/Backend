@@ -5,6 +5,7 @@ import (
 	"Nogler/models/redis"
 	"Nogler/services/poker"
 	redis_services "Nogler/services/redis"
+	redis_utils "Nogler/services/redis/utils"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -125,9 +126,8 @@ func generateRerollableItems(rng *rand.Rand, count int, nextUniqueId *int) []red
 
 func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.GameLobby, item redis.ShopItem) (*redis.PackContents, error) {
 	// Unique key per pack state
-	packKey := fmt.Sprintf("lobby:%s:round:%d:reroll:%d:pack:%s",
-		lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, item.ID)
 
+	packKey := redis_utils.FormatPackKey(lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, item.ID)
 	// Try to get existing pack contents
 	existing, err := rc.GetPackContents(packKey)
 	if err == nil && existing != nil {

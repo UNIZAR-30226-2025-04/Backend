@@ -49,6 +49,14 @@ type GameLobby struct {
 	ShopTimeout      time.Time `json:"shop_timeout"`
 	VouchersTimeout  time.Time `json:"vouchers_timeout"`
 
+	// New maps to keep track of the phases that have been completed and their corresponding rounds
+	// Each map key is the round number, and the value is a boolean indicating completion
+	// If the corresponding entry doesnt exist, it means the phase has not been completed
+	BlindsCompleted     map[int]bool `json:"blinds_completed"`      // Map of rounds where blinds have been completed
+	GameRoundsCompleted map[int]bool `json:"game_rounds_completed"` // Map of rounds where game rounds have been completed
+	ShopsCompleted      map[int]bool `json:"shop_completed"`        // Map of rounds where shop has been completed
+	VouchersCompleted   map[int]bool `json:"vouchers_completed"`    // Map of rounds where vouchers have been completed
+
 	// Add current phase tracking
 	CurrentPhase string `json:"current_phase"` // One of: none, blind, play_round, shop
 
@@ -69,6 +77,18 @@ func (l *GameLobby) EnsureMapsInitialized() {
 	}
 	if l.PlayersFinishedVouchers == nil {
 		l.PlayersFinishedVouchers = make(map[string]bool)
+	}
+	if l.BlindsCompleted == nil {
+		l.BlindsCompleted = make(map[int]bool)
+	}
+	if l.GameRoundsCompleted == nil {
+		l.GameRoundsCompleted = make(map[int]bool)
+	}
+	if l.ShopsCompleted == nil {
+		l.ShopsCompleted = make(map[int]bool)
+	}
+	if l.VouchersCompleted == nil {
+		l.VouchersCompleted = make(map[int]bool)
 	}
 }
 

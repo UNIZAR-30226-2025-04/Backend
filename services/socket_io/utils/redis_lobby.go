@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func IncrementGameRound(redisClient *redis.RedisClient, lobbyID string, incrementBy int) (int, error) {
+func SaveShopsCompletedAndIncrementGameRound(redisClient *redis.RedisClient, lobbyID string, incrementBy int) (int, error) {
 	log.Printf("[ROUND-INCREMENT] Incrementing round for lobby %s by %d", lobbyID, incrementBy)
 
 	// Get the game lobby from Redis
@@ -15,6 +15,10 @@ func IncrementGameRound(redisClient *redis.RedisClient, lobbyID string, incremen
 		log.Printf("[ROUND-INCREMENT-ERROR] Error getting lobby: %v", err)
 		return 0, fmt.Errorf("error getting lobby: %v", err)
 	}
+
+	// KEY: do it before incrementing the round, since we need to
+	// record the data from the round that just ended
+	lobby.VouchersCompleted[lobby.CurrentRound] = true
 
 	// Increment the current round
 	lobby.CurrentRound += incrementBy

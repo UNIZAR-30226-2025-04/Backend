@@ -50,20 +50,20 @@ func AdvanceToNextBlindIfUndone(redisClient *redis.RedisClient, db *gorm.DB, lob
 		return nil
 	}
 
-	// Early return if already advancing to next round (shop timeout is zero and not first blind)
-	if lobby.ShopTimeout.IsZero() && !isFirstBlind {
+	// Early return if already advancing to next round blind
+	if _, completed := lobby.VouchersCompleted[lobby.CurrentRound]; completed {
 		log.Printf("[ROUND-ADVANCE-INFO] Already advancing to next round for lobby %s, skipping", lobbyID)
 		return nil
 	}
 
 	// Step 1: Increment the round number
-	newRound, err := socketio_utils.IncrementGameRound(redisClient, lobbyID, 1)
+	newRound, err := socketio_utils.SaveShopsCompletedAndIncrementGameRound(redisClient, lobbyID, 1)
 	if err != nil {
 		log.Printf("[ROUND-ADVANCE-ERROR] Failed to increment round: %v", err)
 		return fmt.Errorf("failed to increment round: %v", err)
 	}
 
-	// CRITICAL: AFTER CALLING IncrementGameRound, WE HAVE TO FETCH THE LOBBY AGAIN
+	// CRITICAL: AFTER CALLING SaveShopsCompletedAndIncrementGameRound, WE HAVE TO FETCH THE LOBBY AGAIN
 	// FROM REDIS, SINCE OTHERWISE WE'LL BE OVERWRITING THE OBJECT STORED BY IncrementGameRound
 	// TODO: check if we're making this same mistake somewhere else
 	lobby, err = redisClient.GetGameLobby(lobbyID)
@@ -194,12 +194,16 @@ func AdvanceToNextRoundPlayIfUndone(redisClient *redis.RedisClient, db *gorm.DB,
 		log.Printf("[ROUND-PLAY-ADVANCE-WARN] Round mismatch - current: %d, expected: %d. Ignoring stale timeout.",
 			lobby.CurrentRound, expectedRound)
 		return
-	} else if lobby.BlindTimeout.IsZero() {
+	}
+
+	// Check if this round's blind phase is already completed
+	if _, completed := lobby.BlindsCompleted[lobby.CurrentRound]; completed {
 		log.Printf("[ROUND-PLAY-ADVANCE-INFO] Round already started for lobby %s, skipping", lobbyID)
 		return
 	}
 
 	// Step 1: Prepare the round state in Redis
+	// KEY: play_round.PrepareRoundStart will set the current BlindsCompleted entry to true
 	updatedLobby, blind, err := play_round.PrepareRoundStart(redisClient, lobbyID)
 	if err != nil {
 		log.Printf("[ROUND-PLAY-ADVANCE-ERROR] Failed to prepare round: %v", err)
@@ -284,13 +288,19 @@ func HandleRoundPlayEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 		log.Printf("[ROUND-END-WARN] Round mismatch - current: %d, expected: %d. Ignoring stale timeout.",
 			lobby.CurrentRound, expectedRound)
 		return
-	} else if lobby.GameRoundTimeout.IsZero() {
+	}
+
+	// Check if this round's blind phase is already completed
+	if _, completed := lobby.GameRoundsCompleted[lobby.CurrentRound]; completed {
 		log.Printf("[ROUND-END-INFO] Round already ended for lobby %s, skipping", lobbyID)
 		return
 	}
 
 	// Reset the game round timeout to indicate round has ended
 	lobby.GameRoundTimeout = time.Time{}
+
+	// NEW: mark the current game round as completed
+	lobby.GameRoundsCompleted[lobby.CurrentRound] = true
 
 	// CRITICAL: save game lobby to indicate round has ended
 	err = redisClient.SaveGameLobby(lobby)
@@ -330,7 +340,6 @@ func HandleRoundPlayEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 	} else {
 		// Continue with shop phase
 		AdvanceToShop(redisClient, db, lobbyID, sio)
-
 	}
 
 	log.Printf("[ROUND-END] Round ended for lobby %s", lobbyID)
@@ -459,8 +468,8 @@ func AdvanceToVouchersIfUndone(
 		return
 	}
 
-	// Only advance if shop phase actually timed out
-	if lobby.ShopTimeout.IsZero() {
+	// Only advance if shop phase didn't already finish
+	if _, completed := lobby.ShopsCompleted[lobby.CurrentRound]; completed {
 		log.Printf("[VOUCHER-ADVANCE-INFO] Shop not timed out for lobby %s, skipping", lobbyID)
 		return
 	}
@@ -469,6 +478,9 @@ func AdvanceToVouchersIfUndone(
 	lobby.PlayersFinishedVouchers = make(map[string]bool)
 	// Move shop timeout reset here from StartVoucherTimeout
 	lobby.ShopTimeout = time.Time{}
+
+	// NEW: set the shops completed component map to true
+	lobby.ShopsCompleted[lobby.CurrentRound] = true
 
 	// Save the lobby with these changes before setting the new phase
 	if err := redisClient.SaveGameLobby(lobby); err != nil {

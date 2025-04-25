@@ -39,6 +39,9 @@ func PrepareRoundStart(redisClient *redis.RedisClient, lobbyID string) (*redis_m
 	// Get the blind value
 	blind := lobby.CurrentHighBlind
 
+	// NEW: mark the current blind phase as completed
+	lobby.BlindsCompleted[lobby.CurrentRound] = true
+
 	// CRITICAL: Save the updated lobby state BEFORE broadcasting
 	err = redisClient.SaveGameLobby(lobby)
 	if err != nil {
