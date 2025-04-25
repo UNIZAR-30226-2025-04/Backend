@@ -157,3 +157,5 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 
 	return eliminatedPlayers, nil
 }
+
+// TODO: update player statistics in PostgreSQL
