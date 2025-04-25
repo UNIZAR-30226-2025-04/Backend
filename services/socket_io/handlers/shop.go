@@ -110,12 +110,12 @@ func HandleBuyJoker(redisClient *redis_services.RedisClient, client *socket.Sock
 		}
 
 		// Parse joker ID (JavaScript numbers come as float64)
-		jokerIDFloat, ok := args[0].(float64)
+		itemIDFloat, ok := args[0].(float64)
 		if !ok {
-			client.Emit("error", gin.H{"error": "Joker ID must be a number"})
+			client.Emit("error", gin.H{"error": "Item ID must be a number"})
 			return
 		}
-		jokerID := int(jokerIDFloat)
+		itemID := int(itemIDFloat)
 
 		// Get the client-provided price
 		priceFloat, ok := args[1].(float64)
@@ -142,7 +142,7 @@ func HandleBuyJoker(redisClient *redis_services.RedisClient, client *socket.Sock
 		}
 
 		log.Printf("[INFO] Processing joker purchase for user: %s in lobby: %s, joker ID: %d, price: %d",
-			username, lobbyID, jokerID, clientPrice)
+			username, lobbyID, itemID, clientPrice)
 
 		// Validate that we are in the shop phase
 		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
@@ -165,7 +165,7 @@ func HandleBuyJoker(redisClient *redis_services.RedisClient, client *socket.Sock
 		}
 
 		// Find the joker in the shop
-		item, exists := shop.FindShopItem(*lobbyState, jokerID)
+		item, exists := shop.FindShopItem(*lobbyState, itemID)
 		if !exists {
 			client.Emit("invalid_item_id", gin.H{"error": "Shop item not found"})
 			return
@@ -188,18 +188,12 @@ func HandleBuyJoker(redisClient *redis_services.RedisClient, client *socket.Sock
 
 		// Notify client of successful purchase
 		client.Emit("joker_purchased", gin.H{
-			"item_id":         item.ID,
-			"joker_id":        item.JokerId,
-			"sell_price":      poker.CalculateJokerSellPrice(jokerID),
+			"item_id":  item.ID,
+			"joker_id": item.JokerId,
+			// NOTE: the sell price is calculated based on the joker ID, not the corresponding shop item ID
+			"sell_price":      poker.CalculateJokerSellPrice(item.JokerId),
 			"remaining_money": updatedPlayer.PlayersMoney,
 		})
-
-		// NOTE: innecessary
-		// Broadcast purchase to all players in lobby
-		/*sio.Sio_server.To(socket.Room(lobbyID)).Emit("player_bought_joker", gin.H{
-			"username": username,
-			"joker_id": jokerID,
-		})*/
 	}
 }
 
@@ -217,12 +211,12 @@ func HandleBuyVoucher(redisClient *redis_services.RedisClient, client *socket.So
 		}
 
 		// Parse voucher ID (JavaScript numbers come as float64)
-		voucherIDFloat, ok := args[0].(float64)
+		itemIDFloat, ok := args[0].(float64)
 		if !ok {
 			client.Emit("error", gin.H{"error": "Voucher ID must be a number"})
 			return
 		}
-		voucherID := int(voucherIDFloat)
+		itemID := int(itemIDFloat)
 
 		// Get the client-provided price
 		priceFloat, ok := args[1].(float64)
@@ -249,7 +243,7 @@ func HandleBuyVoucher(redisClient *redis_services.RedisClient, client *socket.So
 		}
 
 		log.Printf("[INFO] Processing voucher purchase for user: %s in lobby: %s, voucher ID: %d, price: %d",
-			username, lobbyID, voucherID, clientPrice)
+			username, lobbyID, itemID, clientPrice)
 
 		// Validate that we are in the shop phase
 		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
@@ -272,7 +266,7 @@ func HandleBuyVoucher(redisClient *redis_services.RedisClient, client *socket.So
 		}
 
 		// Find the voucher in the shop
-		item, exists := shop.FindShopItem(*lobbyState, voucherID)
+		item, exists := shop.FindShopItem(*lobbyState, itemID)
 		if !exists {
 			client.Emit("invalid_item_id", gin.H{"error": "Shop item not found"})
 			return
