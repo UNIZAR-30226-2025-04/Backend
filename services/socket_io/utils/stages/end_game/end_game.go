@@ -144,7 +144,7 @@ func CleanupGame(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string) {
 	// 4. Use a transaction to delete PostgreSQL data
 	err = db.Transaction(func(tx *gorm.DB) error {
 		// First remove all player-lobby relationships
-		if err := tx.Exec("DELETE FROM players_in_lobbies WHERE lobby_id = ?", lobbyID).Error; err != nil {
+		if err := tx.Exec("DELETE FROM in_game_players WHERE lobby_id = ?", lobbyID).Error; err != nil {
 			log.Printf("[GAME-CLEANUP-ERROR] Error deleting player relationships: %v", err)
 			return err
 		}
