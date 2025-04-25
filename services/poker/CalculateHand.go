@@ -508,13 +508,13 @@ func BestHand(h Hand) (int, int, int, []Card) {
 		return TypeMap["StraightFlush"].First, TypeMap["StraightFlush"].Second, 2, scoringCards
 	case func(cards []Card, ok bool) bool { return ok }(FiveOfAKind(tmp)):
 		scoringCards, _ := FiveOfAKind(tmp)
-		return TypeMap["FiveOfAKind"].First, TypeMap["FiveOfAKind"].Second, 3, scoringCards
+		return TypeMap["FiveOfAKind"].First, TypeMap["FiveOfAKind"].Second, 5, scoringCards
 	case func(cards []Card, ok bool) bool { return ok }(FlushHouse(tmp)):
 		scoringCards, _ := FlushHouse(tmp)
-		return TypeMap["FlushHouse"].First, TypeMap["FlushHouse"].Second, 5, scoringCards
+		return TypeMap["FlushHouse"].First, TypeMap["FlushHouse"].Second, 4, scoringCards
 	case func(cards []Card, ok bool) bool { return ok }(FlushFive(tmp)):
 		scoringCards, _ := FlushFive(tmp)
-		return TypeMap["FlushFive"].First, TypeMap["FlushFive"].Second, 4, scoringCards
+		return TypeMap["FlushFive"].First, TypeMap["FlushFive"].Second, 3, scoringCards
 	case func(cards []Card, ok bool) bool { return ok }(FourOfAKind(tmp)):
 		scoringCards, _ := FourOfAKind(tmp)
 		return TypeMap["FourOfAKind"].First, TypeMap["FourOfAKind"].Second, 6, scoringCards

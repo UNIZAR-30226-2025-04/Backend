@@ -79,12 +79,13 @@ type LobbyShop struct {
 	RerollableItems []ShopItem `json:"rerollable_items"`
 }
 type ShopItem struct {
-	ID       string       `json:"id"`
-	Type     string       `json:"type"` // "card", "joker", "pack", "modifier"
-	Price    int          `json:"price"`
-	PackSeed int64        `json:"pack_seed,omitempty"`
-	Content  PackContents `gorm:"type:jsonb" json:"content"` // Directly store PackContents
-	JokerId  int          `json:"joker_id,omitempty"`        // Only for joker type
+	ID         string       `json:"id"`
+	Type       string       `json:"type"` // "card", "joker", "pack", "modifier"
+	Price      int          `json:"price"`
+	PackSeed   int64        `json:"pack_seed,omitempty"`
+	Content    PackContents `gorm:"type:jsonb" json:"content"` // Directly store PackContents
+	JokerId    int          `json:"joker_id,omitempty"`        // Only for joker type
+	ModifierId int          `json:"modifier_id,omitempty"`     // Only for modifier type
 }
 
 type PackContents struct {

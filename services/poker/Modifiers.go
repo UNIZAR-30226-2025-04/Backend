@@ -39,6 +39,16 @@ var modifierTable = map[int]ModifierFunc{
 	4: CoinPurse,
 }
 
+var ModifierWeights = []struct {
+	ID     int
+	Weight int
+}{
+	{1, 40}, // Most common: 40% chance
+	{2, 30}, // Common: 30% chance
+	{3, 20}, // Uncommon: 20% chance
+	{4, 10}, // Rare: 10% chance
+}
+
 // -1 to the multiplier of the target’s most-used hand type.
 func EvilEye(hand Hand, bestHand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
 	if compareHands(hand, bestHand) {

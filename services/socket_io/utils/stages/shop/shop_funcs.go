@@ -61,13 +61,30 @@ func generateFixedModifiers(rng *rand.Rand) []redis.ShopItem {
 	count := minModifiers + rng.Intn(maxModifiers-minModifiers+1)
 	modifiers := make([]redis.ShopItem, count)
 
+	// Calculate total weight
+	totalWeight := 0
+	for _, modifier := range poker.ModifierWeights {
+		totalWeight += modifier.Weight
+	}
+
 	for i := range modifiers {
+		// Generate weighted random modifier ID
+		randomWeight := rng.Intn(totalWeight)
+		modifierID := 1 // Default to 1 in case something goes wrong
+
+		for _, modifier := range poker.ModifierWeights {
+			if randomWeight < modifier.Weight {
+				modifierID = modifier.ID
+				break
+			}
+			randomWeight -= modifier.Weight
+		}
+
 		modifiers[i] = redis.ShopItem{
-			ID:    fmt.Sprintf("%s%d", fixedModifierPrefix, i),
-			Type:  game_constants.MODIFIER_TYPE,
-			Price: 50 + rng.Intn(50),
-			// NOTE: only needed for packs
-			// PackSeed: rng.Int63(),
+			ID:         fmt.Sprintf("%s%d", fixedModifierPrefix, i),
+			Type:       game_constants.MODIFIER_TYPE,
+			Price:      50 + rng.Intn(50),
+			ModifierId: modifierID,
 		}
 	}
 	return modifiers
@@ -293,14 +310,13 @@ func PurchaseVoucher(redisClient *redis_services.RedisClient, player *redis.InGa
 		}
 	}
 
-	// Extract the modifier ID from the item ID (assuming it's the last part of the ID string)
-	// Parse the modifier ID to get the numeric value
-	modifierID := 0
-	fmt.Sscanf(item.ID, "fixed_mod_%d", &modifierID)
+	// Use the ModifierId field directly instead of parsing it from the item ID
+	modifierID := item.ModifierId
 
 	// Add the new modifier to player's collection
 	newModifier := poker.Modifier{
-		Value:    modifierID,
+		Value: modifierID,
+		// TODO: should be removed, we're not supposed to use it for now
 		LeftUses: -1, // Set to -1 if it doesn't expire until the end of the game, or set a specific value
 	}
 	currentModifiers.Modificadores = append(currentModifiers.Modificadores, newModifier)

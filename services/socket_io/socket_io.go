@@ -122,7 +122,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		client.On("buy_joker", handlers.HandleBuyJoker(redisClient, client, db, username, sio_casted))
 
-		//client.On("buy_voucher", handlers.HandleBuyVoucher(redisClient, client, db, username, sio_casted))
+		client.On("buy_voucher", handlers.HandleBuyVoucher(redisClient, client, db, username, sio_casted))
 
 		client.On("open_pack", handlers.HandleOpenPack(redisClient, client, db, username))
 
