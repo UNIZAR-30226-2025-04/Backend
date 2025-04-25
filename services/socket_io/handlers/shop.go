@@ -33,12 +33,12 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 		}
 
 		// Handle pack ID (JavaScript numbers come as float64)
-		packIDFloat, ok := args[0].(float64)
+		itemIDFloat, ok := args[0].(float64)
 		if !ok {
 			client.Emit("error", gin.H{"error": "El pack ID debe ser un número"})
 			return
 		}
-		packID := int(packIDFloat) // Convert to int
+		itemID := int(itemIDFloat) // Convert to int
 
 		// Get client-provided price
 		priceFloat, ok := args[1].(float64)
@@ -86,7 +86,7 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			return
 		}
 
-		item, exists := shop.FindShopItem(*lobbyState, packID)
+		item, exists := shop.FindShopItem(*lobbyState, itemID)
 		if !exists || item.Type != game_constants.PACK_TYPE {
 			client.Emit("invalid_pack")
 			return
@@ -109,7 +109,7 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 		// NOTE: potential exploit by not sending a pack selection event and
 		// then reusing this same id during the next round. Already fixed by resetting
 		// LastPurchasedPackItemId to -1 when starting the shop phase
-		playerState.LastPurchasedPackItemId = packID
+		playerState.LastPurchasedPackItemId = itemID
 		playerState.PlayersMoney -= item.Price // Deduct the money
 
 		// Save the updated player state
@@ -119,7 +119,8 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			return
 		}
 
-		client.Emit("purchased_pack", gin.H{
+		client.Emit("pack_purchased", gin.H{
+			"item_id":         item.ID,
 			"cards":           contents.Cards,
 			"jokers":          contents.Jokers,
 			"remaining_money": playerState.PlayersMoney, // Include remaining money in response
@@ -322,6 +323,73 @@ func HandleBuyVoucher(redisClient *redis_services.RedisClient, client *socket.So
 		client.Emit("voucher_purchased", gin.H{
 			"item_id":         item.ID,
 			"voucher_id":      item.ModifierId,
+			"remaining_money": updatedPlayer.PlayersMoney,
+		})
+	}
+}
+
+func HandleSellJoker(redisClient *redis_services.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("SellJoker initiated - User: %s, Args: %v, Socket ID: %s",
+			username, args, client.Id())
+
+		if len(args) < 1 {
+			log.Printf("[SHOP-ERROR] Missing joker ID for user %s", username)
+			client.Emit("error", gin.H{"error": "Missing joker ID to sell"})
+			return
+		}
+
+		// Parse joker ID (JavaScript numbers come as float64)
+		jokerIDFloat, ok := args[0].(float64)
+		if !ok {
+			client.Emit("error", gin.H{"error": "Joker ID must be a number"})
+			return
+		}
+		jokerID := int(jokerIDFloat)
+
+		// Get player state
+		playerState, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Error getting player state: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving player state"})
+			return
+		}
+
+		// Extract lobby ID from player state
+		lobbyID := playerState.LobbyId
+		if lobbyID == "" {
+			log.Printf("[SHOP-ERROR] Player %s not associated with any lobby", username)
+			client.Emit("error", gin.H{"error": "Player not in a lobby"})
+			return
+		}
+
+		// Validate that we are in the shop phase
+		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidateShopPhase
+			return
+		}
+
+		// Process the joker sale
+		updatedPlayer, sellPrice, err := shop.SellJoker(playerState, jokerID)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Sale failed: %v", err)
+			client.Emit("error", gin.H{"error": err.Error()})
+			return
+		}
+
+		// Save the updated player state
+		if err := redisClient.SaveInGamePlayer(updatedPlayer); err != nil {
+			log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+			client.Emit("error", gin.H{"error": "Failed to save joker sale"})
+			return
+		}
+
+		// Notify client of successful sale
+		client.Emit("joker_sold", gin.H{
+			"joker_id":        jokerID,
+			"sell_price":      sellPrice,
 			"remaining_money": updatedPlayer.PlayersMoney,
 		})
 	}
