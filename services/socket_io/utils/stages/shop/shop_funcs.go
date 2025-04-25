@@ -237,19 +237,9 @@ var JokerWeights = []struct {
 // PurchaseJoker processes the purchase of a joker by a player
 func PurchaseJoker(redisClient *redis_services.RedisClient, player *redis.InGamePlayer,
 	item redis.ShopItem, clientPrice int) (bool, *redis.InGamePlayer, error) {
-	// Verify the item type
-	if item.Type != game_constants.JOKER_TYPE {
-		return false, nil, fmt.Errorf("item is not a joker")
-	}
 
-	// Verify that client-provided price matches the server's price
-	if clientPrice != item.Price {
-		return false, nil, fmt.Errorf("price mismatch: expected %d, got %d", item.Price, clientPrice)
-	}
-
-	// Check if player has enough money
-	if player.PlayersMoney < item.Price {
-		return false, nil, fmt.Errorf("insufficient funds: need %d, have %d", item.Price, player.PlayersMoney)
+	if err := ValidatePurchase(item, game_constants.JOKER_TYPE, clientPrice, player); err != nil {
+		return false, nil, err
 	}
 
 	// Get the current jokers from player's inventory
@@ -280,4 +270,70 @@ func PurchaseJoker(redisClient *redis_services.RedisClient, player *redis.InGame
 	player.CurrentJokers = updatedJokersJSON
 
 	return true, player, nil
+}
+
+// PurchaseVoucher processes the purchase of a modifier/voucher by a player
+func PurchaseVoucher(redisClient *redis_services.RedisClient, player *redis.InGamePlayer,
+	item redis.ShopItem, clientPrice int) (bool, *redis.InGamePlayer, error) {
+
+	if err := ValidatePurchase(item, game_constants.MODIFIER_TYPE, clientPrice, player); err != nil {
+		return false, nil, err
+	}
+
+	// Get the current modifiers from player's inventory
+	var currentModifiers poker.Modifiers
+	if player.Modifiers != nil && len(player.Modifiers) > 0 {
+		if err := json.Unmarshal(player.Modifiers, &currentModifiers); err != nil {
+			return false, nil, fmt.Errorf("error parsing player's modifiers: %v", err)
+		}
+	} else {
+		// Initialize empty modifiers array if none exists
+		currentModifiers = poker.Modifiers{
+			Modificadores: []poker.Modifier{},
+		}
+	}
+
+	// Extract the modifier ID from the item ID (assuming it's the last part of the ID string)
+	// Parse the modifier ID to get the numeric value
+	modifierID := 0
+	fmt.Sscanf(item.ID, "fixed_mod_%d", &modifierID)
+
+	// Add the new modifier to player's collection
+	newModifier := poker.Modifier{
+		Value:    modifierID,
+		LeftUses: -1, // Set to -1 if it doesn't expire until the end of the game, or set a specific value
+	}
+	currentModifiers.Modificadores = append(currentModifiers.Modificadores, newModifier)
+
+	// Deduct the price from player's money
+	player.PlayersMoney -= item.Price
+
+	// Update player's modifier inventory
+	updatedModifiersJSON, err := json.Marshal(currentModifiers)
+	if err != nil {
+		return false, nil, fmt.Errorf("error updating modifiers: %v", err)
+	}
+	player.Modifiers = updatedModifiersJSON
+
+	return true, player, nil
+}
+
+// ValidatePurchase performs common validation for item purchases
+func ValidatePurchase(item redis.ShopItem, expectedType string, clientPrice int, player *redis.InGamePlayer) error {
+	// Verify the item type
+	if item.Type != expectedType {
+		return fmt.Errorf("item is not a %s", expectedType)
+	}
+
+	// Verify that client-provided price matches the server's price
+	if clientPrice != item.Price {
+		return fmt.Errorf("price mismatch: expected %d, got %d", item.Price, clientPrice)
+	}
+
+	// Check if player has enough money
+	if player.PlayersMoney < item.Price {
+		return fmt.Errorf("insufficient funds: need %d, have %d", item.Price, player.PlayersMoney)
+	}
+
+	return nil
 }

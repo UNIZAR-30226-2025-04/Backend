@@ -36,9 +36,9 @@ type Multiplier struct {
 var TypeMap = map[string]Multiplier{
 	"RoyalFlush":    {65, 50},
 	"StraightFlush": {50, 40},
-	"FlushFive":     {35, 25},
-	"FlushHouse":    {32, 22},
 	"FiveOfAKind":   {30, 20},
+	"FlushHouse":    {32, 22},
+	"FlushFive":     {35, 25},
 	"FourOfAKind":   {25, 15},
 	"FullHouse":     {20, 12},
 	"Flush":         {15, 8},
@@ -509,12 +509,12 @@ func BestHand(h Hand) (int, int, int, []Card) {
 	case func(cards []Card, ok bool) bool { return ok }(FiveOfAKind(tmp)):
 		scoringCards, _ := FiveOfAKind(tmp)
 		return TypeMap["FiveOfAKind"].First, TypeMap["FiveOfAKind"].Second, 3, scoringCards
-	case func(cards []Card, ok bool) bool { return ok }(FlushFive(tmp)):
-		scoringCards, _ := FlushFive(tmp)
-		return TypeMap["FlushFive"].First, TypeMap["FlushFive"].Second, 4, scoringCards
 	case func(cards []Card, ok bool) bool { return ok }(FlushHouse(tmp)):
 		scoringCards, _ := FlushHouse(tmp)
 		return TypeMap["FlushHouse"].First, TypeMap["FlushHouse"].Second, 5, scoringCards
+	case func(cards []Card, ok bool) bool { return ok }(FlushFive(tmp)):
+		scoringCards, _ := FlushFive(tmp)
+		return TypeMap["FlushFive"].First, TypeMap["FlushFive"].Second, 4, scoringCards
 	case func(cards []Card, ok bool) bool { return ok }(FourOfAKind(tmp)):
 		scoringCards, _ := FourOfAKind(tmp)
 		return TypeMap["FourOfAKind"].First, TypeMap["FourOfAKind"].Second, 6, scoringCards
