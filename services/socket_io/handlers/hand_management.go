@@ -258,6 +258,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		deck.RemoveCards(newCards)
 		player.CurrentDeck = deck.ToJSON()
 
+		// TODO, CRITICAL: reset TotalPoints before each game round?
 		player.CurrentPoints = valorFinal
 		player.TotalPoints += valorFinal
 		player.HandPlaysLeft--

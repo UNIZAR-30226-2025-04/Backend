@@ -126,6 +126,8 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		client.On("buy_pack", handlers.HandlePurchasePack(redisClient, client, db, username))
 
+		client.On("choose_pack_items", handlers.HandlePackSelection(redisClient, client, db, username, sio_casted))
+
 		//client.On("get_from_pack", handlers.HandleGetFromPack(redisClient, client, db, username))
 
 		//client.On("rerroll_shop", handlers.HandleRerollShop(redisClient, client, db, username, sio_casted))

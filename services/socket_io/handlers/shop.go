@@ -394,3 +394,101 @@ func HandleSellJoker(redisClient *redis_services.RedisClient, client *socket.Soc
 		})
 	}
 }
+
+func HandlePackSelection(redisClient *redis_services.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("PackSelection initiated - User: %s, Args: %v, Socket ID: %s",
+			username, args, client.Id())
+
+		// Check if we have all required arguments
+		if len(args) < 3 {
+			log.Printf("[SHOP-ERROR] Missing arguments for user %s", username)
+			client.Emit("error", gin.H{"error": "Missing pack ID, selected card, or selected joker"})
+			return
+		}
+
+		// Parse shop item ID
+		itemIDFloat, ok := args[0].(float64)
+		if !ok {
+			client.Emit("error", gin.H{"error": "Shop item ID must be a number"})
+			return
+		}
+		itemID := int(itemIDFloat)
+
+		// Parse selected card
+		selectedCardMap, ok := args[1].(map[string]interface{})
+		if !ok {
+			client.Emit("error", gin.H{"error": "Selected card must be an object"})
+			return
+		}
+
+		// Parse selected joker
+		selectedJokerIDFloat, ok := args[2].(float64)
+		if !ok {
+			client.Emit("error", gin.H{"error": "Selected joker ID must be a number"})
+			return
+		}
+		selectedJokerID := int(selectedJokerIDFloat)
+
+		// Get player state
+		playerState, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Error getting player state: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving player state"})
+			return
+		}
+
+		// Extract lobby ID from player state
+		lobbyID := playerState.LobbyId
+		if lobbyID == "" {
+			log.Printf("[SHOP-ERROR] Player %s not associated with any lobby", username)
+			client.Emit("error", gin.H{"error": "Player not in a lobby"})
+			return
+		}
+
+		// Validate we are in shop phase
+		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidateShopPhase
+			return
+		}
+
+		// Verify that the player actually bought this pack
+		if playerState.LastPurchasedPackItemId != itemID {
+			client.Emit("error", gin.H{"error": "You have not purchased this pack or already selected items from it"})
+			return
+		}
+
+		// Get the lobby state
+		lobbyState, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Error getting lobby state: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting lobby state"})
+			return
+		}
+
+		// Process the selection
+		updatedPlayer, err := shop.ProcessPackSelection(redisClient, lobbyState, playerState, itemID, selectedCardMap, selectedJokerID)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Pack selection failed: %v", err)
+			client.Emit("error", gin.H{"error": err.Error()})
+			return
+		}
+
+		// Save the updated player state
+		if err := redisClient.SaveInGamePlayer(updatedPlayer); err != nil {
+			log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+			client.Emit("error", gin.H{"error": "Failed to save pack selection"})
+			return
+		}
+
+		// Notify client of successful selection
+		client.Emit("pack_selection_complete", gin.H{
+			"message":         "Successfully added selected items to your inventory",
+			"selected_card":   selectedCardMap,
+			"selected_joker":  selectedJokerID,
+			"remaining_money": updatedPlayer.PlayersMoney,
+		})
+	}
+}

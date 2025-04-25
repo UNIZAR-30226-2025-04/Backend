@@ -29,9 +29,10 @@ func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
 	nextUniqueId := 1
 
 	shop := &redis.LobbyShop{
-		Rerolls:         0,
-		FixedPacks:      generateFixedPacks(rng, &nextUniqueId),
-		FixedModifiers:  generateFixedModifiers(rng, &nextUniqueId),
+		Rerolls:        0,
+		FixedPacks:     generateFixedPacks(rng, &nextUniqueId),
+		FixedModifiers: generateFixedModifiers(rng, &nextUniqueId),
+		// NOTE: fixed number of rerollable items
 		RerollableItems: generateRerollableItems(rng, jokersCount, &nextUniqueId),
 	}
 
@@ -403,4 +404,108 @@ func SellJoker(player *redis.InGamePlayer, jokerID int) (updatedPlayer *redis.In
 	player.PlayersMoney += sellPrice
 
 	return player, sellPrice, nil
+}
+
+// ProcessPackSelection validates and processes a player's selection from a purchased pack
+func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.GameLobby,
+	player *redis.InGamePlayer, itemID int, selectedCardMap map[string]interface{},
+	selectedJokerID int) (*redis.InGamePlayer, error) {
+
+	// Convert selected card map to poker.Card
+	rankInterface, hasRank := selectedCardMap["Rank"]
+	suitInterface, hasSuit := selectedCardMap["Suit"]
+
+	if !hasRank || !hasSuit {
+		return nil, fmt.Errorf("selected card is missing rank or suit")
+	}
+
+	rank, rankOk := rankInterface.(string)
+	suit, suitOk := suitInterface.(string)
+
+	if !rankOk || !suitOk {
+		return nil, fmt.Errorf("card rank and suit must be strings")
+	}
+
+	selectedCard := poker.Card{
+		Rank: rank,
+		Suit: suit,
+	}
+
+	// Get pack contents
+	packKey := redis_utils.FormatPackKey(lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, itemID)
+	packContents, err := redisClient.GetPackContents(packKey)
+	if err != nil || packContents == nil {
+		return nil, fmt.Errorf("pack contents not found for item ID %d", itemID)
+	}
+
+	// Verify the selected card exists in the pack
+	cardFound := false
+	for _, card := range packContents.Cards {
+		if card.Rank == selectedCard.Rank && card.Suit == selectedCard.Suit {
+			cardFound = true
+			break
+		}
+	}
+	if !cardFound {
+		return nil, fmt.Errorf("the selected card is not in the pack")
+	}
+
+	// Verify the selected joker exists in the pack
+	jokerFound := false
+	for _, jokerGroup := range packContents.Jokers {
+		for _, jokerID := range jokerGroup.Juglares {
+			if jokerID == selectedJokerID {
+				jokerFound = true
+				break
+			}
+		}
+		if jokerFound {
+			break
+		}
+	}
+	if !jokerFound {
+		return nil, fmt.Errorf("the selected joker is not in the pack")
+	}
+
+	// Add selected card to player's deck (TotalCards attribute)
+	var currentDeck poker.Deck
+	if player.CurrentDeck != nil && len(player.CurrentDeck) > 0 {
+		if err := json.Unmarshal(player.CurrentDeck, &currentDeck); err != nil {
+			return nil, fmt.Errorf("error parsing player's deck: %v", err)
+		}
+	} else {
+		currentDeck = poker.Deck{
+			TotalCards:  []poker.Card{},
+			PlayedCards: []poker.Card{},
+		}
+	}
+	currentDeck.TotalCards = append(currentDeck.TotalCards, selectedCard)
+	updatedDeckJSON, err := json.Marshal(currentDeck)
+	if err != nil {
+		return nil, fmt.Errorf("error updating deck: %v", err)
+	}
+	player.CurrentDeck = updatedDeckJSON
+
+	// Add selected joker to player's jokers
+	var currentJokers poker.Jokers
+	if player.CurrentJokers != nil && len(player.CurrentJokers) > 0 {
+		if err := json.Unmarshal(player.CurrentJokers, &currentJokers); err != nil {
+			return nil, fmt.Errorf("error parsing player's jokers: %v", err)
+		}
+	} else {
+		currentJokers = poker.Jokers{
+			Juglares: []int{},
+		}
+	}
+	currentJokers.Juglares = append(currentJokers.Juglares, selectedJokerID)
+	updatedJokersJSON, err := json.Marshal(currentJokers)
+	if err != nil {
+		return nil, fmt.Errorf("error updating jokers: %v", err)
+	}
+	player.CurrentJokers = updatedJokersJSON
+
+	// Reset LastPurchasedPackItemId to prevent reuse
+	player.LastPurchasedPackItemId = -1
+
+	return player, nil
 }
