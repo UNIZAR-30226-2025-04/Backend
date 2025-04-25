@@ -17,6 +17,10 @@ import (
 )
 
 // Handler that will be called.
+// TODO, we should call shop.ValidatePurchase and decrement the player's balance afterwards
+// Also, the user will send a selection event, with the selected jokers and cards. We should
+// validate that he has actually bought the pack and that the selected items were in that pack,
+// and then add those items to the player's inventory.
 func HandleOpenPack(redisClient *redis_services.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string) func(args ...interface{}) {
 	return func(args ...interface{}) {
