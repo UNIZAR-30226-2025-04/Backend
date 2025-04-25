@@ -478,7 +478,7 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// Check if there are enough players to start the game
-		if playerCount < 2 {
+		if playerCount < 1 {
 			log.Printf("[START-ERROR] Not enough players in lobby %s (count: %d)", lobbyID, playerCount)
 			client.Emit("error", gin.H{"error": "Cannot start game with less than 2 players"})
 			return

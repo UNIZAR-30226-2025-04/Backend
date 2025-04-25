@@ -84,6 +84,7 @@ type ShopItem struct {
 	Price    int          `json:"price"`
 	PackSeed int64        `json:"pack_seed,omitempty"`
 	Content  PackContents `gorm:"type:jsonb" json:"content"` // Directly store PackContents
+	JokerId  int          `json:"joker_id,omitempty"`        // Only for joker type
 }
 
 type PackContents struct {

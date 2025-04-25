@@ -155,7 +155,7 @@ func grade(c1 Card) int {
 	case "J":
 		return 11
 	case "A":
-		return 1
+		return 14
 	default:
 		rank, _ := strconv.Atoi(c1.Rank)
 		return rank
@@ -164,8 +164,7 @@ func grade(c1 Card) int {
 
 // Get the final CHIPS a fixed card will score when played as part of a determined hand
 // Face cards are worth 10 chips, numerated cards are worth the rank chips, and aces are worth
-// 11 chips unless played as the start of an A-2-3-4-5, where it is worth 1 chip
-func PointsPerCard(hand Hand, c Card) int {
+func PointsPerCard(c Card) int {
 	var value int
 	switch c.Rank {
 	case "K", "Q", "J":
@@ -557,4 +556,12 @@ func ApplyEnhancements(fichas int, mult int, cards []Card) (int, int) {
 		}
 	}
 	return fichas, mult
+}
+
+func AddChipsPerCard(cards []Card) int {
+	addition := 0
+	for _, card := range cards {
+		addition += PointsPerCard(card)
+	}
+	return addition
 }

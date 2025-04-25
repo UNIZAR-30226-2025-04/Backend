@@ -118,9 +118,9 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 		client.On("get_phase_timeout", handlers.HandleGetPhaseTimeout(redisClient, client, db, username))
 
 		// TODO, NOTE: should be already covered with activate_modifiers and send_modifiers
-		//client.On("play_voucher", handlers.HandlePlayVoucher(redisClient, client, db, username, sio_casted))
+		//// client.On("play_voucher", handlers.HandlePlayVoucher(redisClient, client, db, username, sio_casted))
 
-		//client.On("buy_joker", handlers.HandleBuyJoker(redisClient, client, db, username, sio_casted))
+		client.On("buy_joker", handlers.HandleBuyJoker(redisClient, client, db, username, sio_casted))
 
 		//client.On("buy_voucher", handlers.HandleBuyVoucher(redisClient, client, db, username, sio_casted))
 
@@ -130,6 +130,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		//client.On("rerroll_shop", handlers.HandleRerollShop(redisClient, client, db, username, sio_casted))
 
+		// TODO: sell_joker
 	})
 
 	// NOTE: igual lo usamos en algún momento

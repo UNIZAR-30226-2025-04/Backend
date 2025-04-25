@@ -728,16 +728,25 @@ func IsUserInLobby(db *gorm.DB) gin.HandlerFunc {
 		var inGamePlayer models.InGamePlayer
 		if err := db.Where("username = ?", username).First(&inGamePlayer).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				c.JSON(http.StatusOK, gin.H{"in_lobby": false, "lobby_id": ""})
+				c.JSON(http.StatusOK, gin.H{"in_lobby": false, "lobby_id": "", "public": ""})
 				return
 			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting lobby"})
 			return
 		}
 
+		var lobby models.GameLobby
+		if err := db.Where("id = ?", inGamePlayer.LobbyID).First(&lobby).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
+			}
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"in_lobby": true,
 			"lobby_id": inGamePlayer.LobbyID,
+			"public":   lobby.IsPublic,
 		})
 	}
 }

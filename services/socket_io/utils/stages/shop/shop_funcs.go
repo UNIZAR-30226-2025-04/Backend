@@ -1,9 +1,11 @@
 package shop
 
 import (
+	game_constants "Nogler/constants/game"
 	"Nogler/models/redis"
 	"Nogler/services/poker"
 	redis_services "Nogler/services/redis"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"time"
@@ -12,10 +14,14 @@ import (
 )
 
 const ( // Only used here, i think its good to see it here
-	minFixedPacks = 2
-	maxFixedPacks = 4
-	minModifiers  = 1
-	maxModifiers  = 3
+	minFixedPacks        = 2
+	maxFixedPacks        = 4
+	minModifiers         = 1
+	maxModifiers         = 3
+	jokersCount          = 3
+	fixedPackPrefix      = "fixed_pack_"
+	fixedModifierPrefix  = "fixed_mod_"
+	rerollableItemPrefix = "rerollable_item_"
 )
 
 func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
@@ -26,7 +32,7 @@ func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
 		Rerolls:         0,
 		FixedPacks:      generateFixedPacks(rng),
 		FixedModifiers:  generateFixedModifiers(rng),
-		RerollableItems: generateRerollableItems(rng, 4),
+		RerollableItems: generateRerollableItems(rng, jokersCount),
 	}
 
 	return shop, nil
@@ -41,8 +47,8 @@ func generateFixedPacks(rng *rand.Rand) []redis.ShopItem {
 	for i := range packs {
 		seed := rng.Int63()
 		packs[i] = redis.ShopItem{
-			ID:       fmt.Sprintf("fixed_pack_%d", i),
-			Type:     "pack",
+			ID:       fmt.Sprintf("%s%d", fixedPackPrefix, i),
+			Type:     game_constants.PACK_TYPE,
 			Price:    CalculatePackPrice(3), // 3 should really be the number of items
 			PackSeed: seed,
 		}
@@ -57,28 +63,44 @@ func generateFixedModifiers(rng *rand.Rand) []redis.ShopItem {
 
 	for i := range modifiers {
 		modifiers[i] = redis.ShopItem{
-			ID:       fmt.Sprintf("fixed_mod_%d", i),
-			Type:     "modifier",
-			Price:    50 + rng.Intn(50),
-			PackSeed: rng.Int63(),
+			ID:    fmt.Sprintf("%s%d", fixedModifierPrefix, i),
+			Type:  game_constants.MODIFIER_TYPE,
+			Price: 50 + rng.Intn(50),
+			// NOTE: only needed for packs
+			// PackSeed: rng.Int63(),
 		}
 	}
 	return modifiers
 }
 
+// TODO: how tf do we do this
 func RerollShopItems(redisClient *redis_services.RedisClient, lobbyID string) error {
 	// do stuff
 	return nil
 }
 
 func generateRerollableItems(rng *rand.Rand, count int) []redis.ShopItem {
-	// do stuff
-	return nil
+	// NOTE: only jokers are rerrollable items
+	rerollableItems := make([]redis.ShopItem, count)
+	var jokers []poker.Jokers
+	jokers = generateJokers(rng, count)
+
+	for i := range rerollableItems {
+		rerollableItems[i] = redis.ShopItem{
+			ID:      fmt.Sprintf("%s%d", rerollableItemPrefix, i),
+			Type:    game_constants.JOKER_TYPE,
+			Price:   50 + rng.Intn(50),
+			JokerId: jokers[i].Juglares[0], // Assuming we want the first joker
+			// NOTE: only needed for packs
+			// PackSeed: rng.Int63(),
+		}
+	}
+	return rerollableItems
 }
 
-// Add a function that applies the probabilities of the groups (joker card modifier)
+// TODO: Add a function that applies the probabilities of the groups (joker card modifier)
 
-// Add a function that calculates the probabilities of a given item in a group to appear
+// TODO: Add a function that calculates the probabilities of a given item in a group to appear
 
 func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.GameLobby, item redis.ShopItem) (*redis.PackContents, error) {
 	// Unique key per pack state
@@ -156,22 +178,22 @@ func generateJokers(rng *rand.Rand, numJokers int) []poker.Jokers {
 	return jokers
 }
 
-func FindShopItem(lobby redis.GameLobby, packID int) (redis.ShopItem, bool) {
+func FindShopItem(lobby redis.GameLobby, itemID int) (redis.ShopItem, bool) {
 	// Iterate over the shop items in the lobby
 	for _, item := range lobby.ShopState.FixedPacks {
-		if item.ID == fmt.Sprintf("fixed_pack_%d", packID) {
+		if item.ID == fmt.Sprintf("fixed_pack_%d", itemID) {
 			return item, true
 		}
 	}
 
 	for _, item := range lobby.ShopState.FixedModifiers {
-		if item.ID == fmt.Sprintf("fixed_mod_%d", packID) {
+		if item.ID == fmt.Sprintf("fixed_mod_%d", itemID) {
 			return item, true
 		}
 	}
 
 	for _, item := range lobby.ShopState.RerollableItems {
-		if item.ID == fmt.Sprintf("rerollable_item_%d", packID) {
+		if item.ID == fmt.Sprintf("rerollable_item_%d", itemID) {
 			return item, true
 		}
 	}
@@ -210,4 +232,52 @@ var JokerWeights = []struct {
 	{8, 10}, // Petpet: 10% chance
 	{9, 5},  // EmptyJoker: 5% chance
 	{10, 5}, // TwoFriendsJoker: 5% chance
+}
+
+// PurchaseJoker processes the purchase of a joker by a player
+func PurchaseJoker(redisClient *redis_services.RedisClient, player *redis.InGamePlayer,
+	item redis.ShopItem, clientPrice int) (bool, *redis.InGamePlayer, error) {
+	// Verify the item type
+	if item.Type != game_constants.JOKER_TYPE {
+		return false, nil, fmt.Errorf("item is not a joker")
+	}
+
+	// Verify that client-provided price matches the server's price
+	if clientPrice != item.Price {
+		return false, nil, fmt.Errorf("price mismatch: expected %d, got %d", item.Price, clientPrice)
+	}
+
+	// Check if player has enough money
+	if player.PlayersMoney < item.Price {
+		return false, nil, fmt.Errorf("insufficient funds: need %d, have %d", item.Price, player.PlayersMoney)
+	}
+
+	// Get the current jokers from player's inventory
+	var currentJokers poker.Jokers
+	if player.CurrentJokers != nil && len(player.CurrentJokers) > 0 {
+		if err := json.Unmarshal(player.CurrentJokers, &currentJokers); err != nil {
+			return false, nil, fmt.Errorf("error parsing player's jokers: %v", err)
+		}
+	} else {
+		// Initialize empty jokers array if none exists
+		currentJokers = poker.Jokers{
+			Juglares: []int{},
+		}
+	}
+
+	// Add the joker to player's collection
+	jokerID := item.JokerId
+	currentJokers.Juglares = append(currentJokers.Juglares, jokerID)
+
+	// Deduct the price from player's money
+	player.PlayersMoney -= item.Price
+
+	// Update player's joker inventory
+	updatedJokersJSON, err := json.Marshal(currentJokers)
+	if err != nil {
+		return false, nil, fmt.Errorf("error updating jokers: %v", err)
+	}
+	player.CurrentJokers = updatedJokersJSON
+
+	return true, player, nil
 }

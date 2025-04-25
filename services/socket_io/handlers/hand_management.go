@@ -101,6 +101,8 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		// 3. Calculate base points
 		fichas, mult, handType, scored_cards := poker.BestHand(hand)
 
+		fichas += poker.AddChipsPerCard(scored_cards)
+
 		enhancedFichas, enhancedMult := poker.ApplyEnhancements(fichas, mult, scored_cards)
 
 		// 4. Apply jokers (passing the hand which contains the jokers)
@@ -239,6 +241,9 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			client.Emit("error", gin.H{"error": "There are not enough cards available in the deck"})
 			return
 		}
+
+		// TODO Update around here hand in redis
+
 		// Add the new cards to the hand
 		currentHand = append(currentHand, newCards...)
 		player.CurrentHand, err = json.Marshal(currentHand)
@@ -615,6 +620,7 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// Also update around here player hand
 		// 6. Update the player's info in Redis
 		deck.PlayedCards = append(deck.PlayedCards, discard...)
 		deck.RemoveCards(newCards)
