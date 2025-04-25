@@ -80,7 +80,7 @@ type LobbyShop struct {
 }
 
 type ShopItem struct {
-	ID         string       `json:"id"`
+	ID         int          `json:"id"`
 	Type       string       `json:"type"` // "card", "joker", "pack", "modifier"
 	Price      int          `json:"price"`
 	PackSeed   int64        `json:"pack_seed,omitempty"`

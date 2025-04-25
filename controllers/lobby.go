@@ -383,6 +383,8 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			CurrentPoints:   0,
 			TotalPoints:     0,
 			BetMinimumBlind: true,
+			// NEW: initially, the player hasn't bought any packs yet
+			LastPurchasedPackItemId: -1,
 		}
 
 		if err := redisClient.SaveInGamePlayer(redisPlayer); err != nil {

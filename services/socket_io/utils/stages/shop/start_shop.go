@@ -33,6 +33,16 @@ func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 
 	// Send personalized message to each player
 	for _, player := range players {
+		// KEY: Reset the last purchased pack ID to prevent exploits between rounds
+		player.LastPurchasedPackItemId = -1
+
+		// Save the updated player state
+		err := redisClient.SaveInGamePlayer(&player)
+		if err != nil {
+			log.Printf("[SHOP-MULTICAST-WARNING] Failed to reset LastPurchasedPackItemId for player %s: %v",
+				player.Username, err)
+		}
+
 		// Get player's socket using GetConnection
 		playerSocket, exists := sio.GetConnection(player.Username)
 		if !exists {
