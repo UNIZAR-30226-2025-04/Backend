@@ -93,6 +93,13 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			}
 		}
 
+		var actualCurrentBet int
+		if player.BetMinimumBlind {
+			actualCurrentBet = lobby.CurrentBaseBlind
+		} else {
+			actualCurrentBet = lobby.CurrentHighBlind
+		}
+
 		// Create a response with comprehensive game and player state
 		response := gin.H{
 			// Game state information
@@ -110,7 +117,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 				"username":      player.Username,
 				"players_money": player.PlayersMoney,
 				// NEW: include the blind the user bet to
-				"bet_minimum_blind": player.BetMinimumBlind,
+				"actual_current_bet": actualCurrentBet,
 				// TODO: see in_game_player.go
 				// "remaining_deck_cards": player.PlayersRemainingCards,
 				"current_hand": player.CurrentHand,
