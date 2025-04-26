@@ -91,8 +91,9 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 				"players_money": player.PlayersMoney,
 				// TODO: see in_game_player.go
 				// "remaining_deck_cards": player.PlayersRemainingCards,
-				"current_hand":      player.CurrentHand,
-				"modifiers":         player.Modifiers,
+				"current_hand": player.CurrentHand,
+				"modifiers":    player.Modifiers,
+				// TODO, include additional joker information
 				"current_jokers":    player.CurrentJokers,
 				"current_points":    player.CurrentPoints,
 				"total_points":      player.TotalPoints,

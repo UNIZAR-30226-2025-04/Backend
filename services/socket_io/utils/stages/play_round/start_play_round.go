@@ -55,7 +55,7 @@ func PrepareRoundStart(redisClient *redis.RedisClient, lobbyID string) (*redis_m
 	return lobby, blind, nil
 }
 
-func BroadcastRoundStart(sio *socketio_types.SocketServer, redisClient *redis.RedisClient, lobbyID string, round int, blind int, timeout int) {
+func ResetPlayerAndBroadcastRoundStart(sio *socketio_types.SocketServer, redisClient *redis.RedisClient, lobbyID string, round int, blind int, timeout int) {
 	log.Printf("[ROUND-BROADCAST] Broadcasting round start event for lobby %s", lobbyID)
 
 	// Get the game lobby from Redis
@@ -72,7 +72,60 @@ func BroadcastRoundStart(sio *socketio_types.SocketServer, redisClient *redis.Re
 	}
 
 	// Send personalized message to each player
-	for _, player := range players {
+	for i, player := range players {
+		// Reset player state for the new round
+
+		// Reset current points
+		player.CurrentPoints = 0
+		// KEY, totalPoints account for the current round
+		player.TotalPoints = 0
+
+		// Reset hand plays and discards limits
+		player.HandPlaysLeft = game_constants.TOTAL_HAND_PLAYS
+		player.DiscardsLeft = game_constants.TOTAL_DISCARDS
+
+		// Reset current hand to empty array
+		emptyHand := []poker.Card{}
+		emptyHandJSON, err := json.Marshal(emptyHand)
+		if err != nil {
+			log.Printf("[ROUND-RESET-ERROR] Error creating empty hand for player %s: %v",
+				player.Username, err)
+			continue
+		}
+		// TODO, should be an empty hand
+		player.CurrentHand = emptyHandJSON
+
+		// Create new deck with standard cards + purchased pack cards
+		playersCurrentDeck := poker.NewStandardDeck()
+
+		// Add purchased cards to the deck if any exist
+		if player.PurchasedPackCards != nil && len(player.PurchasedPackCards) > 0 {
+			var purchasedCards []poker.Card
+			if err := json.Unmarshal(player.PurchasedPackCards, &purchasedCards); err != nil {
+				log.Printf("[ROUND-RESET-ERROR] Error parsing purchased cards for player %s: %v",
+					player.Username, err)
+			} else {
+				// Add purchased cards to the deck
+				playersCurrentDeck.TotalCards = append(playersCurrentDeck.TotalCards, purchasedCards...)
+			}
+		}
+
+		// Shuffle the deck
+		playersCurrentDeck.Shuffle()
+
+		// Update player's deck
+		player.CurrentDeck = playersCurrentDeck.ToJSON()
+
+		// Save the updated player state to Redis
+		if err := redisClient.SaveInGamePlayer(&player); err != nil {
+			log.Printf("[ROUND-RESET-ERROR] Error saving updated player %s: %v",
+				player.Username, err)
+			continue
+		}
+
+		// Update local reference for broadcast
+		players[i] = player
+
 		// Get player's socket using GetConnection
 		playerSocket, exists := sio.GetConnection(player.Username)
 		if !exists {
@@ -80,11 +133,7 @@ func BroadcastRoundStart(sio *socketio_types.SocketServer, redisClient *redis.Re
 			continue
 		}
 
-		var deckSize int = 0
-		if player.CurrentDeck != nil {
-			deck, _ := poker.DeckFromJSON(player.CurrentDeck)
-			deckSize = len(deck.TotalCards)
-		}
+		deckSize := len(playersCurrentDeck.TotalCards)
 
 		// Send personalized message to this player
 		playerSocket.Emit("starting_round", gin.H{
@@ -94,13 +143,14 @@ func BroadcastRoundStart(sio *socketio_types.SocketServer, redisClient *redis.Re
 			"timeout_start_date": lobby.GameRoundTimeout.Format(time.RFC3339),
 			"total_hand_plays":   game_constants.TOTAL_HAND_PLAYS,
 			"total_discards":     game_constants.TOTAL_DISCARDS,
-			"current_pot":        lobby.CurrentRound + lobby.CurrentRound/2 + 1, // NOTE: formula specified in constants/game/constants.go
+			"current_pot":        lobby.CurrentRound + lobby.CurrentRound/2 + 1,
 			"current_jokers":     player.CurrentJokers,
 			"active_vouchers":    player.ActivatedModifiers,
 			"current_deck_size":  deckSize,
 		})
 
-		log.Printf("[SHOP-MULTICAST] Sent personalized shop data to player %s", player.Username)
+		log.Printf("[ROUND-RESET] Reset player %s state for new round with %d cards in deck",
+			player.Username, deckSize)
 	}
 
 	log.Printf("[ROUND-BROADCAST] Sent round start event to lobby %s with round %d and blind %d",

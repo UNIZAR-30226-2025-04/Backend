@@ -218,11 +218,11 @@ func AdvanceToNextRoundPlayIfUndone(redisClient *redis.RedisClient, db *gorm.DB,
 	// Step 1.5: Apply round modifiers to all players
 	play_round.ApplyRoundModifiers(redisClient, lobbyID, sio)
 
-	// Step 2: Start the round play timeout, BEFORE BroadcastRoundStart to send the updated timeout start date to the players
+	// Step 2: Start the round play timeout, BEFORE ResetPlayerAndBroadcastRoundStart to send the updated timeout start date to the players
 	StartRoundPlayTimeout(redisClient, db, lobbyID, sio)
 
 	// Step 3: Broadcast round start event
-	play_round.BroadcastRoundStart(sio, redisClient, lobbyID, updatedLobby.CurrentRound, blind, int(PLAY_ROUND_TIMEOUT.Seconds()))
+	play_round.ResetPlayerAndBroadcastRoundStart(sio, redisClient, lobbyID, updatedLobby.CurrentRound, blind, int(PLAY_ROUND_TIMEOUT.Seconds()))
 
 	log.Printf("[ROUND-PLAY-ADVANCE-SUCCESS] Advanced lobby %s to round play phase", lobbyID)
 
