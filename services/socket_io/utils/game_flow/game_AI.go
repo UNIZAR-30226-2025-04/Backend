@@ -894,13 +894,26 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 		Sender:   username,
 	})
 
-	activated_modifiersJSON, err := json.Marshal(activated_modifiers)
+	var receiver_modifiers []poker.ReceivedModifier
+	err = json.Unmarshal(receiver.ReceivedModifiers, &receiver_modifiers)
 	if err != nil {
-		log.Printf("[AI-MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
+		log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
 		return
 	}
 
-	receiver.ReceivedModifiers = activated_modifiersJSON
+	receiver_modifiers = append(receiver_modifiers, activated_modifiers...)
+	receiver.ReceivedModifiers, err = json.Marshal(receiver_modifiers)
+	if err != nil {
+		log.Printf("[MODIFIER-ERROR] Error marshaling modifiers: %v", err)
+		return
+	}
+	// Save the updated player data
+	err = redisClient.UpdateDeckPlayer(*receiver)
+	if err != nil {
+		log.Printf("[MODIFIER-ERROR] Error updating player data: %v", err)
+		return
+	}
+
 	log.Printf("[AI-MODIFIER-INFO] Activated modifiers for user %s: %v", receiver.Username, activated_modifiers)
 
 	// Notify the receiving player

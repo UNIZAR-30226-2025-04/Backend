@@ -23,7 +23,7 @@ import (
 // @Tags lobby
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
-// @Param public formData boolean false "Set to true for public lobby, false or omitted for private lobby"
+// @Param public formData int true "Set to 1 for public lobby, 2 for AI lobby and 0 for private lobby"
 // @Success 200 {object} object{message=string,lobby_id=string}
 // @Failure 400 {object} object{error=string}
 // @Failure 401 {object} object{error=string}
