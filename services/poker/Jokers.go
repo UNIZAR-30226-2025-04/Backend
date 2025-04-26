@@ -12,8 +12,9 @@ type Jokers struct {
 
 type JokerFunc func(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool)
 
+// TODO, use it?
 const MaxJokers = 10
-const ExpSellPriceDenominator = 6
+const ExpSellPriceDenominator = 9
 
 var jokerTable = map[int]JokerFunc{
 	1:  SolidSevenJoker,
@@ -330,7 +331,7 @@ func ApplyJokers(hand Hand, js Jokers, initialFichas int, initialMult int, curre
 }
 
 // Returns a joker's sell price based on its ID.
-// The max price for a joker with ID 15 will be e^(15/6) = e^2.5 ~= 12
+// The max price for a joker with ID 23 will be e^(23/9) = e^2.55 ~= 12
 func CalculateJokerSellPrice(jokerID int) int {
 	return int(math.Exp(float64(jokerID / ExpSellPriceDenominator)))
 }

@@ -73,6 +73,26 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			return
 		}
 
+		// Get current jokers with sell prices
+		var currentJokers poker.Jokers
+		var jokersWithPrices []gin.H
+
+		if player.CurrentJokers != nil && len(player.CurrentJokers) > 0 {
+			if err := json.Unmarshal(player.CurrentJokers, &currentJokers); err == nil {
+				// Calculate sell price for each joker
+				for _, jokerID := range currentJokers.Juglares {
+					if jokerID != 0 { // Skip empty slots
+						jokersWithPrices = append(jokersWithPrices, gin.H{
+							"id":         jokerID,
+							"sell_price": poker.CalculateJokerSellPrice(jokerID),
+						})
+					}
+				}
+			} else {
+				log.Printf("[PHASE-INFO-WARNING] Error parsing jokers: %v", err)
+			}
+		}
+
 		// Create a response with comprehensive game and player state
 		response := gin.H{
 			// Game state information
@@ -93,8 +113,8 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 				// "remaining_deck_cards": player.PlayersRemainingCards,
 				"current_hand": player.CurrentHand,
 				"modifiers":    player.Modifiers,
-				// TODO, include additional joker information
-				"current_jokers":    player.CurrentJokers,
+				// TODO, include additional joker information (should be enough with sell price as well)
+				"current_jokers":    jokersWithPrices,
 				"current_points":    player.CurrentPoints,
 				"total_points":      player.TotalPoints,
 				"hand_plays_left":   player.HandPlaysLeft,
