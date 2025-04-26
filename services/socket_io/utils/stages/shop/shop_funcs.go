@@ -85,7 +85,7 @@ func generateFixedModifiers(rng *rand.Rand, nextUniqueId *int) []redis.ShopItem 
 		modifiers[i] = redis.ShopItem{
 			ID:         *nextUniqueId,
 			Type:       game_constants.MODIFIER_TYPE,
-			Price:      50 + rng.Intn(50),
+			Price:      2, // 50 + rng.Intn(50), TODO, CHANGE, Emilliano estaba pobre
 			ModifierId: modifierID,
 		}
 
@@ -110,7 +110,7 @@ func generateRerollableItems(rng *rand.Rand, count int, nextUniqueId *int) []red
 		rerollableItems[i] = redis.ShopItem{
 			ID:      *nextUniqueId,
 			Type:    game_constants.JOKER_TYPE,
-			Price:   50 + rng.Intn(50),
+			Price:   2,                     // 50 + rng.Intn(50), TODO, CHANGE, Emilliano estaba pobre
 			JokerId: jokers[i].Juglares[0], // Assuming we want the first joker
 			// NOTE: only needed for packs
 			// PackSeed: rng.Int63(),
