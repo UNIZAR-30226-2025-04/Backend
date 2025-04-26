@@ -109,6 +109,8 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			"player_data": gin.H{
 				"username":      player.Username,
 				"players_money": player.PlayersMoney,
+				// NEW: include the blind the user bet to
+				"bet_minimum_blind": player.BetMinimumBlind,
 				// TODO: see in_game_player.go
 				// "remaining_deck_cards": player.PlayersRemainingCards,
 				"current_hand": player.CurrentHand,
