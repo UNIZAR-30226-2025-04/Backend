@@ -29,4 +29,7 @@ type InGamePlayer struct {
 
 	// Field to indicate if the player is a bot
 	IsBot bool `json:"is_bot"` // Matches in_game_players.is_bot
+
+	// Field to store cards that the player has picked from purchased packs
+	PurchasedPackCards json.RawMessage `json:"picked_cards"` // Matches in_game_players.picked_cards
 }

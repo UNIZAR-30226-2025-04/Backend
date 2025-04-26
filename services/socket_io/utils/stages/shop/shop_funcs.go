@@ -477,24 +477,21 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		return nil, fmt.Errorf("the selected joker is not in the pack")
 	}
 
-	// Add selected card to player's deck (TotalCards attribute)
-	var currentDeck poker.Deck
-	if player.CurrentDeck != nil && len(player.CurrentDeck) > 0 {
-		if err := json.Unmarshal(player.CurrentDeck, &currentDeck); err != nil {
-			return nil, fmt.Errorf("error parsing player's deck: %v", err)
+	// Store selected card in PurchasedPackCards instead of CurrentDeck
+	var purchasedCards []poker.Card
+	if player.PurchasedPackCards != nil && len(player.PurchasedPackCards) > 0 {
+		if err := json.Unmarshal(player.PurchasedPackCards, &purchasedCards); err != nil {
+			return nil, fmt.Errorf("error parsing player's purchased cards: %v", err)
 		}
 	} else {
-		currentDeck = poker.Deck{
-			TotalCards:  []poker.Card{},
-			PlayedCards: []poker.Card{},
-		}
+		purchasedCards = []poker.Card{}
 	}
-	currentDeck.TotalCards = append(currentDeck.TotalCards, selectedCard)
-	updatedDeckJSON, err := json.Marshal(currentDeck)
+	purchasedCards = append(purchasedCards, selectedCard)
+	updatedPurchasedCardsJSON, err := json.Marshal(purchasedCards)
 	if err != nil {
-		return nil, fmt.Errorf("error updating deck: %v", err)
+		return nil, fmt.Errorf("error updating purchased cards: %v", err)
 	}
-	player.CurrentDeck = updatedDeckJSON
+	player.PurchasedPackCards = updatedPurchasedCardsJSON
 
 	// Add selected joker to player's jokers
 	var currentJokers poker.Jokers

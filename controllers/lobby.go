@@ -8,6 +8,7 @@ import (
 	"Nogler/services/poker"
 	"Nogler/services/redis"
 	"Nogler/utils"
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -406,6 +407,8 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		}
 
 		// Create Redis InGamePlayer entry
+		purchasedPackCards := make([]poker.Card, 0)
+		purchasedPackCardsJSON, _ := json.Marshal(purchasedPackCards)
 		redisPlayer := &redis_models.InGamePlayer{
 			Username:     username,
 			LobbyId:      lobbyID,
@@ -424,6 +427,7 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			BetMinimumBlind: true,
 			// NEW: initially, the player hasn't bought any packs yet
 			LastPurchasedPackItemId: -1,
+			PurchasedPackCards:      purchasedPackCardsJSON,
 		}
 
 		if err := redisClient.SaveInGamePlayer(redisPlayer); err != nil {
