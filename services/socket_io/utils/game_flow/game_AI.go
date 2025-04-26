@@ -475,11 +475,11 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 
 // SHOP
 
-func ShopaAI(redis *redis.RedisClient, lobbyID string, shopState *redis_models.LobbyShop) {
+func ShopAI(redisClient *redis.RedisClient, lobbyID string, shopState *redis_models.LobbyShop) {
 	log.Printf("ShopAI initiated - User: %s", username)
 
 	// Get player state first to extract lobby ID
-	playerState, err := redis.GetAIfromLobby(username)
+	playerState, err := redisClient.GetAIfromLobby(username)
 	if err != nil {
 		log.Printf("[AI-SHOP-ERROR] Error getting player state: %v", err)
 		return
@@ -487,12 +487,12 @@ func ShopaAI(redis *redis.RedisClient, lobbyID string, shopState *redis_models.L
 
 	log.Printf("[AI-INFO] Getting lobby ID info: %s for AI: %s", lobbyID, username)
 
-	valid, err := socketio_utils.ValidateShopPhase(redis, nil, lobbyID)
+	valid, err := socketio_utils.ValidateShopPhase(redisClient, nil, lobbyID)
 	if err != nil || !valid {
 		return
 	}
 
-	lobbyState, err := redis.GetGameLobby(lobbyID)
+	lobbyState, err := redisClient.GetGameLobby(lobbyID)
 	if err != nil {
 		log.Printf("[AI-SHOP-ERROR] Error getting lobby state: %v", err)
 		return
@@ -524,7 +524,7 @@ func ShopaAI(redis *redis.RedisClient, lobbyID string, shopState *redis_models.L
 				return
 			} else {
 				jokerToSell := rand.Intn(numJokers)
-				sellJokerAI(redis, playerState, jokers.Juglares[jokerToSell])
+				sellJokerAI(redisClient, playerState, jokers.Juglares[jokerToSell])
 				// If the AI has more than 3 jokers, sell another one
 				if numJokers > 3 {
 					// Sell other joker
@@ -533,7 +533,7 @@ func ShopaAI(redis *redis.RedisClient, lobbyID string, shopState *redis_models.L
 						jokerToSell2 = rand.Intn(numJokers)
 					}
 					if jokerToSell2 != jokerToSell {
-						sellJokerAI(redis, playerState, jokers.Juglares[jokerToSell2])
+						sellJokerAI(redisClient, playerState, jokers.Juglares[jokerToSell2])
 					}
 				}
 				return
@@ -567,7 +567,7 @@ func ShopaAI(redis *redis.RedisClient, lobbyID string, shopState *redis_models.L
 					item := shopState.FixedPacks[which]
 					itemID := item.ID
 					price := shopState.FixedPacks[which].Price
-					purchasePackAI(redis, playerState, lobbyState, item, itemID, price)
+					purchasePackAI(redisClient, playerState, lobbyState, item, itemID, price)
 				case 1:
 					// Buy joker
 					// Which joker?
@@ -575,7 +575,7 @@ func ShopaAI(redis *redis.RedisClient, lobbyID string, shopState *redis_models.L
 					item := shopState.RerollableItems[which]
 					itemID := item.ID
 					price := shopState.RerollableItems[which].Price
-					purchaseJokerAI(redis, playerState, lobbyState, item, itemID, price)
+					purchaseJokerAI(redisClient, playerState, lobbyState, item, itemID, price)
 				case 2:
 					// Buy voucher
 					// Which voucher?
@@ -583,7 +583,7 @@ func ShopaAI(redis *redis.RedisClient, lobbyID string, shopState *redis_models.L
 					item := shopState.FixedModifiers[which]
 					itemID := item.ID
 					price := shopState.FixedModifiers[which].Price
-					purchaseVoucherAI(redis, playerState, lobbyState, item, itemID, price)
+					purchaseVoucherAI(redisClient, playerState, lobbyState, item, itemID, price)
 				}
 			}
 		}
@@ -653,18 +653,17 @@ func purchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models
 }
 
 func sellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer, jokerID int) {
-	log.Printf("SellJoker initiated - User: %s, Args: %v", username)
 
 	// Process the joker sale
 	updatedPlayer, _, err := shop.SellJoker(playerState, jokerID)
 	if err != nil {
-		log.Printf("[SHOP-ERROR] Sale failed: %v", err)
+		log.Printf("[AI-SHOP-ERROR] Sale failed: %v", err)
 		return
 	}
 
 	// Save the updated player state
 	if err := redisClient.SaveInGamePlayer(updatedPlayer); err != nil {
-		log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+		log.Printf("[AI-SHOP-ERROR] Error saving player state: %v", err)
 		return
 	}
 }
@@ -681,12 +680,209 @@ func VouchersAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_ty
 		return
 	}
 
-	log.Printf("[AI-INFO] Getting lobby ID info: %s for AI: %s", lobbyID, username)
-
 	// Validate vouchers phase
 	valid, err := socketio_utils.ValidateVouchersPhase(redisClient, nil, lobbyID)
 	if err != nil || !valid {
 		return
 	}
 
+	var modifiers poker.Modifiers
+	err = json.Unmarshal(player.Modifiers, &modifiers)
+	if err != nil {
+		log.Printf("[AI-VOUCHER-ERROR] Error parsing modifiers: %v", err)
+		return
+	}
+
+	// Activate vouchers
+	numModifiers := len(modifiers.Modificadores)
+	if numModifiers > 0 {
+		// Order vouchers
+		var order []int
+		for i := 0; i < numModifiers; i++ {
+			randomValue := rand.Intn(numModifiers)
+			for j := 0; j < len(order); j++ {
+				if order[j] == randomValue {
+					randomValue = rand.Intn(3)
+					j = -1
+				}
+			}
+			order = append(order, randomValue)
+		}
+		// How many vouchers to activate?
+		numVouchers := rand.Intn(numModifiers + 1)
+		for i := 0; i < numVouchers; i++ {
+			if modifiers.Modificadores[i].Value == 0 {
+				continue
+			}
+			// If the voucher is "EvilEye", send it to the opponent
+			if modifiers.Modificadores[i].Value == 1 {
+				sendVoucherAI(redisClient, player, lobbyID, modifiers.Modificadores[i], sio)
+			} else {
+				activateVoucherAI(redisClient, player, modifiers.Modificadores[i])
+			}
+		}
+	}
+}
+
+func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer,
+	modifier poker.Modifier) {
+
+	var player_modifiers []poker.Modifier
+	err := json.Unmarshal(player.Modifiers, &player_modifiers)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error parsing modifiers: %v", err)
+		return
+	}
+
+	// Check if the modifier is available
+	found := false
+	var mod int
+	for _, m := range player_modifiers {
+		if m == modifier {
+			found = true
+			mod = int(m.Value)
+			break
+		}
+		if found {
+			break
+		}
+	}
+	if !found {
+		log.Printf("[AI-MODIFIER-ERROR] Modifier %d not available for user %s", mod, username)
+		return
+	}
+
+	// Add the activated modifiers to the player
+	var activated_modifiers []poker.Modifier
+	activated_modifiers = append(activated_modifiers, modifier)
+	activated_modifiersJSON, err := json.Marshal(activated_modifiers)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
+		return
+	}
+	player.ActivatedModifiers = activated_modifiersJSON
+	log.Printf("[AI-MODIFIER-INFO] Activated modifiers for user %s: %v", username, activated_modifiers)
+
+	// Remove the activated modifier from the available modifiers
+	for i, v := range player_modifiers {
+		if v == modifier {
+			found = true
+			player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
+		}
+		if found {
+			break
+		}
+	}
+
+	modifiersJSON, err := json.Marshal(player_modifiers)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error marshaling modifiers: %v", err)
+		return
+	}
+	player.Modifiers = modifiersJSON
+
+	err = redisClient.UpdateDeckPlayer(*player)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error updating player data: %v", err)
+		return
+	}
+
+}
+
+func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer,
+	lobbyID string, modifier poker.Modifier, sio *socketio_types.SocketServer) {
+
+	var player_modifiers []poker.Modifier
+	err := json.Unmarshal(player.Modifiers, &player_modifiers)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error parsing modifiers: %v", err)
+		return
+	}
+
+	// Check if the modifiers are available
+	found := false
+	var mod int
+	for _, m := range player_modifiers {
+		if m == modifier {
+			found = true
+			mod = int(m.Value)
+			break
+		}
+		if found {
+			break
+		}
+	}
+	if !found {
+		log.Printf("[AI-MODIFIER-ERROR] Modifier %d not available for user %s", mod, username)
+		return
+	}
+
+	// Remove the activated modifier from the available modifiers
+	for i, v := range player_modifiers {
+		if v == modifier {
+			found = true
+			player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
+		}
+		if found {
+			break
+		}
+	}
+
+	modifiersJSON, err := json.Marshal(player_modifiers)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error marshaling modifiers: %v", err)
+		return
+	}
+	player.Modifiers = modifiersJSON
+
+	err = redisClient.UpdateDeckPlayer(*player)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error updating player data: %v", err)
+		return
+	}
+
+	// Get the opponent's username
+	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error getting players in lobby: %v", err)
+		return
+	}
+	var request_player string
+	if players[0].IsBot {
+		request_player = players[1].Username
+	} else {
+		request_player = players[0].Username
+	}
+
+	// Update the receiving player
+
+	receiver, err := redisClient.GetInGamePlayer(request_player)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error getting player data: %v", err)
+		return
+	}
+
+	// Add the activated modifiers to the player
+	var activated_modifiers []poker.ReceivedModifier
+	activated_modifiers = append(activated_modifiers, poker.ReceivedModifier{
+		Modifier: modifier,
+		Sender:   username,
+	})
+
+	activated_modifiersJSON, err := json.Marshal(activated_modifiers)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
+		return
+	}
+
+	receiver.ReceivedModifiers = activated_modifiersJSON
+	log.Printf("[AI-MODIFIER-INFO] Activated modifiers for user %s: %v", receiver.Username, activated_modifiers)
+
+	// Notify the receiving player
+	sio.Sio_server.To(socket.Room(lobbyID)).Emit("AI_modifiers_received", gin.H{
+		"modifiers": receiver.ReceivedModifiers,
+		"sender":    username,
+	})
+
+	log.Printf("[AI-MODIFIER-SUCCESS] Modifiers sent to user %s from %s: %v", request_player, username, modifier)
 }
