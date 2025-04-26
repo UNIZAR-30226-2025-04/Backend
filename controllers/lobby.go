@@ -41,10 +41,12 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		// Parse public parameter with default to false (private)
 		isPublic := 0
 		publicParam := c.PostForm("public")
-		if publicParam == "true" {
+		if publicParam == "1" {
 			isPublic = 1
-		} else if publicParam == "AI" {
+		} else if publicParam == "2" {
 			isPublic = 2
+		} else if publicParam == "0" {
+			isPublic = 0
 		}
 
 		var user models.User
