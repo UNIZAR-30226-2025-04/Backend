@@ -301,30 +301,3 @@ func (rc *RedisClient) GetAllPlayersInLobby(lobbyId string) ([]redis_models.InGa
 
 	return players, nil
 }
-
-// GetAIfromLobby retrieves the AI state from Redis
-// key format: "lobby:{id}:ai"
-// Returns: InGamePlayer struct or error
-func (rc *RedisClient) GetAIfromLobby(lobbyID string) (*redis_models.InGamePlayer, error) {
-	var players []redis_models.InGamePlayer
-	key := redis_utils.FormatLobbyAIKey(lobbyID)
-	data, err := rc.client.Get(rc.ctx, key).Bytes()
-	if err != nil {
-		return nil, fmt.Errorf("error getting players data: %v", err)
-	}
-	if err := json.Unmarshal(data, &players); err != nil {
-		return nil, fmt.Errorf("error unmarshaling players data: %v", err)
-	}
-	if len(players) == 0 {
-		return nil, fmt.Errorf("no players found for lobby %s", lobbyID)
-	} else {
-		if players[0].IsBot {
-			return &players[0], nil
-		} else if players[1].IsBot {
-			return &players[1], nil
-		} else {
-			return nil, fmt.Errorf("no AI found for lobby %s", lobbyID)
-		}
-	}
-
-}

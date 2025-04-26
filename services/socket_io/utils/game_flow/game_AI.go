@@ -20,6 +20,36 @@ import (
 
 const username = "Noglerinho" // AI username
 
+func getAIplayer(redisClient *redis.RedisClient, lobbyID string) (*redis_models.InGamePlayer, error) {
+	// Get player data from Redis
+	player, err := redisClient.GetAllPlayersInLobby(lobbyID)
+	if err != nil {
+		log.Printf("[AI-ERROR] Error getting player data: %v", err)
+		return nil, err
+	}
+	if player[0].IsBot {
+		return &player[0], nil
+	} else if player[1].IsBot {
+		return &player[1], nil
+	}
+	return nil, nil
+}
+
+func getAIoponent(redisClient *redis.RedisClient, lobbyID string) (*redis_models.InGamePlayer, error) {
+	// Get player data from Redis
+	player, err := redisClient.GetAllPlayersInLobby(lobbyID)
+	if err != nil {
+		log.Printf("[AI-ERROR] Error getting player data: %v", err)
+		return nil, err
+	}
+	if player[0].IsBot {
+		return &player[1], nil
+	} else if player[1].IsBot {
+		return &player[0], nil
+	}
+	return nil, nil
+}
+
 // BLIND
 
 func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) {
@@ -40,7 +70,7 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 		return
 	}
 
-	AI, err := redisClient.GetAIfromLobby(lobbyID)
+	AI, err := getAIplayer(redisClient, lobbyID)
 	if err != nil {
 		log.Printf("[AI-BLIND-ERROR] Error getting player data: %v", err)
 		return
@@ -80,7 +110,7 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 
 	// Increment the counter of proposed blinds (NEW, using a map to avoid same user incrementing the counter several times)
 	lobby.ProposedBlinds[username] = true
-	log.Printf("[BLIND] Player %s proposed blind. Total proposals: %d/%d",
+	log.Printf("[AI-BLIND] Player %s proposed blind. Total proposals: %d/%d",
 		username, len(lobby.ProposedBlinds), lobby.PlayerCount)
 
 	// Save the updated lobby
@@ -116,9 +146,9 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 	log.Printf("PlayHandsAI started - Usuario: %s", username)
 
 	// 1. Get player data from Redis to extract lobby ID
-	player, err := redisClient.GetAIfromLobby(lobbyID)
+	player, err := getAIplayer(redisClient, lobbyID)
 	if err != nil {
-		log.Printf("[HAND-ERROR] Error getting player data: %v", err)
+		log.Printf("[AI-HAND-ERROR] Error getting player data: %v", err)
 		return
 	}
 
@@ -133,7 +163,7 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 
 		// 2. Check if the player has enough plays left
 		if player.HandPlaysLeft <= 0 {
-			log.Printf("[HAND-ERROR] No hand plays left %s", username)
+			log.Printf("[AI-HAND-ERROR] No hand plays left %s", username)
 			return
 		}
 
@@ -141,7 +171,7 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		var currentHand []poker.Card
 		err = json.Unmarshal(player.CurrentHand, &currentHand)
 		if err != nil {
-			log.Printf("[HAND-ERROR] Error parsing the hand %v", err)
+			log.Printf("[AI-HAND-ERROR] Error parsing the hand %v", err)
 			return
 		}
 
@@ -479,7 +509,7 @@ func ShopAI(redisClient *redis.RedisClient, lobbyID string, shopState *redis_mod
 	log.Printf("ShopAI initiated - User: %s", username)
 
 	// Get player state first to extract lobby ID
-	playerState, err := redisClient.GetAIfromLobby(username)
+	playerState, err := getAIplayer(redisClient, lobbyID)
 	if err != nil {
 		log.Printf("[AI-SHOP-ERROR] Error getting player state: %v", err)
 		return
@@ -674,7 +704,7 @@ func VouchersAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_ty
 	log.Printf("VouchersAI initiated - User: %s", username)
 
 	// Get player data from Redis
-	player, err := redisClient.GetAIfromLobby(lobbyID)
+	player, err := getAIplayer(redisClient, lobbyID)
 	if err != nil {
 		log.Printf("[AI-VOUCHER-ERROR] Error getting player data: %v", err)
 		return
@@ -842,17 +872,12 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	}
 
 	// Get the opponent's username
-	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
+	requested, err := getAIoponent(redisClient, lobbyID)
 	if err != nil {
 		log.Printf("[AI-MODIFIER-ERROR] Error getting players in lobby: %v", err)
 		return
 	}
-	var request_player string
-	if players[0].IsBot {
-		request_player = players[1].Username
-	} else {
-		request_player = players[0].Username
-	}
+	request_player := requested.Username
 
 	// Update the receiving player
 
