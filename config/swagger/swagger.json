@@ -84,10 +84,11 @@
                         "required": true
                     },
                     {
-                        "type": "boolean",
-                        "description": "Set to true for public lobby, false or omitted for private lobby",
+                        "type": "integer",
+                        "description": "Set to 1 for public lobby, 2 for AI lobby and 0 for private lobby",
                         "name": "public",
-                        "in": "formData"
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -404,6 +405,65 @@
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/isUserInLobby": {
+            "get": {
+                "description": "Returns true or false, and if true, return the id of the user the lobby is in, and if false, empty string",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lobby"
+                ],
+                "summary": "Checks if user is in a lobby",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "in_lobby": {
+                                    "type": "boolean"
+                                },
+                                "lobby_id": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "properties": {

@@ -48,10 +48,11 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: Set to true for public lobby, false or omitted for private lobby
+      - description: Set to 1 for public lobby, 2 for AI lobby and 0 for private lobby
         in: formData
         name: public
-        type: boolean
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
@@ -269,6 +270,45 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Lists all existing public lobbies
+      tags:
+      - lobby
+  /auth/isUserInLobby:
+    get:
+      description: Returns true or false, and if true, return the id of the user the
+        lobby is in, and if false, empty string
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              in_lobby:
+                type: boolean
+              lobby_id:
+                type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Checks if user is in a lobby
       tags:
       - lobby
   /auth/joinLobby/{lobby_id}:

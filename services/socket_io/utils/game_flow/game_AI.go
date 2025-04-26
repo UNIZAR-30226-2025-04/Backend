@@ -132,7 +132,7 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 		time.Sleep(2 * time.Second)
 
 		// Broadcast the new blind value to everyone in the lobby
-		sio.Sio_server.To(socket.Room(lobbyID)).Emit("AI_blind_updated", gin.H{
+		sio.Sio_server.To(socket.Room(lobbyID)).Emit("blind_updated", gin.H{
 			"old_max_blind": currentBlind,
 			"new_blind":     proposedBlind,
 			"proposed_by":   username,
@@ -917,7 +917,7 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	log.Printf("[AI-MODIFIER-INFO] Activated modifiers for user %s: %v", receiver.Username, activated_modifiers)
 
 	// Notify the receiving player
-	sio.Sio_server.To(socket.Room(lobbyID)).Emit("AI_modifiers_received", gin.H{
+	sio.Sio_server.To(socket.Room(lobbyID)).Emit("modifiers_received", gin.H{
 		"modifiers": receiver.ReceivedModifiers,
 		"sender":    username,
 	})

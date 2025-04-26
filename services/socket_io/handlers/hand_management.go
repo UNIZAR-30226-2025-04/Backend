@@ -1004,7 +1004,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// Notify the receiving player
 		sio.UserConnections[receiver.Username].Emit("modifiers_received", gin.H{
-			"modifiers": receiver.ReceivedModifiers,
+			"modifiers": activated_modifiers,
 			"sender":    username,
 		})
 
