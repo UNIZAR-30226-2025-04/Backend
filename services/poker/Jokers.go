@@ -28,6 +28,17 @@ var jokerTable = map[int]JokerFunc{
 	10: TwoFriendsJoker,
 	11: LiriliLarila,
 	12: BIRDIFICATION,
+	13: Rustyahh,
+	14: damnapril,
+	15: itssoover,
+	16: paris,
+	17: diego_joker,
+	18: bicicleta,
+	19: nasus,
+	20: sombrilla,
+	21: salebalatrito,
+	22: kaefece,
+	23: crowave,
 }
 
 // 5
@@ -131,6 +142,170 @@ func BIRDIFICATION(hand Hand, fichas int, mult int, gold int, used []bool, index
 		default:
 		}
 	}
+	return fichas, mult, gold, used
+}
+
+func Rustyahh(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+	return fichas, mult * 2, 0, used
+}
+
+func damnapril(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+	// Asegura que fichas no sea negativo
+	total := 14 + rand.Intn(6)     // 14-19
+	maxDelta := min(total, fichas) // Previene fichas negativas
+	delta := rand.Intn(maxDelta + 1)
+
+	return fichas + delta, mult + (total - delta), gold, used
+}
+
+func itssoover(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+
+	// +10 de oro si solo se juega 1 carta (mano de tamaño 1)
+	if len(hand.Cards) == 1 {
+		gold += 10
+	}
+
+	return fichas, mult, gold, used
+}
+
+func paris(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+	// +3 mult por cada pareja de cartas del mismo palo
+	suitCount := make(map[string]int)
+	for _, card := range hand.Cards {
+		suitCount[card.Suit]++
+	}
+	pairs := 0
+	for _, count := range suitCount {
+		pairs += count / 2
+	}
+	return fichas, mult + (3 * pairs), gold, used
+}
+
+func diego_joker(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+
+	// Solo activa si se juegan EXACTAMENTE 3 cartas
+	if len(hand.Cards) == 3 {
+		mult *= 4 // Multiplicador x4
+	}
+
+	return fichas, mult, gold, used
+}
+
+func bicicleta(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+
+	// Contar cuántos 2 hay en la mano
+	countTwos := 0
+	for _, card := range hand.Cards {
+		if grade(card) == 2 { // Asume que grade() devuelve 2 para cartas de valor 2
+			countTwos++
+		}
+	}
+
+	// Aplicar bonus por cada 2
+	mult += countTwos * 2
+	fichas += countTwos * 20
+
+	return fichas, mult, gold, used
+}
+
+func nasus(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+	return fichas, mult * gold, gold, used
+}
+
+func sombrilla(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+
+	// Check for face cards (J=11, Q=12, K=13, A=1/14)
+	hasFaceCard := false
+	for _, card := range hand.Cards {
+		val := grade(card)
+		if val >= 11 || val == 1 {
+			hasFaceCard = true
+			break
+		}
+	}
+
+	// Add +20 Mult if no face cards played
+	if !hasFaceCard {
+		mult += 20
+	}
+
+	return fichas, mult, gold, used
+}
+
+func salebalatrito(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+
+	// Contar cuántas veces aparece cada valor de carta
+	valueCounts := make(map[int]int)
+	for _, card := range hand.Cards {
+		valueCounts[grade(card)]++
+	}
+
+	// Verificar si hay al menos un trío (3 cartas del mismo valor)
+	hasTrio := false
+	for _, count := range valueCounts {
+		if count >= 3 {
+			hasTrio = true
+			break
+		}
+	}
+
+	// +50 fichas si hay trío
+	if hasTrio {
+		fichas += 50
+	}
+
+	return fichas, mult, gold, used
+}
+
+func kaefece(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	// Contar cartas negras
+	darkCards := 0
+	for _, card := range hand.Cards {
+		if card.Suit == "Spades" || card.Suit == "Clubs" {
+			darkCards++
+		}
+	}
+
+	// Efecto 1 (+5 Mult por carta negra)
+	bonus := 5
+	mult += darkCards * bonus
+
+	if darkCards >= 4 {
+		fichas += 50
+		mult *= 2
+	}
+
+	return fichas, mult * 2, gold, used
+}
+
+func crowave(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
+
+	// Count red cards (hearts/diamonds)
+	redCards := 0
+	for _, card := range hand.Cards {
+		if card.Suit == "Hearts" || card.Suit == "Diamonds" {
+			redCards++
+		}
+	}
+
+	// 90%: Add to mult (original effect)
+	// 10%: Add to fichas instead
+	if rand.Intn(100) < 90 {
+		mult += redCards * 3 // +3 mult per red card
+	} else {
+		fichas += redCards * 5 // Alternative: +5 fichas per red card
+	}
+
 	return fichas, mult, gold, used
 }
 
