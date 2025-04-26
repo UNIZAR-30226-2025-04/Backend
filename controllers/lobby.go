@@ -242,7 +242,7 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 		var gameLobbies []models.GameLobby
 
 		// Get only public lobbies from database
-		if err := db.Where("is_public = ?", true).Find(&gameLobbies).Error; err != nil {
+		if err := db.Where("is_public = ?", 1).Find(&gameLobbies).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve lobbies"})
 			return
 		}
@@ -302,7 +302,7 @@ func GetAllLobbies(db *gorm.DB) gin.HandlerFunc {
 				"created_at":       lobby.CreatedAt,
 				"host_icon":        hostIcons[lobby.CreatorUsername],
 				"player_count":     playerCounts[lobby.ID], // Add player count from the map
-				"is_public":        true,                   // Always true since we're filtering for public lobbies
+				"is_public":        1,                      // Always true since we're filtering for public lobbies
 			}
 		}
 
