@@ -399,7 +399,7 @@ func AdvanceToShop(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, 
 
 	// If the game is against the AI, we need to set the AI's shop
 	if lobby.IsPublic == 2 {
-		//go ProposeShopAI(redisClient, lobbyID, sio)
+		go ShopaAI(redisClient, lobbyID, shopItems)
 	}
 
 	log.Printf("[SHOP-ADVANCE] Successfully advanced lobby %s to shop phase", lobbyID)
@@ -505,6 +505,11 @@ func AdvanceToVouchersIfUndone(
 
 	// Broadcast voucher phase start event to all clients
 	vouchers.MulticastStartingVouchers(sio, redisClient, db, lobbyID, int(VOUCHER_TIMEOUT.Seconds()))
+
+	// If the game is against the AI, we need to set the AI's vouchers
+	if lobby.IsPublic == 2 {
+		//go VouchersAI(redisClient, lobbyID, sio)
+	}
 }
 
 // StartVoucherTimeout starts a timeout for the vouchers phase

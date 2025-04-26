@@ -24,4 +24,7 @@ type InGamePlayer struct {
 	DiscardsLeft  int `json:"discards_left"`   // Matches in_game_players.discards_left
 	// Field to indicate if the player bet for the minimum blind in the current round
 	BetMinimumBlind bool `json:"bet_minimum_blind"`
+
+	// Field to indicate if the player is a bot
+	IsBot bool `json:"is_bot"` // Matches in_game_players.is_bot
 }

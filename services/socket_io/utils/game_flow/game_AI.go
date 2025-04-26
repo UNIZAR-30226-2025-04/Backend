@@ -20,6 +20,8 @@ import (
 
 const username = "Noglerinho" // AI username
 
+// BLIND
+
 func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) {
 
 	log.Printf("[AI-BLIND] %s is proposing a blind", username)
@@ -38,7 +40,7 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 		return
 	}
 
-	AI, err := redisClient.GetInGamePlayer(username)
+	AI, err := redisClient.GetAIfromLobby(lobbyID)
 	if err != nil {
 		log.Printf("[AI-BLIND-ERROR] Error getting player data: %v", err)
 		return
@@ -108,11 +110,13 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 	}
 }
 
+// PLAY
+
 func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
 	log.Printf("PlayHandsAI started - Usuario: %s", username)
 
 	// 1. Get player data from Redis to extract lobby ID
-	player, err := redisClient.GetInGamePlayer(username)
+	player, err := redisClient.GetAIfromLobby(lobbyID)
 	if err != nil {
 		log.Printf("[HAND-ERROR] Error getting player data: %v", err)
 		return
@@ -180,7 +184,7 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 			size := rand.Intn(3) + 1
 			poker.SortCards(currentHand)
 			worstCards := currentHand[:size]
-			DiscardCardsAI(redisClient, lobbyID, worstCards) // Discard the worst cards
+			discardCardsAI(redisClient, player, lobbyID, worstCards) // Discard the worst cards
 			continue
 		}
 
@@ -348,28 +352,15 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		*/
 
 		// NOTE: check it outside the `if` sentence, since the player might have reached the blind
-		checkAIFinishedRound(redisClient, db, username, lobbyID, sio)
+		checkAIFinishedRound(redisClient, db, lobbyID, sio)
 	}
 }
 
-func DiscardCardsAI(redisClient *redis.RedisClient, lobbyID string, discard []poker.Card) {
-	log.Printf("DiscardCardsAI request - User: %s", username)
-
-	// 1. Get player data from Redis to extract lobby ID
-	player, err := redisClient.GetInGamePlayer(username)
-	if err != nil {
-		log.Printf("[DISCARD-ERROR] Error getting player data: %v", err)
-		return
-	}
-
-	// Validate play round phase
-	valid, err := socketio_utils.ValidatePlayRoundPhase(redisClient, nil, lobbyID)
-	if err != nil || !valid {
-		// Error already emitted in ValidatePlayRoundPhase
-		return
-	}
+func discardCardsAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer,
+	lobbyID string, discard []poker.Card) {
 
 	var deck *poker.Deck
+	var err error
 	if player.CurrentDeck != nil {
 		deck, err = poker.DeckFromJSON(player.CurrentDeck)
 		if err != nil {
@@ -427,11 +418,9 @@ func DiscardCardsAI(redisClient *redis.RedisClient, lobbyID string, discard []po
 		log.Printf("[AI-DISCARD-ERROR] Error updating player data: %v", err)
 		return
 	}
-
-	log.Printf("[AI-DISCARD-SUCCESS] Sent updated deck to user %s (%d total cards)", username)
 }
 
-func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, username string, lobbyID string, sio *socketio_types.SocketServer) {
+func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
 
 	log.Printf("[AI-ROUND-CHECK] Checking if player %s has finished round in lobby %s", username, lobbyID)
 
@@ -484,19 +473,15 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, username 
 	}
 }
 
-func ShopaAI(redis *redis.RedisClient, username string, shopState *redis_models.LobbyShop) {
+// SHOP
+
+func ShopaAI(redis *redis.RedisClient, lobbyID string, shopState *redis_models.LobbyShop) {
 	log.Printf("ShopAI initiated - User: %s", username)
 
 	// Get player state first to extract lobby ID
-	playerState, err := redis.GetInGamePlayer(username)
+	playerState, err := redis.GetAIfromLobby(username)
 	if err != nil {
 		log.Printf("[AI-SHOP-ERROR] Error getting player state: %v", err)
-		return
-	}
-
-	lobbyID := playerState.LobbyId
-	if lobbyID == "" {
-		log.Printf("[AI-SHOP-ERROR] Player %s not associated with any lobby", username)
 		return
 	}
 
@@ -539,7 +524,7 @@ func ShopaAI(redis *redis.RedisClient, username string, shopState *redis_models.
 				return
 			} else {
 				jokerToSell := rand.Intn(numJokers)
-				SellJokerAI(redis, playerState, jokers.Juglares[jokerToSell])
+				sellJokerAI(redis, playerState, jokers.Juglares[jokerToSell])
 				// If the AI has more than 3 jokers, sell another one
 				if numJokers > 3 {
 					// Sell other joker
@@ -548,7 +533,7 @@ func ShopaAI(redis *redis.RedisClient, username string, shopState *redis_models.
 						jokerToSell2 = rand.Intn(numJokers)
 					}
 					if jokerToSell2 != jokerToSell {
-						SellJokerAI(redis, playerState, jokers.Juglares[jokerToSell2])
+						sellJokerAI(redis, playerState, jokers.Juglares[jokerToSell2])
 					}
 				}
 				return
@@ -582,7 +567,7 @@ func ShopaAI(redis *redis.RedisClient, username string, shopState *redis_models.
 					item := shopState.FixedPacks[which]
 					itemID := item.ID
 					price := shopState.FixedPacks[which].Price
-					PurchasePackAI(redis, playerState, lobbyState, item, itemID, price)
+					purchasePackAI(redis, playerState, lobbyState, item, itemID, price)
 				case 1:
 					// Buy joker
 					// Which joker?
@@ -590,7 +575,7 @@ func ShopaAI(redis *redis.RedisClient, username string, shopState *redis_models.
 					item := shopState.RerollableItems[which]
 					itemID := item.ID
 					price := shopState.RerollableItems[which].Price
-					PurchaseJokerAI(redis, playerState, lobbyState, item, itemID, price)
+					purchaseJokerAI(redis, playerState, lobbyState, item, itemID, price)
 				case 2:
 					// Buy voucher
 					// Which voucher?
@@ -598,14 +583,14 @@ func ShopaAI(redis *redis.RedisClient, username string, shopState *redis_models.
 					item := shopState.FixedModifiers[which]
 					itemID := item.ID
 					price := shopState.FixedModifiers[which].Price
-					PurchaseVoucherAI(redis, playerState, lobbyState, item, itemID, price)
+					purchaseVoucherAI(redis, playerState, lobbyState, item, itemID, price)
 				}
 			}
 		}
 	}
 }
 
-func PurchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
+func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
 
 	// Validate the purchase
@@ -614,7 +599,7 @@ func PurchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.In
 		return
 	}
 
-	_, err = shop.GetOrGeneratePackContents(redisClient, lobbyState, item)
+	_, err := shop.GetOrGeneratePackContents(redisClient, lobbyState, item)
 	if err != nil {
 		return
 	}
@@ -633,7 +618,7 @@ func PurchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.In
 	}
 }
 
-func PurchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
+func purchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
 
 	// Process the joker purchase with price validation
@@ -650,7 +635,7 @@ func PurchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.I
 	}
 }
 
-func PurchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
+func purchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
 
 	// Process the voucher purchase with price validation
@@ -667,7 +652,7 @@ func PurchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models
 	}
 }
 
-func SellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer, jokerID int) {
+func sellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer, jokerID int) {
 	log.Printf("SellJoker initiated - User: %s, Args: %v", username)
 
 	// Process the joker sale
@@ -682,4 +667,26 @@ func SellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGam
 		log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
 		return
 	}
+}
+
+// VOUCHERS
+
+func VouchersAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) {
+	log.Printf("VouchersAI initiated - User: %s", username)
+
+	// Get player data from Redis
+	player, err := redisClient.GetAIfromLobby(lobbyID)
+	if err != nil {
+		log.Printf("[AI-VOUCHER-ERROR] Error getting player data: %v", err)
+		return
+	}
+
+	log.Printf("[AI-INFO] Getting lobby ID info: %s for AI: %s", lobbyID, username)
+
+	// Validate vouchers phase
+	valid, err := socketio_utils.ValidateVouchersPhase(redisClient, nil, lobbyID)
+	if err != nil || !valid {
+		return
+	}
+
 }

@@ -123,6 +123,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 				CurrentPoints:   0,
 				TotalPoints:     0,
 				BetMinimumBlind: true,
+				IsBot:           true, // Mark as AI player
 			}
 
 			// Save the AI player in Redis
