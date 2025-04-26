@@ -4,6 +4,7 @@ import (
 	redis_models "Nogler/models/redis"
 	"Nogler/services/redis"
 	socketio_utils "Nogler/services/socket_io/utils"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -63,6 +64,15 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			phaseTimeout = time.Time{} // Zero time for other phases
 		}
 
+		// Get the current hand from the player
+		var currentHand []poker.Card
+		err = json.Unmarshal(player.CurrentHand, &currentHand)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error unmarshaling current hand: %v", err)
+			client.Emit("error", gin.H{"error": "Error processing current hand"})
+			return
+		}
+
 		// Create a response with comprehensive game and player state
 		response := gin.H{
 			// Game state information
@@ -89,7 +99,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 				"hand_plays_left":   player.HandPlaysLeft,
 				"discards_left":     player.DiscardsLeft,
 				"played_cards":      len(deck.PlayedCards),
-				"unplayed_cards":    len(deck.TotalCards) + 8,
+				"unplayed_cards":    len(deck.TotalCards) + len(currentHand),
 				"vouchers":          player.Modifiers,
 				"active_vouchers":   player.ActivatedModifiers,
 				"received_vouchers": player.ReceivedModifiers,
