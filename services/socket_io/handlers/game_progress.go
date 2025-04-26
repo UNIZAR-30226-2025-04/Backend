@@ -76,7 +76,7 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 		// Check if proposed blind exceeds MAX_BLIND
 		if proposedBlind > game_constants.MAX_BLIND {
 			log.Printf("[BLIND] Player %s proposed blind %d exceeding MAX_BLIND, capping at %d",
-				username, proposedBlind, game_constants.MAX_BLIND)
+				username, proposedBlind, int(game_constants.MAX_BLIND))
 			proposedBlind = game_constants.MAX_BLIND
 			player.BetMinimumBlind = false
 		} else if proposedBlind < lobby.CurrentBaseBlind {

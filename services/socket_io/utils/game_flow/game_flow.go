@@ -116,6 +116,11 @@ func AdvanceToNextBlindIfUndone(redisClient *redis.RedisClient, db *gorm.DB, lob
 	// Step 3: Broadcast the next blind phase event
 	blind.BroadcastStartingNextBlind(redisClient, db, lobbyID, sio, int(BLIND_TIMEOUT.Seconds()))
 
+	// If the game is against the AI, we need to set the AI's blind bet
+	if lobby.IsPublic == 2 {
+		go ProposeBlindAI(redisClient, lobbyID, sio)
+	}
+
 	return nil
 }
 
@@ -220,6 +225,11 @@ func AdvanceToNextRoundPlayIfUndone(redisClient *redis.RedisClient, db *gorm.DB,
 	play_round.BroadcastRoundStart(sio, redisClient, lobbyID, updatedLobby.CurrentRound, blind, int(PLAY_ROUND_TIMEOUT.Seconds()))
 
 	log.Printf("[ROUND-PLAY-ADVANCE-SUCCESS] Advanced lobby %s to round play phase", lobbyID)
+
+	// If the game is against the AI, we need to set the AI's play
+	if lobby.IsPublic == 2 {
+		go PlayHandIA(redisClient, db, lobbyID, sio)
+	}
 }
 
 func StartRoundPlayTimeout(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
@@ -396,6 +406,11 @@ func AdvanceToShop(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, 
 	// Multicast shop start to all players
 	shop.MulticastStartingShop(sio, redisClient, lobbyID, shopItems, int(SHOP_TIMEOUT.Seconds()))
 
+	// If the game is against the AI, we need to set the AI's shop
+	if lobby.IsPublic == 2 {
+		go ShopAI(redisClient, lobbyID, shopItems)
+	}
+
 	log.Printf("[SHOP-ADVANCE] Successfully advanced lobby %s to shop phase", lobbyID)
 }
 
@@ -502,6 +517,11 @@ func AdvanceToVouchersIfUndone(
 
 	// Broadcast voucher phase start event to all clients
 	vouchers.MulticastStartingVouchers(sio, redisClient, db, lobbyID, int(VOUCHER_TIMEOUT.Seconds()))
+
+	// If the game is against the AI, we need to set the AI's vouchers
+	if lobby.IsPublic == 2 {
+		go VouchersAI(redisClient, lobbyID, sio)
+	}
 }
 
 // StartVoucherTimeout starts a timeout for the vouchers phase

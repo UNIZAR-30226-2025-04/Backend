@@ -18,7 +18,7 @@ type GameLobby struct {
 	TotalPoints     int       `gorm:"default:0"`
 	CreatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 	GameHasBegun    bool      `gorm:"default:false;index_idx_game_lobbies_active"` // Indicates if the game has started
-	IsPublic        bool      `gorm:"default:false;index:idx_game_lobbies_public"` // Indicates if the lobby is public
+	IsPublic        int       `gorm:"default:false;index:idx_game_lobbies_public"` // Indicates if the lobby is public (1), private (0) or AI (2)
 
 	// Relationships
 	Creator GameProfile `gorm:"foreignKey:CreatorUsername"`

@@ -26,4 +26,7 @@ type InGamePlayer struct {
 	BetMinimumBlind bool `json:"bet_minimum_blind"`
 	// Field to store last purchased pack item ID
 	LastPurchasedPackItemId int `json:"last_pack_item_id"`
+
+	// Field to indicate if the player is a bot
+	IsBot bool `json:"is_bot"` // Matches in_game_players.is_bot
 }
