@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"log"
 	"math/rand"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -127,9 +126,6 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 			log.Printf("[AI-BLIND-ERROR] Could not update current blind: %v", err)
 			return
 		}
-
-		// Simulate a delay for the AI to propose the blind
-		time.Sleep(2 * time.Second)
 
 		// Broadcast the new blind value to everyone in the lobby
 		sio.Sio_server.To(socket.Room(lobbyID)).Emit("blind_updated", gin.H{
