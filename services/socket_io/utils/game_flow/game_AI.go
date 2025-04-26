@@ -538,57 +538,75 @@ func ShopaAI(redis *redis.RedisClient, username string, shopState *redis_models.
 				log.Printf("[AI-SHOP-ERROR] No jokers to sell for player %s", username)
 				return
 			} else {
-				jokerToSell := rand.Intn(numJokers + 1)
-				SellJokerAI(redis, jokerToSell)
+				jokerToSell := rand.Intn(numJokers)
+				SellJokerAI(redis, playerState, jokers.Juglares[jokerToSell])
+				// If the AI has more than 3 jokers, sell another one
+				if numJokers > 3 {
+					// Sell other joker
+					jokerToSell2 := rand.Intn(numJokers)
+					for jokerToSell2 == jokerToSell {
+						jokerToSell2 = rand.Intn(numJokers)
+					}
+					if jokerToSell2 != jokerToSell {
+						SellJokerAI(redis, playerState, jokers.Juglares[jokerToSell2])
+					}
+				}
 				return
 			}
 		}
 	} else {
+		// Order to buy pack (0), joker (1) or voucher (2)
+		var order []int
+		for i := 0; i < 3; i++ {
+			randomValue := rand.Intn(3)
+			for j := 0; j < len(order); j++ {
+				if order[j] == randomValue {
+					randomValue = rand.Intn(3)
+					j = -1
+				}
+			}
+			order = append(order, randomValue)
+		}
 
+		// Until which one do we buy?
+		until := rand.Intn(3)
+		for i := 0; i <= until; i++ {
+			// How many do we buy? (1 or 2)
+			howMany := rand.Intn(2) + 1
+			for j := 0; j < howMany; j++ {
+				switch order[i] {
+				case 0:
+					// Buy pack
+					// Which pack?
+					which := rand.Intn(len(shopState.FixedPacks))
+					item := shopState.FixedPacks[which]
+					itemID := item.ID
+					price := shopState.FixedPacks[which].Price
+					PurchasePackAI(redis, playerState, lobbyState, item, itemID, price)
+				case 1:
+					// Buy joker
+					// Which joker?
+					which := rand.Intn(len(shopState.RerollableItems))
+					item := shopState.RerollableItems[which]
+					itemID := item.ID
+					price := shopState.RerollableItems[which].Price
+					PurchaseJokerAI(redis, playerState, lobbyState, item, itemID, price)
+				case 2:
+					// Buy voucher
+					// Which voucher?
+					which := rand.Intn(len(shopState.FixedModifiers))
+					item := shopState.FixedModifiers[which]
+					itemID := item.ID
+					price := shopState.FixedModifiers[which].Price
+					PurchaseVoucherAI(redis, playerState, lobbyState, item, itemID, price)
+				}
+			}
+		}
 	}
 }
 
-func PurchasePackAI(redisClient *redis.RedisClient, itemID int, clientPrice int) {
-	log.Printf("OpenPackAI iniciado - Usuario: %s", username)
-
-	// Get player state first to extract lobby ID
-	playerState, err := redisClient.GetInGamePlayer(username)
-	if err != nil {
-		log.Printf("[AI-SHOP-ERROR] Error getting player state: %v", err)
-		return
-	}
-
-	// Extract lobby ID from player state
-	lobbyID := playerState.LobbyId
-	if lobbyID == "" {
-		log.Printf("[AI-SHOP-ERROR] Player %s not associated with any lobby", username)
-		return
-	}
-
-	log.Printf("[AI-INFO] Getting lobby ID info: %s for AI: %s", lobbyID, username)
-
-	// Validate that we are in the shop phase
-	valid, err := socketio_utils.ValidateShopPhase(redisClient, nil, lobbyID)
-	if err != nil || !valid {
-		// Error already emitted in ValidateShopPhase
-		return
-	}
-
-	// Get the game lobby from Redis
-	lobbyState, err := redisClient.GetGameLobby(lobbyID)
-	if err != nil {
-		log.Printf("[AI-SHOP-ERROR] Error getting lobby state: %v", err)
-		return
-	}
-
-	if lobbyState.ShopState == nil {
-		return
-	}
-
-	item, exists := shop.FindShopItem(*lobbyState, itemID)
-	if !exists || item.Type != game_constants.PACK_TYPE {
-		return
-	}
+func PurchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
+	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
 
 	// Validate the purchase
 	if err := shop.ValidatePurchase(item, game_constants.PACK_TYPE, clientPrice, playerState); err != nil {
@@ -615,49 +633,8 @@ func PurchasePackAI(redisClient *redis.RedisClient, itemID int, clientPrice int)
 	}
 }
 
-func BuyJokerAI(redisClient *redis.RedisClient, itemID int, clientPrice int) {
-	log.Printf("BuyJokerAI initiated - User: %s", username)
-
-	// Get player state first to extract lobby ID
-	playerState, err := redisClient.GetInGamePlayer(username)
-	if err != nil {
-		log.Printf("[AI-SHOP-ERROR] Error getting player state: %v", err)
-		return
-	}
-
-	// Extract lobby ID from player state
-	lobbyID := playerState.LobbyId
-	if lobbyID == "" {
-		log.Printf("[AI-SHOP-ERROR] Player %s not associated with any lobby", username)
-		return
-	}
-
-	log.Printf("[AI-INFO] Processing joker purchase for user: %s in lobby: %s, joker ID: %d, price: %d",
-		username, lobbyID, itemID, clientPrice)
-
-	// Validate that we are in the shop phase
-	valid, err := socketio_utils.ValidateShopPhase(redisClient, nil, lobbyID)
-	if err != nil || !valid {
-		// Error already emitted in ValidateShopPhase
-		return
-	}
-
-	// Get the lobby state from Redis
-	lobbyState, err := redisClient.GetGameLobby(lobbyID)
-	if err != nil {
-		log.Printf("[AI-SHOP-ERROR] Error getting lobby state: %v", err)
-		return
-	}
-
-	if lobbyState.ShopState == nil {
-		return
-	}
-
-	// Find the joker in the shop
-	item, exists := shop.FindShopItem(*lobbyState, itemID)
-	if !exists {
-		return
-	}
+func PurchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
+	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
 
 	// Process the joker purchase with price validation
 	success, updatedPlayer, err := shop.PurchaseJoker(redisClient, playerState, item, clientPrice)
@@ -673,49 +650,8 @@ func BuyJokerAI(redisClient *redis.RedisClient, itemID int, clientPrice int) {
 	}
 }
 
-func HandleBuyVoucher(redisClient *redis.RedisClient, itemID int, clientPrice int) {
-	log.Printf("BuyVoucher initiated - User: %s, Args: %v", username)
-
-	// Get player state first to extract lobby ID
-	playerState, err := redisClient.GetInGamePlayer(username)
-	if err != nil {
-		log.Printf("[AI-SHOP-ERROR] Error getting player state: %v", err)
-		return
-	}
-
-	// Extract lobby ID from player state
-	lobbyID := playerState.LobbyId
-	if lobbyID == "" {
-		log.Printf("[AI-SHOP-ERROR] Player %s not associated with any lobby", username)
-		return
-	}
-
-	log.Printf("[AI-INFO] Processing voucher purchase for user: %s in lobby: %s, voucher ID: %d, price: %d",
-		username, lobbyID, itemID, clientPrice)
-
-	// Validate that we are in the shop phase
-	valid, err := socketio_utils.ValidateShopPhase(redisClient, nil, lobbyID)
-	if err != nil || !valid {
-		// Error already emitted in ValidateShopPhase
-		return
-	}
-
-	// Get the lobby state from Redis
-	lobbyState, err := redisClient.GetGameLobby(lobbyID)
-	if err != nil {
-		log.Printf("[AI-SHOP-ERROR] Error getting lobby state: %v", err)
-		return
-	}
-
-	if lobbyState.ShopState == nil {
-		return
-	}
-
-	// Find the voucher in the shop
-	item, exists := shop.FindShopItem(*lobbyState, itemID)
-	if !exists {
-		return
-	}
+func PurchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
+	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
 
 	// Process the voucher purchase with price validation
 	success, updatedPlayer, err := shop.PurchaseVoucher(redisClient, playerState, item, clientPrice)
@@ -731,29 +667,8 @@ func HandleBuyVoucher(redisClient *redis.RedisClient, itemID int, clientPrice in
 	}
 }
 
-func SellJokerAI(redisClient *redis.RedisClient, jokerID int) {
+func SellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer, jokerID int) {
 	log.Printf("SellJoker initiated - User: %s, Args: %v", username)
-
-	// Get player state
-	playerState, err := redisClient.GetInGamePlayer(username)
-	if err != nil {
-		log.Printf("[AI-SHOP-ERROR] Error getting player state: %v", err)
-		return
-	}
-
-	// Extract lobby ID from player state
-	lobbyID := playerState.LobbyId
-	if lobbyID == "" {
-		log.Printf("[AI-SHOP-ERROR] Player %s not associated with any lobby", username)
-		return
-	}
-
-	// Validate that we are in the shop phase
-	valid, err := socketio_utils.ValidateShopPhase(redisClient, nil, lobbyID)
-	if err != nil || !valid {
-		// Error already emitted in ValidateShopPhase
-		return
-	}
 
 	// Process the joker sale
 	updatedPlayer, _, err := shop.SellJoker(playerState, jokerID)
