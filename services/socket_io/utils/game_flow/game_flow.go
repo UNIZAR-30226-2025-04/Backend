@@ -397,6 +397,11 @@ func AdvanceToShop(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, 
 	// Multicast shop start to all players
 	shop.MulticastStartingShop(sio, redisClient, lobbyID, shopItems, int(SHOP_TIMEOUT.Seconds()))
 
+	// If the game is against the AI, we need to set the AI's shop
+	if lobby.IsPublic == 2 {
+		//go ProposeShopAI(redisClient, lobbyID, sio)
+	}
+
 	log.Printf("[SHOP-ADVANCE] Successfully advanced lobby %s to shop phase", lobbyID)
 }
 
