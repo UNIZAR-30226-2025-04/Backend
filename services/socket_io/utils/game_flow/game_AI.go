@@ -136,6 +136,69 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 	}
 }
 
+// GET CARDS
+
+func getCardsAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer) {
+	log.Printf("GetCardsAI request - Noglerinho")
+
+	var err error
+	var deck *poker.Deck
+	if player.CurrentDeck != nil {
+		deck, err = poker.DeckFromJSON(player.CurrentDeck)
+		if err != nil {
+			log.Printf("[AI-GET_CARDS-ERROR] Error parsing deck: %v", err)
+			return
+		}
+	} else {
+		deck = &poker.Deck{
+			TotalCards:  make([]poker.Card, 0),
+			PlayedCards: make([]poker.Card, 0),
+		}
+	}
+
+	var hand []poker.Card
+	err = json.Unmarshal(player.CurrentHand, &hand)
+	if err != nil {
+		log.Printf("[AI-GET_CARDS-ERROR] Error unmarshaling current hand: %v", err)
+		return
+	}
+
+	// 3. Determine how many cards the player needs
+	cardsNeeded := 8 - len(hand)
+	if cardsNeeded <= 0 {
+		log.Printf("[AI-GET_CARDS-ERROR] Noglerinho already has a full hand")
+		return
+	}
+
+	// 4. Get the necessary cards
+	newCards := deck.Draw(cardsNeeded)
+	if newCards == nil {
+		log.Printf("[AI-GET_CARDS-ERROR] Not enough cards in the deck")
+		return
+	}
+
+	// Update hand
+	hand = append(hand, newCards...)
+
+	// 5. Update the player info in Redis
+	deck.RemoveCards(newCards)
+	player.CurrentDeck = deck.ToJSON()
+
+	player.CurrentHand, err = json.Marshal(hand)
+	if err != nil {
+		log.Printf("[AI-GET_CARDS-ERROR] Error serializing current hand: %v", err)
+		return
+	}
+
+	err = redisClient.UpdateDeckPlayer(*player)
+	if err != nil {
+		log.Printf("[AI-GET_CARDS-ERROR] Error updating player data: %v", err)
+		return
+	}
+
+	log.Printf("[AI-GET_CARDS-SUCCESS] Noglerinho got %d new cards: %v", len(newCards), newCards)
+}
+
 // PLAY
 
 func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
@@ -154,6 +217,9 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		// Error already emitted in ValidatePlayRoundPhase
 		return
 	}
+
+	// Get cards
+	getCardsAI(redisClient, player)
 
 	for i := 0; i < 6; i++ {
 
@@ -196,7 +262,6 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 				Gold:   player.PlayersMoney,
 			}
 			tokens, mult, handType, scoredCards := poker.BestHand(hand)
-			log.Printf("[AI-HAND] Hand: %v, Tokens: %d, Mult: %d, HandType: %d", hand.Cards, tokens, mult, handType)
 			if tokens*mult > bestTokens*bestMult {
 				bestTokens = tokens
 				bestMult = mult
@@ -205,7 +270,8 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 				bestHand = hand
 			}
 		}
-
+		log.Printf("[AI-HAND] Best hand type: %d, Tokens: %d, Mult: %d, Cards: %v",
+			bestHandType, bestTokens, bestMult, bestScoredCards)
 		if bestHandType > 10 && player.DiscardsLeft > 0 {
 			// Get 1 or 2 or 3 worst cards to discard
 			size := rand.Intn(3) + 1
