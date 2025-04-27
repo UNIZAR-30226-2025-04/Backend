@@ -107,6 +107,11 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// If no Gold was passed, set it to the player's money
+		if hand.Gold == 0 {
+			hand.Gold = player.PlayersMoney
+		}
+
 		// 3. Calculate base points
 		fichas, mult, handType, scored_cards := poker.BestHand(hand)
 

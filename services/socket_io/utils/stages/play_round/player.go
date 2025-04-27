@@ -33,8 +33,8 @@ func ValidatePlayerHand(player *redis_models.InGamePlayer, hand poker.Hand) (boo
 		return false, errMsg
 	}
 
-	// Validate gold
-	if hand.Gold != player.PlayersMoney {
+	// Validate gold if it was passed
+	if hand.Gold != 0 && hand.Gold != player.PlayersMoney {
 		return false, fmt.Sprintf("Gold mismatch: hand has %d, player has %d",
 			hand.Gold, player.PlayersMoney)
 	}
