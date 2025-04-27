@@ -12,8 +12,6 @@ type Jokers struct {
 
 type JokerFunc func(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool)
 
-// TODO, use it?
-const MaxJokers = 10
 const ExpSellPriceDenominator = 9
 
 var jokerTable = map[int]JokerFunc{

@@ -1,9 +1,12 @@
 package shop
 
 import (
+	game_constants "Nogler/constants/game"
 	"Nogler/models/redis"
+	"Nogler/services/poker"
 	redis_services "Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -50,6 +53,26 @@ func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 			continue
 		}
 
+		// Get current jokers with sell prices
+		var currentJokers poker.Jokers
+		var jokersWithPrices []gin.H
+
+		if player.CurrentJokers != nil && len(player.CurrentJokers) > 0 {
+			if err := json.Unmarshal(player.CurrentJokers, &currentJokers); err == nil {
+				// Calculate sell price for each joker
+				for _, jokerID := range currentJokers.Juglares {
+					if jokerID != 0 { // Skip empty slots
+						jokersWithPrices = append(jokersWithPrices, gin.H{
+							"id":         jokerID,
+							"sell_price": poker.CalculateJokerSellPrice(jokerID),
+						})
+					}
+				}
+			} else {
+				log.Printf("[SHOP-MULTICAST-WARNING] Error parsing jokers: %v", err)
+			}
+		}
+
 		// Send personalized message to this player
 		playerSocket.Emit("starting_shop", gin.H{
 			"shop":               shopItems,
@@ -57,7 +80,8 @@ func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 			"timeout_start_date": lobby.ShopTimeout.Format(time.RFC3339),
 			"current_round":      lobby.CurrentRound,
 			"money":              player.PlayersMoney,
-			"jokers":             player.CurrentJokers,
+			"jokers":             jokersWithPrices,
+			"max_jokers":         game_constants.MaxJokersPerPlayer,
 		})
 
 		log.Printf("[SHOP-MULTICAST] Sent personalized shop data to player %s", player.Username)
