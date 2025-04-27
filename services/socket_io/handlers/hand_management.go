@@ -623,6 +623,14 @@ func HandleDiscardCards(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		// Validate that all discarded cards are in the player's hand
+		valid, errMsg := play_round.ValidatePlayerCards(hand, discard)
+		if !valid {
+			log.Printf("[DISCARD-ERROR] Invalid discard for user %s: %s", username, errMsg)
+			client.Emit("error", gin.H{"error": errMsg})
+			return
+		}
+
 		// 5. Get new cards from the deck
 		newCards := deck.Draw(len(discard))
 		if newCards == nil {

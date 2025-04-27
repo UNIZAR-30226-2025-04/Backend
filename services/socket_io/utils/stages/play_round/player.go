@@ -28,19 +28,9 @@ func ValidatePlayerHand(player *redis_models.InGamePlayer, hand poker.Hand) (boo
 		return false, fmt.Sprintf("Error processing player's current hand: %v", err)
 	}
 
-	// Check if each card in the hand is in the player's current hand
-	cardMap := make(map[string]int)
-	for _, card := range currentCards {
-		key := fmt.Sprintf("%s-%s", card.Rank, card.Suit)
-		cardMap[key]++
-	}
-
-	for _, card := range hand.Cards {
-		key := fmt.Sprintf("%s-%s", card.Rank, card.Suit)
-		if count, exists := cardMap[key]; !exists || count <= 0 {
-			return false, fmt.Sprintf("Card %s-%s not in player's hand", card.Rank, card.Suit)
-		}
-		cardMap[key]--
+	// Use the new helper function to validate cards
+	if valid, errMsg := ValidatePlayerCards(currentCards, hand.Cards); !valid {
+		return false, errMsg
 	}
 
 	// Validate gold
@@ -72,6 +62,29 @@ func ValidatePlayerHand(player *redis_models.InGamePlayer, hand poker.Hand) (boo
 		if !jokerMap[joker] {
 			return false, fmt.Sprintf("Joker %d not available to player", joker)
 		}
+	}
+
+	return true, ""
+}
+
+// ValidatePlayerCards checks if all the specified cards are in the player's hand
+func ValidatePlayerCards(playerCards []poker.Card, cardsToValidate []poker.Card) (bool, string) {
+	// Create a map of player's cards for efficient lookup
+	// Use rank, suit, and enhancement as the composite key
+	cardMap := make(map[string]int)
+	for _, card := range playerCards {
+		key := fmt.Sprintf("%s-%s-%d", card.Rank, card.Suit, card.Enhancement)
+		cardMap[key]++
+	}
+
+	// Check if each card to validate is in the player's hand
+	for _, card := range cardsToValidate {
+		key := fmt.Sprintf("%s-%s-%d", card.Rank, card.Suit, card.Enhancement)
+		if count, exists := cardMap[key]; !exists || count <= 0 {
+			return false, fmt.Sprintf("Card %s-%s with enhancement %d not in player's hand",
+				card.Rank, card.Suit, card.Enhancement)
+		}
+		cardMap[key]-- // Decrement to handle duplicate cards
 	}
 
 	return true, ""
