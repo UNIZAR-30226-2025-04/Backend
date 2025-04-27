@@ -143,7 +143,7 @@ func ResetPlayerAndBroadcastRoundStart(sio *socketio_types.SocketServer, redisCl
 			"timeout_start_date": lobby.GameRoundTimeout.Format(time.RFC3339),
 			"total_hand_plays":   game_constants.TOTAL_HAND_PLAYS,
 			"total_discards":     game_constants.TOTAL_DISCARDS,
-			"current_pot":        lobby.CurrentRound + lobby.CurrentRound/2 + 1,
+			"current_pot":        CalculatePotAmount(lobby.CurrentRound),
 			"current_jokers":     player.CurrentJokers,
 			"active_vouchers":    player.ActivatedModifiers,
 			"current_deck_size":  deckSize,

@@ -80,6 +80,13 @@ func AdvanceToNextBlindIfUndone(redisClient *redis.RedisClient, db *gorm.DB, lob
 
 	// Update the CurrentBaseBlind in the lobby
 	lobby.CurrentBaseBlind = newBaseBlind
+
+	// NEW, CRITICAL: reset CurrentHighBlind
+	lobby.CurrentHighBlind = 0
+
+	// CRITICAL: reset highest blind proposer
+	lobby.HighestBlindProposer = ""
+
 	if err := redisClient.SaveGameLobby(lobby); err != nil {
 		log.Printf("[ROUND-ADVANCE-ERROR] Failed to update base blind: %v", err)
 		return fmt.Errorf("failed to update base blind: %v", err)

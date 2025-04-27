@@ -4,6 +4,7 @@ import (
 	redis_models "Nogler/models/redis"
 	"Nogler/services/redis"
 	socketio_utils "Nogler/services/socket_io/utils"
+	"Nogler/services/socket_io/utils/stages/play_round"
 	"encoding/json"
 	"log"
 	"time"
@@ -107,7 +108,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			"timeout":            phaseTimeout,
 			"total_players":      lobby.PlayerCount,
 			"current_round":      lobby.CurrentRound,
-			"current_pot":        lobby.CurrentRound + lobby.CurrentRound/2 + 1,
+			"current_pot":        play_round.CalculatePotAmount(lobby.CurrentRound),
 			"current_high_blind": lobby.CurrentHighBlind,
 			"current_base_blind": lobby.CurrentBaseBlind,
 			"max_rounds":         lobby.MaxRounds,
