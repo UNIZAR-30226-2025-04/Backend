@@ -480,7 +480,7 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 		// Check if there are enough players to start the game. If the lobby is public or private, we need at least 2 players.
 		// If the lobby is AI, we can start with 1 player
 		//if playerCount < 2 && (lobby.IsPublic == 1 || lobby.IsPublic == 0) {
-		
+
 		// Check if there are enough players to start the game
 		if playerCount < 1 {
 			log.Printf("[START-ERROR] Not enough players in lobby %s (count: %d)", lobbyID, playerCount)
@@ -497,6 +497,9 @@ func HandleStartGame(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// Set the player count
 		redisLobby.PlayerCount = int(playerCount)
+		if lobby.IsPublic == 2 {
+			redisLobby.PlayerCount++ // Add AI player
+		}
 
 		// Update Redis with player count
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
