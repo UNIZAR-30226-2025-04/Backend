@@ -445,7 +445,11 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 				"blue_score":          finalFichas,
 			})
 		*/
-		checkAIFinishedRound(redisClient, db, lobbyID, player, sio)
+		finish := checkAIFinishedRound(redisClient, db, lobbyID, player, sio)
+		if finish {
+			log.Printf("[AI-HAND] Player %s has finished their round", username)
+			return
+		}
 	}
 }
 
@@ -514,14 +518,14 @@ func discardCardsAI(redisClient *redis.RedisClient, player *redis_models.InGameP
 	}
 }
 
-func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, player *redis_models.InGamePlayer, sio *socketio_types.SocketServer) {
+func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, player *redis_models.InGamePlayer, sio *socketio_types.SocketServer) bool {
 	log.Printf("[AI-ROUND-CHECK] Checking if player %s has finished round in lobby %s", username, lobbyID)
 
 	// Get the lobby to check blind value
 	lobby, err := redisClient.GetGameLobby(lobbyID)
 	if err != nil {
 		log.Printf("[ROUND-CHECK-ERROR] Error getting lobby: %v", err)
-		return
+		return false
 	}
 
 	// Check if player has no plays and discards left OR has reached/exceeded the blind
@@ -546,7 +550,7 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 		err = redisClient.SaveGameLobby(lobby)
 		if err != nil {
 			log.Printf("[ROUND-CHECK-ERROR] Error saving lobby: %v", err)
-			return
+			return false
 		}
 
 		// If all players have finished the round, end it
@@ -555,7 +559,10 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 				len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
 			HandleRoundPlayEnd(redisClient, db, lobbyID, sio, lobby.CurrentRound)
 		}
+		return true
 	}
+	log.Printf("[ROUND-CHECK] Player %s has not finished their round yet", username)
+	return false
 }
 
 // SHOP
