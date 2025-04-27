@@ -292,12 +292,13 @@ func DistributePot(redisClient *redis.RedisClient, lobbyID string, sio *socketio
 		}
 
 		// Update in PostgreSQL
-		if err := db.Model(&postgres_models.InGamePlayer{}).
+		// NOTE: not needed
+		/*if err := db.Model(&postgres_models.InGamePlayer{}).
 			Where("lobby_id = ? AND username = ?", lobbyID, players[i].Username).
 			Update("players_money", players[i].PlayersMoney).Error; err != nil {
 			log.Printf("[POT-DISTRIBUTION-ERROR] Error updating player %s money in PostgreSQL: %v",
 				players[i].Username, err)
-		}
+		}*/
 	}
 
 	// Notify players about pot distribution

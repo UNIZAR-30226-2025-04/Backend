@@ -332,6 +332,12 @@ func HandleRoundPlayEnd(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 		log.Printf("[ELIMINATION-ERROR] Error handling player eliminations: %v", err)
 	}
 
+	// NEW: distribute the pot to non-eliminated players
+	err = play_round.DistributePot(redisClient, lobbyID, sio, db)
+	if err != nil {
+		log.Printf("[POT-DISTRIBUTION-ERROR] Error distributing pot: %v", err)
+	}
+
 	// Get updated lobby (player count might have changed after eliminations)
 	lobby, err = redisClient.GetGameLobby(lobbyID)
 	if err != nil {
