@@ -139,6 +139,7 @@ func ResetPlayerAndBroadcastRoundStart(sio *socketio_types.SocketServer, redisCl
 		playerSocket.Emit("starting_round", gin.H{
 			"round_number":       round,
 			"max_rounds":         game_constants.MaxGameRounds,
+			"players_money":      player.PlayersMoney,
 			"blind":              blind,
 			"timeout":            timeout,
 			"timeout_start_date": lobby.GameRoundTimeout.Format(time.RFC3339),
