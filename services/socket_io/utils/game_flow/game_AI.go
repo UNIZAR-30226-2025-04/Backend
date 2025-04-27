@@ -663,6 +663,21 @@ func ShopAI(redisClient *redis.RedisClient, lobbyID string, shopState *redis_mod
 				case 1:
 					// Buy joker
 					// Which joker?
+
+					// Check if already has 5 jokers
+					if playerState.CurrentJokers != nil {
+						var jokers poker.Jokers
+						err = json.Unmarshal(playerState.CurrentJokers, &jokers)
+						if err != nil {
+							log.Printf("[AI-SHOP-ERROR] Error parsing jokers: %v", err)
+							return
+						}
+						if len(jokers.Juglares) >= 5 {
+							log.Printf("[AI-SHOP-ERROR] Player %s already has 5 jokers", username)
+							continue
+						}
+					}
+
 					which := rand.Intn(len(shopState.RerollableItems))
 					item := shopState.RerollableItems[which]
 					itemID := item.ID
@@ -684,6 +699,7 @@ func ShopAI(redisClient *redis.RedisClient, lobbyID string, shopState *redis_mod
 
 func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
+	log.Printf("[AI-SHOP] Purchasing pack %d for player Noglerinho", itemID)
 
 	// Validate the purchase
 	if err := shop.ValidatePurchase(item, game_constants.PACK_TYPE, clientPrice, playerState); err != nil {
@@ -712,7 +728,7 @@ func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.In
 
 func purchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
-
+	log.Printf("[AI-SHOP] Purchasing joker %d for player Noglerinho", itemID)
 	// Process the joker purchase with price validation
 	success, updatedPlayer, err := shop.PurchaseJoker(redisClient, playerState, item, clientPrice)
 	if err != nil || !success {
@@ -729,7 +745,7 @@ func purchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.I
 
 func purchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
-
+	log.Printf("[AI-SHOP] Purchasing voucher %d for player Noglerinho", itemID)
 	// Process the voucher purchase with price validation
 	success, updatedPlayer, err := shop.PurchaseVoucher(redisClient, playerState, item, clientPrice)
 	if err != nil || !success {
@@ -745,7 +761,7 @@ func purchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models
 }
 
 func sellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer, jokerID int) {
-
+	log.Printf("[AI-SHOP] Selling joker %d for player Noglerinho", jokerID)
 	// Process the joker sale
 	updatedPlayer, _, err := shop.SellJoker(playerState, jokerID)
 	if err != nil {
@@ -814,11 +830,12 @@ func VouchersAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_ty
 			}
 		}
 	}
+	log.Printf("[AI-VOUCHER-INFO] Player %s activated %d vouchers", username, numModifiers)
 }
 
 func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer,
 	modifier poker.Modifier) {
-
+	log.Printf("[AI-MODIFIER] Activating voucher %d for player Noglerinho", modifier.Value)
 	var player_modifiers []poker.Modifier
 	err := json.Unmarshal(player.Modifiers, &player_modifiers)
 	if err != nil {
@@ -883,7 +900,7 @@ func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGa
 
 func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer,
 	lobbyID string, modifier poker.Modifier, sio *socketio_types.SocketServer) {
-
+	log.Printf("[AI-MODIFIER] Sending voucher %d to opponent", modifier.Value)
 	var player_modifiers []poker.Modifier
 	err := json.Unmarshal(player.Modifiers, &player_modifiers)
 	if err != nil {
