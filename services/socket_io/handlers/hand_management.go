@@ -1012,16 +1012,31 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 				Sender:   username,
 			})
 		}
-		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
+
+		var receiver_modifiers []poker.ReceivedModifier
+		err = json.Unmarshal(receiver.ReceivedModifiers, &receiver_modifiers)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error parsing modifiers"})
+			return
+		}
+
+		receiver_modifiers = append(receiver_modifiers, activated_modifiers...)
+		receiver.ReceivedModifiers, err = json.Marshal(receiver_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
 			client.Emit("error", gin.H{"error": "Error processing modifiers"})
 			return
 		}
 
-		// TODO: con esto no estaríamos mezclando los modificadores recibidos con los activados
-		// (que igual el usuario ha activado por sí mismo)?
-		receiver.ReceivedModifiers = activated_modifiersJSON
+		// Save the updated player data
+		err = redisClient.UpdateDeckPlayer(*receiver)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error updating player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error updating player data"})
+			return
+		}
+
 		log.Printf("[MODIFIER-INFO] Activated modifiers for user %s: %v", receiver.Username, activated_modifiers)
 
 		// Notify the receiving player

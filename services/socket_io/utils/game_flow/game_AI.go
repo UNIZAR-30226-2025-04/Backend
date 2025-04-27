@@ -868,18 +868,9 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	}
 
 	// Get the opponent's username
-	requested, err := getAIoponent(redisClient, lobbyID)
+	receiver, err := getAIoponent(redisClient, lobbyID)
 	if err != nil {
 		log.Printf("[AI-MODIFIER-ERROR] Error getting players in lobby: %v", err)
-		return
-	}
-	request_player := requested.Username
-
-	// Update the receiving player
-
-	receiver, err := redisClient.GetInGamePlayer(request_player)
-	if err != nil {
-		log.Printf("[AI-MODIFIER-ERROR] Error getting player data: %v", err)
 		return
 	}
 
@@ -918,5 +909,5 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 		"sender":    username,
 	})
 
-	log.Printf("[AI-MODIFIER-SUCCESS] Modifiers sent to user %s from %s: %v", request_player, username, modifier)
+	log.Printf("[AI-MODIFIER-SUCCESS] Modifiers sent to user %s from %s: %v", receiver.Username, username, modifier)
 }
