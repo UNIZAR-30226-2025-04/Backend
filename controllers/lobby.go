@@ -105,42 +105,18 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			CurrentBaseBlind:        game_constants.BASE_BLIND,
 		}
 
-		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
-			log.Printf("Failed to create lobby in Redis: %v", err)
-			if err := db.Delete(&NewLobby).Error; err != nil {
-				log.Printf("Failed to rollback PostgreSQL lobby creation: %v", err)
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating lobby in Redis"})
-			return
-		}
-
 		if isPublic == 2 {
-
-			aiPlayer := models.InGamePlayer{
-				LobbyID:  NewLobby.ID,
-				Username: "Noglerinho",
-			}
-			// Start transaction
-			tx := db.Begin()
-			if err := tx.Create(&aiPlayer).Error; err != nil {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding bot to the lobby"})
-				return
-			}
-
-			// Create Redis InGamePlayer entry (AI player)
+			// Add bot to Redis lobby
 			purchasedPackCards := make([]poker.Card, 0)
 			purchasedPackCardsJSON, _ := json.Marshal(purchasedPackCards)
 			redisAIPlayer := &redis_models.InGamePlayer{
-				Username:     "Noglerinho",
-				LobbyId:      NewLobby.ID,
-				PlayersMoney: 10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
-				CurrentDeck:  poker.InitializePlayerDeck(), // Will be initialized when game starts
-				// TODO: see in_game_player.go
-				// PlayersRemainingCards: 52,
-				Modifiers:               nil, // Will be initialized when game starts
-				CurrentJokers:           nil, // Will be initialized when game starts
-				MostPlayedHand:          nil, // Will be initialized during game
+				Username:                "Noglerinho",
+				LobbyId:                 NewLobby.ID,
+				PlayersMoney:            10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
+				CurrentDeck:             poker.InitializePlayerDeck(), // Will be initialized when game starts
+				Modifiers:               nil,                          // Will be initialized when game starts
+				CurrentJokers:           nil,                          // Will be initialized when game starts
+				MostPlayedHand:          nil,                          // Will be initialized during game
 				HandPlaysLeft:           game_constants.TOTAL_HAND_PLAYS,
 				DiscardsLeft:            game_constants.TOTAL_DISCARDS,
 				Winner:                  false,
@@ -152,17 +128,32 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 				PurchasedPackCards:      purchasedPackCardsJSON,
 			}
 
+			// Save the AI player in Redis
 			if err := redisClient.SaveInGamePlayer(redisAIPlayer); err != nil {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to Redis lobby"})
+				log.Printf("[AI-ERROR] Error saving AI player in Redis: %v", err)
+				// Rollback lobby creation in Redis and PostgreSQL
+				if err := redisClient.DeleteGameLobby(NewLobby.ID); err != nil {
+					log.Printf("Failed to rollback Redis lobby creation: %v", err)
+				}
+				if err := db.Delete(&NewLobby).Error; err != nil {
+					log.Printf("Failed to rollback PostgreSQL lobby creation: %v", err)
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving AI player in Redis"})
 				return
 			}
 
-			// Commit PostgreSQL transaction
-			if err := tx.Commit().Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error committing transaction"})
-				return
+			// Update player count in Redis lobby
+			redisLobby.PlayerCount = 1
+		}
+
+		// Save the lobby in Redis
+		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
+			log.Printf("Failed to create lobby in Redis: %v", err)
+			if err := db.Delete(&NewLobby).Error; err != nil {
+				log.Printf("Failed to rollback PostgreSQL lobby creation: %v", err)
 			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating lobby in Redis"})
+			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
