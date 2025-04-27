@@ -76,10 +76,13 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 	}
 
 	// Generate a random blind
-	AIMoney := AI.PlayersMoney
+	// AIMoney := AI.PlayersMoney
 
 	// TODO: check if we should do this or maybe just bet always for the minimum blind
-	proposedBlind := AIMoney/2 + rand.Intn(AIMoney-AIMoney/2+1)
+	// proposedBlind := AIMoney/2 + rand.Intn(AIMoney-AIMoney/2+1)
+
+	// TODO, change it
+	proposedBlind := 1
 
 	// Check if proposed blind exceeds MAX_BLIND
 	if proposedBlind > game_constants.MAX_BLIND {
