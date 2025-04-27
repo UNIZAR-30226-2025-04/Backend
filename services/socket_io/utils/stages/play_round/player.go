@@ -149,7 +149,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 	// First, handle all minimum-blind players (they ALWAYS get eliminated if they don't reach the base blind)
 	for _, player := range players {
 		if player.BetMinimumBlind && player.CurrentRoundPoints < baseBlind {
-			// Minimum-betting players are eliminated if below base blind, regardless of proposer's success
+			// Minimum-betting players are eliminated if below or equal to base blind, regardless of proposer's success
 			eliminatedPlayers = append(eliminatedPlayers, player.Username)
 			log.Printf("[ELIMINATION] Player %s eliminated for betting minimum and not reaching base blind of %d (scored %d)",
 				player.Username, baseBlind, player.CurrentRoundPoints)
