@@ -61,14 +61,14 @@ func AnnounceWinners(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string
 
 		// First pass: find the highest score
 		for i := range players {
-			if players[i].CurrentPoints > highestPoints {
-				highestPoints = players[i].CurrentPoints
+			if players[i].CurrentRoundPoints > highestPoints {
+				highestPoints = players[i].CurrentRoundPoints
 			}
 		}
 
 		// Second pass: collect all players with the highest score
 		for i := range players {
-			if players[i].CurrentPoints == highestPoints {
+			if players[i].CurrentRoundPoints == highestPoints {
 				// Make a copy of the player to avoid pointer issues
 				playerCopy := players[i]
 				winners = append(winners, &playerCopy)
@@ -82,12 +82,12 @@ func AnnounceWinners(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string
 
 			winnersData = append(winnersData, gin.H{
 				"winner_username": winner.Username,
-				"points":          winner.CurrentPoints,
+				"points":          winner.CurrentRoundPoints,
 				"icon":            winnerIcon,
 			})
 
 			log.Printf("[GAME-END] Winner: %s with %d points and icon %d",
-				winner.Username, winner.CurrentPoints, winnerIcon)
+				winner.Username, winner.CurrentRoundPoints, winnerIcon)
 		}
 
 		if len(winners) > 1 {
@@ -96,7 +96,7 @@ func AnnounceWinners(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string
 				len(winners), highestPoints)
 		} else {
 			log.Printf("[GAME-END] Winner is %s with %d points",
-				winners[0].Username, winners[0].CurrentPoints)
+				winners[0].Username, winners[0].CurrentRoundPoints)
 		}
 
 		// Broadcast game end to all players

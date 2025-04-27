@@ -75,10 +75,8 @@ func ResetPlayerAndBroadcastRoundStart(sio *socketio_types.SocketServer, redisCl
 	for i, player := range players {
 		// Reset player state for the new round
 
-		// Reset current points
-		player.CurrentPoints = 0
-		// KEY, totalPoints account for the current round
-		player.TotalPoints = 0
+		// Reset current points (TotalPoints are kept for stats, although not used)
+		player.CurrentRoundPoints = 0
 
 		// Reset hand plays and discards limits
 		player.HandPlaysLeft = game_constants.TOTAL_HAND_PLAYS

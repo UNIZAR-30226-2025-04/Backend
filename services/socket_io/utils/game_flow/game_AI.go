@@ -349,8 +349,8 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		deck.RemoveCards(newCards)
 		player.CurrentDeck = deck.ToJSON()
 
-		player.CurrentPoints = valorFinal
-		player.TotalPoints += valorFinal
+		player.CurrentRoundPoints = valorFinal
+		player.TotalGamePoints += valorFinal
 		player.HandPlaysLeft--
 		err = redisClient.UpdateDeckPlayer(*player)
 		if err != nil {
@@ -465,10 +465,10 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 	}
 
 	// Check if player has no plays and discards left OR has reached/exceeded the blind
-	if (player.HandPlaysLeft <= 0) || (player.CurrentPoints >= lobby.CurrentHighBlind) {
-		if player.CurrentPoints >= lobby.CurrentHighBlind {
+	if (player.HandPlaysLeft <= 0) || (player.CurrentRoundPoints >= lobby.CurrentHighBlind) {
+		if player.CurrentRoundPoints >= lobby.CurrentHighBlind {
 			log.Printf("[ROUND-CHECK] Player %s has reached the blind of %d with %d points",
-				username, lobby.CurrentHighBlind, player.CurrentPoints)
+				username, lobby.CurrentHighBlind, player.CurrentRoundPoints)
 		} else {
 			log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays or discards left)", username)
 		}

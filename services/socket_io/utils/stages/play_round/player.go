@@ -132,7 +132,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 	}
 
 	// Check if the highest blind proposer reached their proposed blind
-	proposerReachedBlind := proposerPlayer.CurrentPoints >= currentHighBlind
+	proposerReachedBlind := proposerPlayer.CurrentRoundPoints >= currentHighBlind
 	var reachedText string
 	if proposerReachedBlind {
 		reachedText = "reached"
@@ -144,15 +144,15 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 		highestBlindProposer,
 		reachedText,
 		currentHighBlind,
-		proposerPlayer.CurrentPoints)
+		proposerPlayer.CurrentRoundPoints)
 
 	// First, handle all minimum-blind players (they ALWAYS get eliminated if they don't reach the base blind)
 	for _, player := range players {
-		if player.BetMinimumBlind && player.CurrentPoints < baseBlind {
+		if player.BetMinimumBlind && player.CurrentRoundPoints < baseBlind {
 			// Minimum-betting players are eliminated if below base blind, regardless of proposer's success
 			eliminatedPlayers = append(eliminatedPlayers, player.Username)
 			log.Printf("[ELIMINATION] Player %s eliminated for betting minimum and not reaching base blind of %d (scored %d)",
-				player.Username, baseBlind, player.CurrentPoints)
+				player.Username, baseBlind, player.CurrentRoundPoints)
 		}
 	}
 
@@ -161,13 +161,13 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 		// Proposer failed: Only eliminate proposer and min-blind-betting players who failed (already handled)
 		eliminatedPlayers = append(eliminatedPlayers, highestBlindProposer)
 		log.Printf("[ELIMINATION] Proposer %s eliminated for not reaching their proposed blind of %d (scored %d)",
-			highestBlindProposer, currentHighBlind, proposerPlayer.CurrentPoints)
+			highestBlindProposer, currentHighBlind, proposerPlayer.CurrentRoundPoints)
 
 		// Players who bet higher than minimum are safe in this scenario
 		for _, player := range players {
 			if !player.BetMinimumBlind && player.Username != highestBlindProposer {
 				log.Printf("[ELIMINATION-SAFE] Player %s safe due to proposer failure (scored %d)",
-					player.Username, player.CurrentPoints)
+					player.Username, player.CurrentRoundPoints)
 			}
 		}
 	} else {
@@ -179,13 +179,13 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 			}
 
 			// Non-minimum players must reach the high blind
-			if player.CurrentPoints < currentHighBlind {
+			if player.CurrentRoundPoints < currentHighBlind {
 				eliminatedPlayers = append(eliminatedPlayers, player.Username)
 				log.Printf("[ELIMINATION] Player %s eliminated for not reaching high blind of %d (scored %d)",
-					player.Username, currentHighBlind, player.CurrentPoints)
+					player.Username, currentHighBlind, player.CurrentRoundPoints)
 			} else {
 				log.Printf("[ELIMINATION-SAFE] Player %s safe by reaching high blind with %d points",
-					player.Username, player.CurrentPoints)
+					player.Username, player.CurrentRoundPoints)
 			}
 		}
 	}

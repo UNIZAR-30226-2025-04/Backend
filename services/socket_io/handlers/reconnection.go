@@ -124,8 +124,8 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 				"modifiers":    player.Modifiers,
 				// TODO, include additional joker information (should be enough with sell price as well)
 				"current_jokers":    jokersWithPrices,
-				"current_points":    player.CurrentPoints,
-				"total_points":      player.TotalPoints,
+				"current_points":    player.CurrentRoundPoints,
+				"total_points":      player.TotalGamePoints,
 				"hand_plays_left":   player.HandPlaysLeft,
 				"discards_left":     player.DiscardsLeft,
 				"played_cards":      len(deck.PlayedCards),

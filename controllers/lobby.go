@@ -123,16 +123,16 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 				CurrentDeck:  poker.InitializePlayerDeck(), // Will be initialized when game starts
 				// TODO: see in_game_player.go
 				// PlayersRemainingCards: 52,
-				Modifiers:       nil, // Will be initialized when game starts
-				CurrentJokers:   nil, // Will be initialized when game starts
-				MostPlayedHand:  nil, // Will be initialized during game
-				HandPlaysLeft:   game_constants.TOTAL_HAND_PLAYS,
-				DiscardsLeft:    game_constants.TOTAL_DISCARDS,
-				Winner:          false,
-				CurrentPoints:   0,
-				TotalPoints:     0,
-				BetMinimumBlind: true,
-				IsBot:           true, // Mark as AI player
+				Modifiers:          nil, // Will be initialized when game starts
+				CurrentJokers:      nil, // Will be initialized when game starts
+				MostPlayedHand:     nil, // Will be initialized during game
+				HandPlaysLeft:      game_constants.TOTAL_HAND_PLAYS,
+				DiscardsLeft:       game_constants.TOTAL_DISCARDS,
+				Winner:             false,
+				CurrentRoundPoints: 0,
+				TotalGamePoints:    0,
+				BetMinimumBlind:    true,
+				IsBot:              true, // Mark as AI player
 			}
 
 			// Save the AI player in Redis
@@ -416,15 +416,15 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			CurrentDeck:  poker.InitializePlayerDeck(), // Will be initialized when game starts
 			// TODO: see in_game_player.go
 			// PlayersRemainingCards: 52,
-			Modifiers:       nil, // Will be initialized when game starts
-			CurrentJokers:   nil, // Will be initialized when game starts
-			MostPlayedHand:  nil, // Will be initialized during game
-			HandPlaysLeft:   game_constants.TOTAL_HAND_PLAYS,
-			DiscardsLeft:    game_constants.TOTAL_DISCARDS,
-			Winner:          false,
-			CurrentPoints:   0,
-			TotalPoints:     0,
-			BetMinimumBlind: true,
+			Modifiers:          nil, // Will be initialized when game starts
+			CurrentJokers:      nil, // Will be initialized when game starts
+			MostPlayedHand:     nil, // Will be initialized during game
+			HandPlaysLeft:      game_constants.TOTAL_HAND_PLAYS,
+			DiscardsLeft:       game_constants.TOTAL_DISCARDS,
+			Winner:             false,
+			CurrentRoundPoints: 0,
+			TotalGamePoints:    0,
+			BetMinimumBlind:    true,
 			// NEW: initially, the player hasn't bought any packs yet
 			LastPurchasedPackItemId: -1,
 			PurchasedPackCards:      purchasedPackCardsJSON,
