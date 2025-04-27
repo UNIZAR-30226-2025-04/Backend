@@ -76,6 +76,14 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			return
 		}
 
+		var player_count int = 0
+		if isPublic == 0 || isPublic == 1 {
+			player_count = 0
+		}
+		if isPublic == 2 {
+			player_count = 1
+		}
+
 		// Create corresponding Redis lobby with matching public/private setting
 		redisLobby := &redis_models.GameLobby{
 			Id:                      NewLobby.ID,
@@ -92,7 +100,7 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			PlayersFinishedRound:    make(map[string]bool),
 			PlayersFinishedShop:     make(map[string]bool),
 			PlayersFinishedVouchers: make(map[string]bool),
-			PlayerCount:             0,
+			PlayerCount:             player_count,
 			BlindTimeout:            time.Time{},
 			GameRoundTimeout:        time.Time{},
 			ShopTimeout:             time.Time{},
