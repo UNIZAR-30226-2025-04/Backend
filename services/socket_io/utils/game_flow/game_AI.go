@@ -196,6 +196,7 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 				Gold:   player.PlayersMoney,
 			}
 			tokens, mult, handType, scoredCards := poker.BestHand(hand)
+			log.Printf("[AI-HAND] Hand: %v, Tokens: %d, Mult: %d, HandType: %d", hand.Cards, tokens, mult, handType)
 			if tokens*mult > bestTokens*bestMult {
 				bestTokens = tokens
 				bestMult = mult
@@ -359,6 +360,8 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		}
 
 		// Log the result
+		log.Printf("[AI-HAND] Player %s played hand: %v, Tokens: %d, Mult: %d, Gold: %d",
+			username, bestHand.Cards, finalFichas, finalMult, finalGold)
 		log.Println("Bot Noglerinho ha puntuado la friolera de:", valorFinal)
 		// 7. Emit success response (FRONTEND WILL USE IT??????? SOME OF THEM????)
 		/*
