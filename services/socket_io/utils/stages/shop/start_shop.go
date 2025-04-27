@@ -80,7 +80,7 @@ func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 			"timeout_start_date": lobby.ShopTimeout.Format(time.RFC3339),
 			"current_round":      lobby.CurrentRound,
 			"money":              player.PlayersMoney,
-			"jokers":             jokersWithPrices,
+			"players_jokers":     jokersWithPrices,
 			"max_jokers":         game_constants.MaxJokersPerPlayer,
 		})
 
