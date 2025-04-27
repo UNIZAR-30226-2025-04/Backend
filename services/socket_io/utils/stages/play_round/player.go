@@ -3,8 +3,10 @@ package play_round
 import (
 	postgres_models "Nogler/models/postgres"
 	redis_models "Nogler/models/redis"
+	"Nogler/services/poker"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -12,6 +14,68 @@ import (
 	"github.com/zishang520/socket.io/v2/socket"
 	"gorm.io/gorm"
 )
+
+// ValidatePlayerHand checks if the hand is valid for the player
+// It validates that:
+// 1. All cards in the hand are in the player's current hand
+// 2. The gold in the hand matches the player's gold
+// 3. All jokers in the hand are in the player's current jokers
+func ValidatePlayerHand(player *redis_models.InGamePlayer, hand poker.Hand) (bool, string) {
+	// Validate cards
+	var currentCards []poker.Card
+	err := json.Unmarshal(player.CurrentHand, &currentCards)
+	if err != nil {
+		return false, fmt.Sprintf("Error processing player's current hand: %v", err)
+	}
+
+	// Check if each card in the hand is in the player's current hand
+	cardMap := make(map[string]int)
+	for _, card := range currentCards {
+		key := fmt.Sprintf("%s-%s", card.Rank, card.Suit)
+		cardMap[key]++
+	}
+
+	for _, card := range hand.Cards {
+		key := fmt.Sprintf("%s-%s", card.Rank, card.Suit)
+		if count, exists := cardMap[key]; !exists || count <= 0 {
+			return false, fmt.Sprintf("Card %s-%s not in player's hand", card.Rank, card.Suit)
+		}
+		cardMap[key]--
+	}
+
+	// Validate gold
+	if hand.Gold != player.PlayersMoney {
+		return false, fmt.Sprintf("Gold mismatch: hand has %d, player has %d",
+			hand.Gold, player.PlayersMoney)
+	}
+
+	// Validate jokers
+	var playerJokers poker.Jokers
+	err = json.Unmarshal(player.CurrentJokers, &playerJokers)
+	if err != nil {
+		return false, fmt.Sprintf("Error processing player's jokers: %v", err)
+	}
+
+	// Create a map of player's jokers for easy lookup
+	jokerMap := make(map[int]bool)
+	for _, joker := range playerJokers.Juglares {
+		if joker != 0 {
+			jokerMap[joker] = true
+		}
+	}
+
+	// Check each joker in the hand
+	for _, joker := range hand.Jokers.Juglares {
+		if joker == 0 {
+			continue
+		}
+		if !jokerMap[joker] {
+			return false, fmt.Sprintf("Joker %d not available to player", joker)
+		}
+	}
+
+	return true, ""
+}
 
 // Separate function to handle player eliminations based on blind achievement
 // TODO: REVISE!!

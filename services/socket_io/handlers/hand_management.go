@@ -6,6 +6,7 @@ import (
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/game_flow"
+	"Nogler/services/socket_io/utils/stages/play_round"
 	"Nogler/utils"
 	"encoding/json"
 	"log"
@@ -95,6 +96,14 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		if (hand.Cards == nil) || (len(hand.Cards) == 0) {
 			log.Printf("[HAND-ERROR] No cards in hand for user %s", username)
 			client.Emit("error", gin.H{"error": "No cards in hand"})
+			return
+		}
+
+		// Validate that the hand is valid for this player
+		valid, errMsg := play_round.ValidatePlayerHand(player, hand)
+		if !valid {
+			log.Printf("[HAND-ERROR] Invalid hand for user %s: %s", username, errMsg)
+			client.Emit("error", gin.H{"error": errMsg})
 			return
 		}
 
