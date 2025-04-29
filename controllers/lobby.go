@@ -425,6 +425,7 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 		redisPlayer := &redis_models.InGamePlayer{
 			Username:     username,
 			LobbyId:      lobbyID,
+			Rerolls:      0,
 			PlayersMoney: 10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
 			CurrentDeck:  poker.InitializePlayerDeck(), // Will be initialized when game starts
 			// TODO: see in_game_player.go

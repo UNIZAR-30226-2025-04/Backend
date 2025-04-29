@@ -100,7 +100,7 @@ func RerollShopItems(redisClient *redis_services.RedisClient, lobbyID string) er
 	return nil
 }
 
-func generateRerollableItems(rng *rand.Rand, count int, nextUniqueId *int) []redis.ShopItem {
+func GenerateRerollableItems(rng *rand.Rand, count int, nextUniqueId *int) []redis.ShopItem {
 	// NOTE: only jokers are rerrollable items
 	rerollableItems := make([]redis.ShopItem, count)
 	var jokers []poker.Jokers

@@ -492,3 +492,53 @@ func HandlePackSelection(redisClient *redis_services.RedisClient, client *socket
 		})
 	}
 }
+
+func HandleRerollShop(redisClient *redis_services.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("RerollShop initiated - User: %s, Args: %v, Socket ID: %s",
+			username, args, client.Id())
+		// Get player state
+		playerState, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Error getting player state: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving player state"})
+			return
+		}
+		// Extract lobby ID from player state
+		lobbyID := playerState.LobbyId
+		if lobbyID == "" {
+			log.Printf("[SHOP-ERROR] Player %s not associated with any lobby", username)
+			client.Emit("error", gin.H{"error": "Player not in a lobby"})
+			return
+		}
+		// Validate we are in shop phase
+		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidateShopPhase
+			return
+		}
+		// Get the lobby state
+		lobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Error getting lobby state: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting lobby state"})
+			return
+		}
+		// Check if the player has enough money to reroll
+		if playerState.PlayersMoney < lobby.ShopState.Rerolls+2 {
+			client.Emit("error", gin.H{"error": "Not enough money to reroll"})
+			return
+		}
+		// Check if it is the highest reroll
+		if playerState.Rerolls == lobby.ShopState.Rerolls {
+			// Hay que generar el nuevo reroll
+			playerState.PlayersMoney -= lobby.ShopState.Rerolls + 2
+			lobby.ShopState.Rerolls++
+			// Deduct the money
+		} else {
+
+		}
+
+	}
+}

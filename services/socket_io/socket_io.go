@@ -130,7 +130,7 @@ func (sio *MySocketServer) Start(router *gin.Engine, db *gorm.DB, redisClient *r
 
 		//client.On("get_from_pack", handlers.HandleGetFromPack(redisClient, client, db, username))
 
-		//client.On("rerroll_shop", handlers.HandleRerollShop(redisClient, client, db, username, sio_casted))
+		client.On("rerroll_shop", handlers.HandleRerollShop(redisClient, client, db, username, sio_casted))
 
 		// TODO: sell_joker
 		client.On("sell_joker", handlers.HandleSellJoker(redisClient, client, db, username))
