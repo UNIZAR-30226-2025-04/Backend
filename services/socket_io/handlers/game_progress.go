@@ -150,13 +150,21 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
-		if len(args) < 1 {
-			log.Printf("[NEXT-BLIND-ERROR] Missing lobby ID for user %s", username)
-			client.Emit("error", gin.H{"error": "Missing lobby ID"})
+		// Get player data to extract lobby ID
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[NEXT-BLIND-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving player data"})
 			return
 		}
 
-		lobbyID := args[0].(string)
+		lobbyID := player.LobbyId
+		if lobbyID == "" {
+			log.Printf("[NEXT-BLIND-ERROR] Player %s not in any lobby", username)
+			client.Emit("error", gin.H{"error": "You are not in any lobby"})
+			return
+		}
+
 		log.Printf("[NEXT-BLIND] User %s requesting to continue to next blind in lobby %s", username, lobbyID)
 
 		// Validate the user and lobby
@@ -199,13 +207,21 @@ func HandleContinueToNextBlind(redisClient *redis.RedisClient, client *socket.So
 func HandleContinueToVouchers(redisClient *redis.RedisClient, client *socket.Socket,
 	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
 	return func(args ...interface{}) {
-		if len(args) < 1 {
-			log.Printf("[VOUCHERS-ERROR] Missing lobby ID for user %s", username)
-			client.Emit("error", gin.H{"error": "Missing lobby ID"})
+		// Get player data to extract lobby ID
+		player, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[VOUCHERS-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving player data"})
 			return
 		}
 
-		lobbyID := args[0].(string)
+		lobbyID := player.LobbyId
+		if lobbyID == "" {
+			log.Printf("[VOUCHERS-ERROR] Player %s not in any lobby", username)
+			client.Emit("error", gin.H{"error": "You are not in any lobby"})
+			return
+		}
+
 		log.Printf("[VOUCHERS] User %s requesting to continue to vouchers phase in lobby %s", username, lobbyID)
 
 		// Validate the user and lobby
