@@ -779,25 +779,15 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 		log.Printf("ActivateModifier request - User: %s, Args: %v, Socket ID: %s",
 			username, args, client.Id())
 
-		// 1. Check if the player is in the game
-		lobbyID := args[0].(string)
-
-		// Check player is in lobby
-		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+		player, err := redisClient.GetInGamePlayer(username)
 		if err != nil {
-			log.Printf("[MODIFIER-ERROR] Database error: %v", err)
-			client.Emit("error", gin.H{"error": "Database error"})
-			return
-		}
-
-		if !isInLobby {
-			log.Printf("[MODIFIER-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
-			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
+			log.Printf("[MODIFIER-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting player data"})
 			return
 		}
 
 		// Validate modifiers phase
-		valid, err := socketio_utils.ValidateVouchersPhase(redisClient, client, lobbyID)
+		valid, err := socketio_utils.ValidateVouchersPhase(redisClient, client, player.LobbyId)
 		if err != nil || !valid {
 			return
 		}
@@ -808,14 +798,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		modifiers := args[1].([]poker.Modifier)
-
-		player, err := redisClient.GetInGamePlayer(username)
-		if err != nil {
-			log.Printf("[MODIFIER-ERROR] Error getting player data: %v", err)
-			client.Emit("error", gin.H{"error": "Error getting player data"})
-			return
-		}
+		modifiers := args[0].([]poker.Modifier)
 
 		if player.Modifiers == nil {
 			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
@@ -903,25 +886,15 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 		log.Printf("ActivateModifier request - User: %s, Args: %v, Socket ID: %s",
 			username, args, client.Id())
 
-		// 1. Check if the player is in the game
-		lobbyID := args[0].(string)
-
-		// Check player is in lobby
-		isInLobby, err := utils.IsPlayerInLobby(db, lobbyID, username)
+		player, err := redisClient.GetInGamePlayer(username)
 		if err != nil {
-			log.Printf("[MODIFIER-ERROR] Database error: %v", err)
-			client.Emit("error", gin.H{"error": "Database error"})
-			return
-		}
-
-		if !isInLobby {
-			log.Printf("[MODIFIER-ERROR] User is NOT in lobby: %s, Lobby: %s", username, lobbyID)
-			client.Emit("error", gin.H{"error": "You must join the lobby before sending messages"})
+			log.Printf("[MODIFIER-ERROR] Error getting player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting player data"})
 			return
 		}
 
 		// Validate vouchers phase
-		valid, err := socketio_utils.ValidateVouchersPhase(redisClient, client, lobbyID)
+		valid, err := socketio_utils.ValidateVouchersPhase(redisClient, client, player.LobbyId)
 		if err != nil || !valid {
 			return
 		}
@@ -932,14 +905,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		modifiers := args[1].([]poker.Modifier)
-
-		player, err := redisClient.GetInGamePlayer(username)
-		if err != nil {
-			log.Printf("[MODIFIER-ERROR] Error getting player data: %v", err)
-			client.Emit("error", gin.H{"error": "Error getting player data"})
-			return
-		}
+		modifiers := args[0].([]poker.Modifier)
 
 		if player.Modifiers == nil {
 			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
