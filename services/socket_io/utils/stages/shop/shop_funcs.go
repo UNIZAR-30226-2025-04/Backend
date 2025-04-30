@@ -28,12 +28,18 @@ func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
 	// NEW: unique ID for each shop item
 	nextUniqueId := 1
 
+	firstJokers := GenerateRerollableItems(rng, jokersCount, &nextUniqueId)
 	shop := &redis.LobbyShop{
 		Rerolls:        0,
 		FixedPacks:     generateFixedPacks(rng, &nextUniqueId),
 		FixedModifiers: generateFixedModifiers(rng, &nextUniqueId),
 		// NOTE: fixed number of rerollable items
-		RerollableItems: generateRerollableItems(rng, jokersCount, &nextUniqueId),
+		RerollableItems: firstJokers,
+		Rerolled:        make([]redis.RerolledJokers, 0),
+	}
+	// Save first generated jokers as the rerolled 0
+	for i, joker := range firstJokers {
+		shop.Rerolled[0].Jokers[i] = joker
 	}
 
 	return shop, nil
@@ -103,8 +109,7 @@ func RerollShopItems(redisClient *redis_services.RedisClient, lobbyID string) er
 func GenerateRerollableItems(rng *rand.Rand, count int, nextUniqueId *int) []redis.ShopItem {
 	// NOTE: only jokers are rerrollable items
 	rerollableItems := make([]redis.ShopItem, count)
-	var jokers []poker.Jokers
-	jokers = generateJokers(rng, count)
+	jokers := generateJokers(rng, count)
 
 	for i := range rerollableItems {
 		rerollableItems[i] = redis.ShopItem{
@@ -163,6 +168,7 @@ func generatePackContents(seed uint64) redis.PackContents {
 // Predefined slices for ranks and suits, we dont want to recalculate each time. might not be the best modularity but makes sense here
 var ranks = []string{"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"}
 var suits = []string{"h", "d", "c", "s"}
+var enhancements = []int{0, 1, 2}
 
 func generateCards(rng *rand.Rand, numCards int) []poker.Card {
 	cards := make([]poker.Card, numCards)
@@ -171,7 +177,8 @@ func generateCards(rng *rand.Rand, numCards int) []poker.Card {
 	for i := 0; i < numCards; i++ {
 		rank := ranks[rng.Intn(len(ranks))]
 		suit := suits[rng.Intn(len(suits))]
-		cards[i] = poker.Card{Rank: rank, Suit: suit}
+		enhancement := enhancements[rng.Intn(len(enhancements))]
+		cards[i] = poker.Card{Rank: rank, Suit: suit, Enhancement: enhancement}
 	}
 
 	return cards

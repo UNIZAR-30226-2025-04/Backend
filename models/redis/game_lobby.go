@@ -92,11 +92,16 @@ func (l *GameLobby) EnsureMapsInitialized() {
 	}
 }
 
+type RerolledJokers struct {
+	Jokers [3]ShopItem `json:"jokers"` // Rerolled jokers
+}
+
 type LobbyShop struct {
-	Rerolls         int        `json:"reroll_count"`
-	FixedPacks      []ShopItem `json:"fixed_packs"`
-	FixedModifiers  []ShopItem `json:"fixed_modifiers"`
-	RerollableItems []ShopItem `json:"rerollable_items"`
+	Rerolls         int              `json:"reroll_count"`
+	Rerolled        []RerolledJokers `json:"rerolled_items"` //Rerolls through the shop
+	FixedPacks      []ShopItem       `json:"fixed_packs"`
+	FixedModifiers  []ShopItem       `json:"fixed_modifiers"`
+	RerollableItems []ShopItem       `json:"rerollable_items"`
 }
 
 type ShopItem struct {

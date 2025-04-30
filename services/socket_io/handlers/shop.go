@@ -10,6 +10,8 @@ import (
 	"Nogler/services/socket_io/utils/stages/shop"
 	"log"
 
+	"golang.org/x/exp/rand"
+
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
 	"gorm.io/gorm"
@@ -535,7 +537,11 @@ func HandleRerollShop(redisClient *redis_services.RedisClient, client *socket.So
 			// Hay que generar el nuevo reroll
 			playerState.PlayersMoney -= lobby.ShopState.Rerolls + 2
 			lobby.ShopState.Rerolls++
-			// Deduct the money
+			playerState.Rerolls++
+			baseSeed := shop.GenerateSeed(lobbyID, "shop", roundNumber)
+			rng := rand.New(rand.NewSource(baseSeed))
+			seed := rng.Int63()
+			shop.GenerateRerollableItems(seed)
 		} else {
 
 		}
