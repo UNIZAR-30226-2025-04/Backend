@@ -579,10 +579,10 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 
 // SHOP
 
-func ShopAI(redisClient *redis.RedisClient, lobbyID string, shopState *redis_models.LobbyShop) {
+func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopState *redis_models.LobbyShop, sio *socketio_types.SocketServer) {
 	log.Printf("ShopAI initiated - User: %s", username)
 
-	// Get player state first to extract lobby ID
+	// Get player state
 	playerState, err := getAIplayer(redisClient, lobbyID)
 	if err != nil {
 		log.Printf("[AI-SHOP-ERROR] Error getting player state: %v", err)
@@ -702,11 +702,13 @@ func ShopAI(redisClient *redis.RedisClient, lobbyID string, shopState *redis_mod
 					item := shopState.FixedModifiers[which]
 					itemID := item.ID
 					price := shopState.FixedModifiers[which].Price
-					purchaseVoucherAI(redisClient, playerState, lobbyState, item, itemID, price)
+					purchaseVoucherAI(redisClient, playerState, item, itemID, price)
 				}
 			}
 		}
 	}
+	// Continue to vouchers phase
+	continueToVouchers(redisClient, db, lobbyID, sio)
 }
 
 func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
@@ -756,7 +758,7 @@ func purchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.I
 }
 
 func purchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
-	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
+	item redis_models.ShopItem, itemID int, clientPrice int) {
 	log.Printf("[AI-SHOP] Purchasing voucher %d for player Noglerinho", itemID)
 	// Process the voucher purchase with price validation
 	success, updatedPlayer, err := shop.PurchaseVoucher(redisClient, playerState, item, clientPrice)
@@ -790,7 +792,7 @@ func sellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGam
 
 // VOUCHERS
 
-func VouchersAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) {
+func VouchersAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
 	log.Printf("VouchersAI initiated - User: %s", username)
 
 	// Get player data from Redis
@@ -843,6 +845,9 @@ func VouchersAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_ty
 		}
 	}
 	log.Printf("[AI-VOUCHER-INFO] Player %s activated %d vouchers", username, numModifiers)
+
+	// Continue to next blind phase
+	continueToNextBlind(redisClient, db, lobbyID, sio)
 }
 
 func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer,
@@ -1005,4 +1010,74 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	})
 
 	log.Printf("[AI-MODIFIER-SUCCESS] Modifiers sent to user %s from %s: %v", receiver.Username, username, modifier)
+}
+
+// CONTINUE NEXT PHASE
+
+func continueToNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
+	log.Printf("ContinueToNextBlindAI initiated - User: %s", username)
+
+	// Get game lobby
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[AI-NEXT-BLIND-ERROR] Error getting lobby data: %v", err)
+		return
+	}
+
+	log.Printf("[AI-NEXT-BLIND] Noglerinho requesting to continue to next blind in lobby %s", lobbyID)
+
+	// Increment the finished vouchers counter (NEW, using maps now)
+	lobby.PlayersFinishedVouchers[username] = true
+	log.Printf("[AI-NEXT-BLIND] Player %s ready for next blind. Total ready: %d/%d",
+		username, len(lobby.PlayersFinishedVouchers), lobby.PlayerCount)
+
+	// Save the updated lobby
+	err = redisClient.SaveGameLobby(lobby)
+	if err != nil {
+		log.Printf("[AI-NEXT-BLIND-ERROR] Error saving game lobby: %v", err)
+		return
+	}
+
+	// If all players are ready, broadcast the starting_next_blind event
+	if len(lobby.PlayersFinishedVouchers) >= lobby.PlayerCount {
+		log.Printf("[AI-NEXT-BLIND-COMPLETE] All players ready for next blind (%d/%d), round %d.",
+			len(lobby.PlayersFinishedVouchers), lobby.PlayerCount, lobby.CurrentRound)
+
+		// Advance to the next blind
+		AdvanceToNextBlindIfUndone(redisClient, db, lobbyID, sio, false, lobby.CurrentRound)
+	}
+}
+
+func continueToVouchers(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
+	log.Printf("ContinueToVouchersAI initiated - User: %s", username)
+
+	// Get game lobby
+	lobby, err := redisClient.GetGameLobby(lobbyID)
+	if err != nil {
+		log.Printf("[AI-VOUCHERS-ERROR] Error getting lobby data: %v", err)
+		return
+	}
+
+	log.Printf("[AI-VOUCHERS] Noglerinho requesting to continue to vouchers phase in lobby %s", lobbyID)
+
+	// Increment the finished shop counter
+	lobby.PlayersFinishedShop[username] = true
+	log.Printf("[AI-VOUCHERS] Noglerinho ready for vouchers phase. Total ready: %d/%d",
+		len(lobby.PlayersFinishedShop), lobby.PlayerCount)
+
+	// Save the updated lobby
+	err = redisClient.SaveGameLobby(lobby)
+	if err != nil {
+		log.Printf("[AI-VOUCHERS-ERROR] Error saving game lobby: %v", err)
+		return
+	}
+
+	// If all players are ready, advance to the vouchers phase
+	if len(lobby.PlayersFinishedShop) >= lobby.PlayerCount {
+		log.Printf("[AI-VOUCHERS-COMPLETE] All players ready for vouchers phase (%d/%d), round %d.",
+			len(lobby.PlayersFinishedShop), lobby.PlayerCount, lobby.CurrentRound)
+
+		// Use game_flow to advance to vouchers phase
+		AdvanceToVouchersIfUndone(redisClient, db, lobbyID, sio, lobby.CurrentRound)
+	}
 }

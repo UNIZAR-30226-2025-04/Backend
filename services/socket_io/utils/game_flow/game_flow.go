@@ -421,7 +421,7 @@ func AdvanceToShop(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, 
 
 	// If the game is against the AI, we need to set the AI's shop
 	if lobby.IsPublic == 2 {
-		go ShopAI(redisClient, lobbyID, shopItems)
+		go ShopAI(redisClient, db, lobbyID, shopItems, sio)
 	}
 
 	log.Printf("[SHOP-ADVANCE] Successfully advanced lobby %s to shop phase", lobbyID)
@@ -533,7 +533,7 @@ func AdvanceToVouchersIfUndone(
 
 	// If the game is against the AI, we need to set the AI's vouchers
 	if lobby.IsPublic == 2 {
-		go VouchersAI(redisClient, lobbyID, sio)
+		go VouchersAI(redisClient, db, lobbyID, sio)
 	}
 }
 
