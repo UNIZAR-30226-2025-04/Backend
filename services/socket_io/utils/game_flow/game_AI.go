@@ -607,7 +607,7 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 	}
 
 	// If AI has less than 40 money, sell a joker if exists
-	if playerState.PlayersMoney < 40 {
+	if playerState.PlayersMoney < 7 {
 		// 33% chance to sell a joker
 		randomValue := rand.Intn(3)
 		if randomValue == 0 {
@@ -625,7 +625,6 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 			}
 			if numJokers == 0 {
 				log.Printf("[AI-SHOP-ERROR] No jokers to sell for player %s", username)
-				return
 			} else {
 				jokerToSell := rand.Intn(numJokers)
 				sellJokerAI(redisClient, playerState, jokers.Juglares[jokerToSell])
@@ -640,7 +639,6 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 						sellJokerAI(redisClient, playerState, jokers.Juglares[jokerToSell2])
 					}
 				}
-				return
 			}
 		}
 	} else {
