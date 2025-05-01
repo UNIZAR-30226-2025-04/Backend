@@ -107,18 +107,21 @@ type LobbyShop struct {
 }
 
 type ShopItem struct {
-	ID         int          `json:"id"`
-	Type       string       `json:"type"` // "card", "joker", "pack", "modifier"
-	Price      int          `json:"price"`
-	PackSeed   int64        `json:"pack_seed,omitempty"`
-	Content    PackContents `gorm:"type:jsonb" json:"content"` // Directly store PackContents
-	JokerId    int          `json:"joker_id,omitempty"`        // Only for joker type
-	ModifierId int          `json:"modifier_id,omitempty"`     // Only for modifier type
+	ID            int          `json:"id"`
+	Type          string       `json:"type"` // "card", "joker", "pack", "modifier"
+	Price         int          `json:"price"`
+	PackSeed      int64        `json:"pack_seed,omitempty"`
+	Content       PackContents `gorm:"type:jsonb" json:"content"` // Directly store PackContents
+	JokerId       int          `json:"joker_id,omitempty"`        // Only for joker type
+	ModifierId    int          `json:"modifier_id,omitempty"`     // Only for modifier type
+	PackType      int          `json:"pack_type,omitempty"`       // Type of pack: 1=cards, 2=jokers, 3=vouchers
+	MaxSelectable int          `json:"max_selectable,omitempty"`  // Maximum items a player can select from this pack
 }
 
 type PackContents struct {
-	Cards  []poker.Card   `json:"cards"`
-	Jokers []poker.Jokers `json:"jokers"`
+	Cards    []poker.Card     `json:"cards"`
+	Jokers   []poker.Jokers   `json:"jokers"`
+	Vouchers []poker.Modifier `json:"vouchers"` // New field for voucher modifiers
 }
 
 // Value - Serialize to JSON

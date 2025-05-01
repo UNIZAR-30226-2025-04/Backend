@@ -45,22 +45,77 @@ func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
 }
 
 func generateFixedPacks(rng *rand.Rand, nextUniqueId *int) []redis.ShopItem {
-	// Wrong, think a feasable number of packs generated per shop
-	// Could be managed by seing maxmoney, rounds maxmoneyplayer can reroll, and calc
-	count := minFixedPacks + rng.Intn(maxFixedPacks-minFixedPacks+1)
-	packs := make([]redis.ShopItem, count)
+	// Always generate exactly 2 packs
+	packs := make([]redis.ShopItem, 2)
 
-	for i := range packs {
-		seed := rng.Int63()
-		packs[i] = redis.ShopItem{
-			ID:       *nextUniqueId,
-			Type:     game_constants.PACK_TYPE,
-			Price:    CalculatePackPrice(3), // 3 should really be the number of items
-			PackSeed: seed,
+	// Define possible pack types as integers
+	packTypes := []int{
+		game_constants.PACK_TYPE_CARDS,
+		game_constants.PACK_TYPE_JOKERS,
+		game_constants.PACK_TYPE_VOUCHERS,
+	}
+
+	// Randomly select 2 different pack types
+	selectedTypes := make([]int, 2)
+
+	// First pack type
+	selectedTypes[0] = packTypes[rng.Intn(len(packTypes))]
+
+	// Second pack type (ensure it's different from the first)
+	var secondType int
+	for {
+		secondType = packTypes[rng.Intn(len(packTypes))]
+		if secondType != selectedTypes[0] {
+			selectedTypes[1] = secondType
+			break
 		}
+	}
+
+	// Generate each pack
+	for i := 0; i < 2; i++ {
+		seed := rng.Int63()
+		packType := selectedTypes[i]
+
+		// Set max selectable based on pack type
+		var maxSelectable int
+		switch packType {
+		case game_constants.PACK_TYPE_CARDS:
+			maxSelectable = 2
+		case game_constants.PACK_TYPE_JOKERS:
+			maxSelectable = 1
+		case game_constants.PACK_TYPE_VOUCHERS:
+			maxSelectable = 2
+		default:
+			maxSelectable = 1
+		}
+
+		packs[i] = redis.ShopItem{
+			ID:            *nextUniqueId,
+			Type:          game_constants.PACK_TYPE,
+			Price:         calculatePackPrice(packType),
+			PackSeed:      seed,
+			PackType:      packType,
+			MaxSelectable: maxSelectable,
+		}
+
 		*nextUniqueId++
 	}
+
 	return packs
+}
+
+// Update price calculation based on pack type
+func calculatePackPrice(packType int) int {
+	switch packType {
+	case game_constants.PACK_TYPE_CARDS:
+		return 3
+	case game_constants.PACK_TYPE_JOKERS:
+		return 4
+	case game_constants.PACK_TYPE_VOUCHERS:
+		return 3
+	default:
+		return 4
+	}
 }
 
 func generateFixedModifiers(rng *rand.Rand, nextUniqueId *int) []redis.ShopItem {
@@ -126,8 +181,8 @@ func GenerateRerollableItems(rng *rand.Rand, nextUniqueId *int) redis.RerolledJo
 
 func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.GameLobby, item redis.ShopItem) (*redis.PackContents, error) {
 	// Unique key per pack state
-
 	packKey := redis_utils.FormatPackKey(lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, item.ID)
+
 	// Try to get existing pack contents
 	existing, err := rc.GetPackContents(packKey)
 	if err == nil && existing != nil {
@@ -135,7 +190,7 @@ func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.Game
 	}
 
 	// Generate new contents if not found
-	newContents := generatePackContents(uint64(item.PackSeed))
+	newContents := generatePackContents(uint64(item.PackSeed), item.PackType)
 
 	if err := rc.SetPackContents(packKey, newContents, 24*time.Hour); err != nil {
 		return nil, err
@@ -144,19 +199,30 @@ func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.Game
 	return &newContents, nil
 }
 
-func generatePackContents(seed uint64) redis.PackContents {
+func generatePackContents(seed uint64, packType int) redis.PackContents {
 	rng := rand.New(rand.NewSource(seed))
-	numItems := minFixedPacks + rng.Intn(maxFixedPacks-minFixedPacks+1)
-
-	// Determine number of jokers (can be 0)
-	numJokers := rng.Intn(numItems + 1) // Ensure jokers + cards = numItems
-
-	numCards := numItems - numJokers
-
-	return redis.PackContents{
-		Cards:  generateCards(rng, numCards),
-		Jokers: poker.GenerateJokers(rng, numJokers),
+	contents := redis.PackContents{
+		Cards:    []poker.Card{},
+		Jokers:   []poker.Jokers{},
+		Vouchers: []poker.Modifier{},
 	}
+
+	switch packType {
+	case game_constants.PACK_TYPE_CARDS:
+		numCards := 4 + rng.Intn(3) // 4, 5, or 6 cards
+		contents.Cards = generateCards(rng, numCards)
+
+	case game_constants.PACK_TYPE_JOKERS:
+		// Generate 3 jokers
+		contents.Jokers = poker.GenerateJokers(rng, 3)
+
+	case game_constants.PACK_TYPE_VOUCHERS:
+		// Generate 3-4 vouchers (modifiers)
+		numVouchers := 3 + rng.Intn(2) // 3 or 4
+		contents.Vouchers = generatePackVouchers(rng, numVouchers)
+	}
+
+	return contents
 }
 
 // Predefined slices for ranks and suits, we dont want to recalculate each time. might not be the best modularity but makes sense here
@@ -481,4 +547,37 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 	player.LastPurchasedPackItemId = -1
 
 	return player, nil
+}
+
+// Generate modifiers for voucher packs
+func generatePackVouchers(rng *rand.Rand, count int) []poker.Modifier {
+	vouchers := make([]poker.Modifier, count)
+
+	// Calculate total weight of modifiers - same approach as in generateFixedModifiers
+	totalWeight := 0
+	for _, modifier := range poker.ModifierWeights {
+		totalWeight += modifier.Weight
+	}
+
+	for i := 0; i < count; i++ {
+		// Generate weighted random modifier ID - identical to generateFixedModifiers
+		randomWeight := rng.Intn(totalWeight)
+		modifierID := 1 // Default to 1 in case something goes wrong
+
+		for _, modifier := range poker.ModifierWeights {
+			if randomWeight < modifier.Weight {
+				modifierID = modifier.ID
+				break
+			}
+			randomWeight -= modifier.Weight
+		}
+
+		// Create a modifier directly instead of a card
+		vouchers[i] = poker.Modifier{
+			Value:    modifierID,
+			LeftUses: -1, // Set to -1 if it doesn't expire until manually used
+		}
+	}
+
+	return vouchers
 }
