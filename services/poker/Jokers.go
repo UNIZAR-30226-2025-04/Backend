@@ -3,7 +3,9 @@ package poker
 import (
 	"fmt"
 	"math"
-	"math/rand"
+	"sort"
+
+	"golang.org/x/exp/rand"
 )
 
 type Jokers struct {
@@ -15,29 +17,32 @@ type JokerFunc func(hand Hand, fichas int, mult int, gold int, used []bool, inde
 const ExpSellPriceDenominator = 9
 
 var jokerTable = map[int]JokerFunc{
-	1:  SolidSevenJoker,
-	2:  PoorJoker,
-	3:  BotardoJoker,
-	4:  AverageSizeMichel,
-	5:  HellCowboy,
-	6:  CarbSponge,
-	7:  Photograph,
-	8:  Petpet,
-	9:  EmptyJoker,
-	10: TwoFriendsJoker,
+	// Common
+	1: SolidSevenJoker,
+	2: PoorJoker,
+	3: Petpet,
+	4: AverageSizeMichel,
+	5: HellCowboy,
+	6: CarbSponge,
+	7: TwoFriendsJoker,
+	8: BIRDIFICATION,
+
+	// Uncommon
+	9:  Photograph,
+	10: EmptyJoker,
 	11: LiriliLarila,
-	12: BIRDIFICATION,
-	13: Rustyahh,
-	14: damnapril,
-	15: itssoover,
-	16: paris,
+	12: Rustyahh,
+	13: damnapril,
+	14: crowave,
+	15: bicicleta,
+	16: salebalatrito,
 	17: diego_joker,
-	18: bicicleta,
-	19: nasus,
-	20: sombrilla,
-	21: salebalatrito,
-	22: kaefece,
-	23: crowave,
+	18: itssoover,
+
+	// Rare
+	19: paris,
+	20: nasus,
+	21: sombrilla,
 }
 
 // 5
@@ -45,11 +50,6 @@ var jokerTable = map[int]JokerFunc{
 func SolidSevenJoker(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
 	used[index] = true
 	return fichas + 7, mult + 7, gold, used
-}
-
-func BotardoJoker(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	used[index] = true
-	return 1, 1, 1, used // CHANGE EVENTUALLY
 }
 
 func AverageSizeMichel(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
@@ -332,4 +332,100 @@ func ApplyJokers(hand Hand, js Jokers, initialFichas int, initialMult int, curre
 // The max price for a joker with ID 23 will be e^(23/9) = e^2.55 ~= 12
 func CalculateJokerSellPrice(jokerID int) int {
 	return int(math.Exp(float64(jokerID / ExpSellPriceDenominator)))
+}
+
+var (
+	// rarity probabilities
+	RarityProbabilities = map[string]int{
+		"Common":   70, // 70% total chance
+		"Uncommon": 25, // 25% total chance
+		"Rare":     5,  // 5% total chance
+	}
+
+	// ID ranges for each rarity tier
+	RarityRanges = map[string][]int{
+		"Common":   {1, 8},
+		"Uncommon": {9, 18},
+		"Rare":     {19, 21},
+	}
+)
+
+func GenerateJokers(rng *rand.Rand, numJokers int) []Jokers {
+	// Group jokers by their rarity based on ID ranges
+	rarityGroups := make(map[string][]int)
+	for id := range jokerTable {
+		var found bool
+		for rarity, bounds := range RarityRanges {
+			if len(bounds) != 2 {
+				continue
+			}
+			if id >= bounds[0] && id <= bounds[1] {
+				rarityGroups[rarity] = append(rarityGroups[rarity], id)
+				found = true
+				break
+			}
+		}
+		if !found {
+			// Skip IDs outside defined ranges
+			continue
+		}
+	}
+
+	// Filter out rarities with no available jokers
+	var availableRarities []string
+	availableWeights := make(map[string]int)
+	totalWeight := 0
+
+	for rarity, weight := range RarityProbabilities {
+		if len(rarityGroups[rarity]) > 0 {
+			availableRarities = append(availableRarities, rarity)
+			availableWeights[rarity] = weight
+			totalWeight += weight
+		}
+	}
+	sort.Strings(availableRarities) // For deterministic selection
+
+	if totalWeight == 0 {
+		panic("no available jokers in any rarity tier")
+	}
+
+	// Generate jokers
+	jokers := make([]Jokers, numJokers)
+	for i := range jokers {
+		// Select rarity tier
+		randomWeight := rng.Intn(totalWeight)
+		selectedRarity := ""
+
+		for _, rarity := range availableRarities {
+			if randomWeight < availableWeights[rarity] {
+				selectedRarity = rarity
+				break
+			}
+			randomWeight -= availableWeights[rarity]
+		}
+
+		// Select specific joker from chosen rarity group
+		group := rarityGroups[selectedRarity]
+		jokerID := group[rng.Intn(len(group))]
+
+		jokers[i] = Jokers{Juglares: []int{jokerID}}
+	}
+
+	return jokers
+}
+
+func GetJokerPrice(jokerID int) int {
+	// Common jokers (IDs 1-8)
+	if jokerID >= 1 && jokerID <= 8 {
+		return 2
+	}
+	// Uncommon jokers (IDs 9-18)
+	if jokerID >= 9 && jokerID <= 18 {
+		return 4
+	}
+	// Rare jokers (IDs 19-21)
+	if jokerID >= 19 && jokerID <= 21 {
+		return 6
+	}
+	return -104 // IDK I LIKE THE NUMBER, SHOULD NOT HAPPEN
 }

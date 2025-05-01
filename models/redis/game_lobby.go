@@ -101,7 +101,9 @@ type LobbyShop struct {
 	Rerolled        []RerolledJokers `json:"rerolled_items"` //Rerolls through the shop
 	FixedPacks      []ShopItem       `json:"fixed_packs"`
 	FixedModifiers  []ShopItem       `json:"fixed_modifiers"`
-	RerollableItems []ShopItem       `json:"rerollable_items"`
+	RerollableItems []ShopItem       `json:"rerollable_items"` // IDK if its deprecated or not
+	RerollSeed      uint64           `json:"reroll_seed"`
+	NextUniqueId    int              `json:"next_unique_id"` // Unique ID for the next item to be added to the shop
 }
 
 type ShopItem struct {

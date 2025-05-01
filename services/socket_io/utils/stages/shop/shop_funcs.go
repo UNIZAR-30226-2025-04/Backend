@@ -28,19 +28,18 @@ func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
 	// NEW: unique ID for each shop item
 	nextUniqueId := 1
 
-	firstJokers := GenerateRerollableItems(rng, jokersCount, &nextUniqueId)
+	firstJokers := GenerateRerollableItems(rng, &nextUniqueId)
 	shop := &redis.LobbyShop{
 		Rerolls:        0,
 		FixedPacks:     generateFixedPacks(rng, &nextUniqueId),
 		FixedModifiers: generateFixedModifiers(rng, &nextUniqueId),
 		// NOTE: fixed number of rerollable items
-		RerollableItems: firstJokers,
-		Rerolled:        make([]redis.RerolledJokers, 0),
+		Rerolled:     make([]redis.RerolledJokers, 0),
+		RerollSeed:   GenerateSeed(lobbyID, "shop", roundNumber),
+		NextUniqueId: nextUniqueId,
 	}
 	// Save first generated jokers as the rerolled 0
-	for i, joker := range firstJokers {
-		shop.Rerolled[0].Jokers[i] = joker
-	}
+	shop.Rerolled[0].Jokers = firstJokers.Jokers
 
 	return shop, nil
 }
@@ -100,22 +99,17 @@ func generateFixedModifiers(rng *rand.Rand, nextUniqueId *int) []redis.ShopItem 
 	return modifiers
 }
 
-// TODO: how tf do we do this
-func RerollShopItems(redisClient *redis_services.RedisClient, lobbyID string) error {
-	// do stuff
-	return nil
-}
-
-func GenerateRerollableItems(rng *rand.Rand, count int, nextUniqueId *int) []redis.ShopItem {
+func GenerateRerollableItems(rng *rand.Rand, nextUniqueId *int) redis.RerolledJokers {
 	// NOTE: only jokers are rerrollable items
-	rerollableItems := make([]redis.ShopItem, count)
-	jokers := generateJokers(rng, count)
+	rerollableItems := redis.RerolledJokers{}
 
-	for i := range rerollableItems {
-		rerollableItems[i] = redis.ShopItem{
-			ID:      *nextUniqueId,
+	jokers := poker.GenerateJokers(rng, 3)
+
+	for i := range 3 {
+		rerollableItems.Jokers[i] = redis.ShopItem{
+			ID:      *nextUniqueId, // tenemos en game_lobby el maxid, lo sacamos de ahi directamnete o lo pasamos a la función por param
 			Type:    game_constants.JOKER_TYPE,
-			Price:   2,                     // 50 + rng.Intn(50), TODO, CHANGE, Emilliano estaba pobre
+			Price:   poker.GetJokerPrice(jokers[i].Juglares[0]),
 			JokerId: jokers[i].Juglares[0], // Assuming we want the first joker
 			// NOTE: only needed for packs
 			// PackSeed: rng.Int63(),
@@ -161,7 +155,7 @@ func generatePackContents(seed uint64) redis.PackContents {
 
 	return redis.PackContents{
 		Cards:  generateCards(rng, numCards),
-		Jokers: generateJokers(rng, numJokers),
+		Jokers: poker.GenerateJokers(rng, numJokers),
 	}
 }
 
@@ -182,29 +176,6 @@ func generateCards(rng *rand.Rand, numCards int) []poker.Card {
 	}
 
 	return cards
-}
-
-func generateJokers(rng *rand.Rand, numJokers int) []poker.Jokers {
-	// Calculate total weight
-	totalWeight := 0
-	for _, joker := range JokerWeights {
-		totalWeight += joker.Weight
-	}
-
-	// Generate jokers based on probabilities
-	jokers := make([]poker.Jokers, numJokers)
-	for i := 0; i < numJokers; i++ {
-		randomWeight := rng.Intn(totalWeight)
-		for _, joker := range JokerWeights {
-			if randomWeight < joker.Weight {
-				jokers[i] = poker.Jokers{Juglares: []int{joker.ID}}
-				break
-			}
-			randomWeight -= joker.Weight
-		}
-	}
-
-	return jokers
 }
 
 func FindShopItem(lobby redis.GameLobby, itemID int) (redis.ShopItem, bool) {
@@ -244,23 +215,6 @@ func CalculatePackPrice(numItems int) int {
 // Change this OBVIOUSLY GPT GENERATED for a real one
 func RandomModifierType(rng *rand.Rand) string {
 	return "modifier yeahhhhh"
-}
-
-// Change weights
-var JokerWeights = []struct {
-	ID     int
-	Weight int
-}{
-	{1, 10}, // SolidSevenJoker: 10% chance
-	{2, 20}, // PoorJoker: 20% chance
-	{3, 15}, // BotardoJoker: 15% chance
-	{4, 10}, // AverageSizeMichel: 10% chance
-	{5, 5},  // HellCowboy: 5% chance
-	{6, 10}, // CarbSponge: 10% chance
-	{7, 10}, // Photograph: 10% chance
-	{8, 10}, // Petpet: 10% chance
-	{9, 5},  // EmptyJoker: 5% chance
-	{10, 5}, // TwoFriendsJoker: 5% chance
 }
 
 // PurchaseJoker processes the purchase of a joker by a player

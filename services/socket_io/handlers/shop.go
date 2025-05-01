@@ -532,19 +532,52 @@ func HandleRerollShop(redisClient *redis_services.RedisClient, client *socket.So
 			client.Emit("error", gin.H{"error": "Not enough money to reroll"})
 			return
 		}
+
+		playerState.PlayersMoney -= lobby.ShopState.Rerolls + 2
+
 		// Check if it is the highest reroll
 		if playerState.Rerolls == lobby.ShopState.Rerolls {
 			// Hay que generar el nuevo reroll
-			playerState.PlayersMoney -= lobby.ShopState.Rerolls + 2
 			lobby.ShopState.Rerolls++
 			playerState.Rerolls++
-			baseSeed := shop.GenerateSeed(lobbyID, "shop", roundNumber)
-			rng := rand.New(rand.NewSource(baseSeed))
-			seed := rng.Int63()
-			shop.GenerateRerollableItems(seed)
+			rng := rand.New(rand.NewSource(uint64(lobby.ShopState.RerollSeed) + uint64(lobby.CurrentRound) + uint64(lobby.ShopState.Rerolls)))
+			rerolledJokers := shop.GenerateRerollableItems(rng, &lobby.ShopState.NextUniqueId)
+
+			lobby.ShopState.Rerolled = append(lobby.ShopState.Rerolled, rerolledJokers)
+			// Notify client of successful selection
+			client.Emit("rerolled_jokers", gin.H{
+				"message":    "Successfully rerolled jokers",
+				"new_jokers": rerolledJokers,
+			})
+
+			// Save the updated player state
+			if err := redisClient.SaveInGamePlayer(playerState); err != nil {
+				log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+				client.Emit("error", gin.H{"error": "Failed to save pack selection"})
+				return
+			}
+
+			if err := redisClient.SaveGameLobby(lobby); err != nil {
+				log.Printf("[SHOP-ERROR] Error saving lobby state: %v", err)
+				client.Emit("error", gin.H{"error": "Failed to save lobby state"})
+				return
+			}
+
 		} else {
+			playerState.Rerolls++
+			newJokers := lobby.ShopState.Rerolled[playerState.Rerolls]
 
+			// Save the updated player state
+			if err := redisClient.SaveInGamePlayer(playerState); err != nil {
+				log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+				client.Emit("error", gin.H{"error": "Failed to save pack selection"})
+				return
+			}
+
+			client.Emit("rerolled_jokers", gin.H{
+				"message":    "Successfully rerolled jokers",
+				"new_jokers": newJokers,
+			})
 		}
-
 	}
 }
