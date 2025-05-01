@@ -20,6 +20,9 @@ const ( // Only used here, i think its good to see it here
 	minModifiers  = 1
 	maxModifiers  = 3
 	jokersCount   = 3
+	// Now, we only have 2 fixed packs and 2 fixed vouchers
+	TOTAL_FIXED_PACKS    = 2
+	TOTAL_FIXED_VOUCHERS = 2
 )
 
 func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
@@ -46,7 +49,7 @@ func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
 
 func generateFixedPacks(rng *rand.Rand, nextUniqueId *int) []redis.ShopItem {
 	// Always generate exactly 2 packs
-	packs := make([]redis.ShopItem, 2)
+	packs := make([]redis.ShopItem, TOTAL_FIXED_PACKS)
 
 	// Define possible pack types as integers
 	packTypes := []int{
@@ -119,9 +122,7 @@ func calculatePackPrice(packType int) int {
 }
 
 func generateFixedModifiers(rng *rand.Rand, nextUniqueId *int) []redis.ShopItem {
-	// Same count problem as fixedpacks
-	count := minModifiers + rng.Intn(maxModifiers-minModifiers+1)
-	modifiers := make([]redis.ShopItem, count)
+	modifiers := make([]redis.ShopItem, TOTAL_FIXED_VOUCHERS)
 
 	// Calculate total weight
 	totalWeight := 0
