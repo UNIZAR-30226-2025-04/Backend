@@ -10,6 +10,8 @@ import (
 	"Nogler/services/socket_io/utils/stages/shop"
 	"log"
 
+	"golang.org/x/exp/rand"
+
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
 	"gorm.io/gorm"
@@ -490,5 +492,92 @@ func HandlePackSelection(redisClient *redis_services.RedisClient, client *socket
 			"selected_joker":  selectedJokerID,
 			"remaining_money": updatedPlayer.PlayersMoney,
 		})
+	}
+}
+
+func HandleRerollShop(redisClient *redis_services.RedisClient, client *socket.Socket,
+	db *gorm.DB, username string, sio *socketio_types.SocketServer) func(args ...interface{}) {
+	return func(args ...interface{}) {
+		log.Printf("RerollShop initiated - User: %s, Args: %v, Socket ID: %s",
+			username, args, client.Id())
+		// Get player state
+		playerState, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Error getting player state: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving player state"})
+			return
+		}
+		// Extract lobby ID from player state
+		lobbyID := playerState.LobbyId
+		if lobbyID == "" {
+			log.Printf("[SHOP-ERROR] Player %s not associated with any lobby", username)
+			client.Emit("error", gin.H{"error": "Player not in a lobby"})
+			return
+		}
+		// Validate we are in shop phase
+		valid, err := socketio_utils.ValidateShopPhase(redisClient, client, lobbyID)
+		if err != nil || !valid {
+			// Error already emitted in ValidateShopPhase
+			return
+		}
+		// Get the lobby state
+		lobby, err := redisClient.GetGameLobby(lobbyID)
+		if err != nil {
+			log.Printf("[SHOP-ERROR] Error getting lobby state: %v", err)
+			client.Emit("error", gin.H{"error": "Error getting lobby state"})
+			return
+		}
+		// Check if the player has enough money to reroll
+		if playerState.PlayersMoney < lobby.ShopState.Rerolls+2 {
+			client.Emit("error", gin.H{"error": "Not enough money to reroll"})
+			return
+		}
+
+		playerState.PlayersMoney -= lobby.ShopState.Rerolls + 2
+
+		// Check if it is the highest reroll
+		if playerState.Rerolls == lobby.ShopState.Rerolls {
+			// Hay que generar el nuevo reroll
+			lobby.ShopState.Rerolls++
+			playerState.Rerolls++
+			rng := rand.New(rand.NewSource(uint64(lobby.ShopState.RerollSeed) + uint64(lobby.CurrentRound) + uint64(lobby.ShopState.Rerolls)))
+			rerolledJokers := shop.GenerateRerollableItems(rng, &lobby.ShopState.NextUniqueId)
+
+			lobby.ShopState.Rerolled = append(lobby.ShopState.Rerolled, rerolledJokers)
+			// Notify client of successful selection
+			client.Emit("rerolled_jokers", gin.H{
+				"message":    "Successfully rerolled jokers",
+				"new_jokers": rerolledJokers,
+			})
+
+			// Save the updated player state
+			if err := redisClient.SaveInGamePlayer(playerState); err != nil {
+				log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+				client.Emit("error", gin.H{"error": "Failed to save pack selection"})
+				return
+			}
+
+			if err := redisClient.SaveGameLobby(lobby); err != nil {
+				log.Printf("[SHOP-ERROR] Error saving lobby state: %v", err)
+				client.Emit("error", gin.H{"error": "Failed to save lobby state"})
+				return
+			}
+
+		} else {
+			playerState.Rerolls++
+			newJokers := lobby.ShopState.Rerolled[playerState.Rerolls]
+
+			// Save the updated player state
+			if err := redisClient.SaveInGamePlayer(playerState); err != nil {
+				log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+				client.Emit("error", gin.H{"error": "Failed to save pack selection"})
+				return
+			}
+
+			client.Emit("rerolled_jokers", gin.H{
+				"message":    "Successfully rerolled jokers",
+				"new_jokers": newJokers,
+			})
+		}
 	}
 }

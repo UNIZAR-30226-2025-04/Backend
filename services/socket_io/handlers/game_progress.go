@@ -86,7 +86,8 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			player.BetMinimumBlind = true
 		} else {
 			// Otherwise, they're not betting the minimum
-			log.Print("[BLIND] Player %s proposed blind %d above base blind %d, marking as non-min blind better")
+			log.Printf("[BLIND] Player %s proposed blind %d above base blind %d, marking as non-min blind better",
+				username, proposedBlind, lobby.CurrentBaseBlind)
 			player.BetMinimumBlind = false
 		}
 

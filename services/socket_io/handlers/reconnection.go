@@ -127,6 +127,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 				"current_points":    player.CurrentRoundPoints,
 				"total_points":      player.TotalGamePoints,
 				"hand_plays_left":   player.HandPlaysLeft,
+				"next_reroll":       player.Rerolls + 2,
 				"discards_left":     player.DiscardsLeft,
 				"played_cards":      len(deck.PlayedCards),
 				"unplayed_cards":    len(deck.TotalCards) + len(currentHand),

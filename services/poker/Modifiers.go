@@ -18,7 +18,7 @@ func compareHands(hand1, hand2 Hand) bool {
 
 type Modifier struct {
 	Value    int `json:"value"`
-	LeftUses int `json:"expires_at"` // -1 if no acaba hasta final de partida
+	LeftUses int `json:"expires_at"`
 }
 
 type Modifiers struct {

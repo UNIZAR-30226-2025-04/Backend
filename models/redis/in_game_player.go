@@ -7,6 +7,7 @@ type InGamePlayer struct {
 	Username     string `json:"username"`      // Matches game_profiles.username
 	LobbyId      string `json:"lobby_id"`      // Matches game_lobbies.id
 	PlayersMoney int    `json:"players_money"` // Matches in_game_players.players_money
+	Rerolls      int    `json:"rerolls"`       // Matches in_game_players.rerolls
 	// TODO, see whether we use it or not (we would have to update it every time play_hand or draw_cards is called)
 	// PlayersRemainingCards int             `json:"current_remaining_cards"` // Cards remaining in deck (deck size - played cards - discarded cards)
 	CurrentDeck        json.RawMessage `json:"current_deck"`        // Temporary Redis field
@@ -17,11 +18,10 @@ type InGamePlayer struct {
 	CurrentJokers      json.RawMessage `json:"current_jokers"`      // Temporary Redis field
 	MostPlayedHand     json.RawMessage `json:"most_played_hand"`    // Matches in_game_players.most_played_hand
 	Winner             bool            `json:"winner"`              // Matches in_game_players.winner
-	// CurrentHand    int             `json:"current_hand"`     // Matches in_game_players.current_hand
-	CurrentRoundPoints int `json:"current_points"`  // Matches in_game_players.current_points
-	TotalGamePoints    int `json:"total_points"`    // Matches in_game_players.total_points
-	HandPlaysLeft      int `json:"hand_plays_left"` // Matches in_game_players.hand_plays_left
-	DiscardsLeft       int `json:"discards_left"`   // Matches in_game_players.discards_left
+	CurrentRoundPoints int             `json:"current_points"`      // Matches in_game_players.current_points
+	TotalGamePoints    int             `json:"total_points"`        // Matches in_game_players.total_points
+	HandPlaysLeft      int             `json:"hand_plays_left"`     // Matches in_game_players.hand_plays_left
+	DiscardsLeft       int             `json:"discards_left"`       // Matches in_game_players.discards_left
 	// Field to indicate if the player bet for the minimum blind in the current round
 	BetMinimumBlind bool `json:"bet_minimum_blind"`
 	// Field to store last purchased pack item ID
