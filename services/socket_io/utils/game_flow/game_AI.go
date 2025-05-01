@@ -82,7 +82,28 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 	// proposedBlind := AIMoney/2 + rand.Intn(AIMoney-AIMoney/2+1)
 
 	// TODO, change it
-	proposedBlind := 1
+	baseBlind := lobby.CurrentBaseBlind
+	var proposedBlind int
+	if lobby.CurrentRound == 1 {
+		// If it's the first round, set a low blind
+		i := rand.Intn(3) + 1 // +10
+		j := rand.Intn(9) + 1 // +1
+		proposedBlind = baseBlind + (10 * i) + j
+	} else {
+		// If it's not the first round, set a higher blind
+		// 66% +10 blind, 33% +100 blind
+		blind := rand.Intn(3) + 1
+		if blind == 1 || blind == 2 {
+			i := rand.Intn(7) + 1 // +10
+			j := rand.Intn(9) + 1 // +1
+			proposedBlind = baseBlind + (10 * i) + j
+		} else if blind == 3 {
+			i := rand.Intn(3) + 1 // +100
+			j := rand.Intn(4) + 1 // +10
+			k := rand.Intn(9) + 1 // +1
+			proposedBlind = baseBlind + (100 * i) + (10 * j) + k
+		}
+	}
 
 	// Check if proposed blind exceeds MAX_BLIND
 	if proposedBlind > game_constants.MAX_BLIND {
