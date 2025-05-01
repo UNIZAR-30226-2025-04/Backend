@@ -627,8 +627,8 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 		return
 	}
 
-	// If AI has less than 40 money, sell a joker if exists
-	if playerState.PlayersMoney < 7 {
+	// If AI has less than 4 money, sell a joker if exists
+	if playerState.PlayersMoney < 4 {
 		// 33% chance to sell a joker
 		randomValue := rand.Intn(3)
 		if randomValue == 0 {
@@ -662,70 +662,71 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 				}
 			}
 		}
-	} else {
-		// Order to buy pack (0), joker (1) or voucher (2)
-		var order []int
-		for i := 0; i < 3; i++ {
-			randomValue := rand.Intn(3)
-			for j := 0; j < len(order); j++ {
-				if order[j] == randomValue {
-					randomValue = rand.Intn(3)
-					j = -1
-				}
+	}
+
+	// Order to buy pack (0), joker (1) or voucher (2)
+	var order []int
+	for i := 0; i < 3; i++ {
+		randomValue := rand.Intn(3)
+		for j := 0; j < len(order); j++ {
+			if order[j] == randomValue {
+				randomValue = rand.Intn(3)
+				j = -1
 			}
-			order = append(order, randomValue)
 		}
+		order = append(order, randomValue)
+	}
 
-		// Until which one do we buy?
-		until := rand.Intn(3)
-		for i := 0; i <= until; i++ {
-			// How many do we buy? (1 or 2)
-			howMany := rand.Intn(2) + 1
-			for j := 0; j < howMany; j++ {
-				switch order[i] {
-				case 0:
-					// Buy pack
-					// Which pack?
-					which := rand.Intn(len(shopState.FixedPacks))
-					item := shopState.FixedPacks[which]
-					itemID := item.ID
-					price := shopState.FixedPacks[which].Price
-					purchasePackAI(redisClient, playerState, lobbyState, item, itemID, price)
-				case 1:
-					// Buy joker
-					// Which joker?
+	// Until which one do we buy?
+	until := rand.Intn(3)
+	for i := 0; i <= until; i++ {
+		// How many do we buy? (1 or 2)
+		howMany := rand.Intn(2) + 1
+		for j := 0; j < howMany; j++ {
+			switch order[i] {
+			case 0:
+				// Buy pack
+				// Which pack?
+				which := rand.Intn(len(shopState.FixedPacks))
+				item := shopState.FixedPacks[which]
+				itemID := item.ID
+				price := shopState.FixedPacks[which].Price
+				purchasePackAI(redisClient, playerState, lobbyState, item, itemID, price)
+			case 1:
+				// Buy joker
+				// Which joker?
 
-					// Check if already has 5 jokers
-					if playerState.CurrentJokers != nil {
-						var jokers poker.Jokers
-						err = json.Unmarshal(playerState.CurrentJokers, &jokers)
-						if err != nil {
-							log.Printf("[AI-SHOP-ERROR] Error parsing jokers: %v", err)
-							return
-						}
-						if len(jokers.Juglares) >= 5 {
-							log.Printf("[AI-SHOP-ERROR] Player %s already has 5 jokers", username)
-							continue
-						}
+				// Check if already has 5 jokers
+				if playerState.CurrentJokers != nil {
+					var jokers poker.Jokers
+					err = json.Unmarshal(playerState.CurrentJokers, &jokers)
+					if err != nil {
+						log.Printf("[AI-SHOP-ERROR] Error parsing jokers: %v", err)
+						return
 					}
-
-					which := rand.Intn(len(shopState.RerollableItems))
-					item := shopState.RerollableItems[which]
-					itemID := item.ID
-					price := shopState.RerollableItems[which].Price
-					purchaseJokerAI(redisClient, playerState, lobbyState, item, itemID, price)
-				case 2:
-					// Buy voucher
-					// Which voucher?
-					which := rand.Intn(len(shopState.FixedModifiers))
-					item := shopState.FixedModifiers[which]
-					itemID := item.ID
-					price := shopState.FixedModifiers[which].Price
-					purchaseVoucherAI(redisClient, playerState, item, itemID, price)
+					if len(jokers.Juglares) >= 5 {
+						log.Printf("[AI-SHOP-ERROR] Player %s already has 5 jokers", username)
+						continue
+					}
 				}
+
+				which := rand.Intn(len(shopState.RerollableItems))
+				item := shopState.RerollableItems[which]
+				itemID := item.ID
+				price := shopState.RerollableItems[which].Price
+				purchaseJokerAI(redisClient, playerState, lobbyState, item, itemID, price)
+			case 2:
+				// Buy voucher
+				// Which voucher?
+				which := rand.Intn(len(shopState.FixedModifiers))
+				item := shopState.FixedModifiers[which]
+				itemID := item.ID
+				price := shopState.FixedModifiers[which].Price
+				purchaseVoucherAI(redisClient, playerState, item, itemID, price)
 			}
 		}
 	}
+
 	// Continue to vouchers phase
 	continueToVouchers(redisClient, db, lobbyID, sio)
 }
