@@ -39,7 +39,7 @@ func InitializeShop(lobbyID string, roundNumber int) (*redis.LobbyShop, error) {
 		NextUniqueId: nextUniqueId,
 	}
 	// Save first generated jokers as the rerolled 0
-	shop.Rerolled[0].Jokers = firstJokers.Jokers
+	shop.Rerolled = append(shop.Rerolled, firstJokers)
 
 	return shop, nil
 }
