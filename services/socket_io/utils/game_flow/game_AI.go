@@ -710,19 +710,25 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 					}
 				}
 
-				which := rand.Intn(len(shopState.RerollableItems))
-				item := shopState.RerollableItems[which]
-				itemID := item.ID
-				price := shopState.RerollableItems[which].Price
-				purchaseJokerAI(redisClient, playerState, lobbyState, item, itemID, price)
+				// NEW: Check the jokers of the LATEST reroll
+				total_rerolls_len := len(shopState.Rerolled)
+				if total_rerolls_len > 0 {
+					which := rand.Intn(len(shopState.Rerolled[total_rerolls_len-1].Jokers))
+					item := shopState.Rerolled[total_rerolls_len-1].Jokers[which]
+					itemID := item.ID
+					price := item.Price
+					purchaseJokerAI(redisClient, playerState, lobbyState, item, itemID, price)
+				}
 			case 2:
 				// Buy voucher
 				// Which voucher?
-				which := rand.Intn(len(shopState.FixedModifiers))
-				item := shopState.FixedModifiers[which]
-				itemID := item.ID
-				price := shopState.FixedModifiers[which].Price
-				purchaseVoucherAI(redisClient, playerState, item, itemID, price)
+				if len(shopState.FixedModifiers) > 0 {
+					which := rand.Intn(len(shopState.FixedModifiers))
+					item := shopState.FixedModifiers[which]
+					itemID := item.ID
+					price := shopState.FixedModifiers[which].Price
+					purchaseVoucherAI(redisClient, playerState, item, itemID, price)
+				}
 			}
 		}
 	}
