@@ -439,6 +439,7 @@ func SellJoker(player *redis.InGamePlayer, jokerID int) (updatedPlayer *redis.In
 }
 
 // ProcessPackSelection validates and processes a player's selection from a purchased pack
+// TODO, CRITICAL: modify it to support multiple pack types (get pack contents is already done)
 func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.GameLobby,
 	player *redis.InGamePlayer, itemID int, selectedCardMap map[string]interface{},
 	selectedJokerID int) (*redis.InGamePlayer, error) {
