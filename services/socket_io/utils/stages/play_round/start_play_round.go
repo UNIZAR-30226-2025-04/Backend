@@ -133,12 +133,19 @@ func ResetPlayerAndBroadcastRoundStart(sio *socketio_types.SocketServer, redisCl
 
 		deckSize := len(playersCurrentDeck.TotalCards)
 
+		// Calculate the appropriate blind value based on player's bet choice
+		playerBlind := blind // Default to high blind
+		if player.BetMinimumBlind {
+			playerBlind = lobby.CurrentBaseBlind
+		}
+
 		// Send personalized message to this player
 		playerSocket.Emit("starting_round", gin.H{
 			"round_number":       round,
 			"max_rounds":         game_constants.MaxGameRounds,
 			"players_money":      player.PlayersMoney,
-			"blind":              blind,
+			"blind":              playerBlind,
+			"bet_minimum_blind":  player.BetMinimumBlind,
 			"timeout":            timeout,
 			"timeout_start_date": lobby.GameRoundTimeout.Format(time.RFC3339),
 			"total_hand_plays":   game_constants.TOTAL_HAND_PLAYS,
