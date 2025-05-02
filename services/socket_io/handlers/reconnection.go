@@ -154,6 +154,9 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			response["players_finished_vouchers"] = len(lobby.PlayersFinishedVouchers)
 		}
 
+		log.Printf("[PHASE-INFO] Sending reconnection info to %s for phase %s, info: %v",
+			username, lobby.CurrentPhase, response)
+
 		// Send the comprehensive game state
 		client.Emit("game_phase_player_info", response)
 
