@@ -31,7 +31,7 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			username, args, client.Id())
 
 		if len(args) < 2 { // Changed from 1 to 2 to require pack ID and price
-			log.Printf("[HAND-ERROR] Faltan argumentos para usuario %s", username)
+			log.Printf("[HAND-ERROR] Faltan argumentos para usuario %s. Los argumentos recibidos han sido: %v", username, args)
 			client.Emit("error", gin.H{"error": "Falta el pack a abrir o el precio"})
 			return
 		}
