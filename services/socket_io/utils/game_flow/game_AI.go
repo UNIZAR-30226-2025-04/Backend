@@ -739,7 +739,7 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 					item := shopState.Rerolled[total_rerolls_len-1].Jokers[which]
 					itemID := item.ID
 					price := item.Price
-					purchaseJokerAI(redisClient, playerState, lobbyState, item, itemID, price)
+					purchaseJokerAI(redisClient, playerState, item, itemID, price)
 				}
 			case 2:
 				// Buy voucher
@@ -769,7 +769,7 @@ func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.In
 		return
 	}
 
-	_, err := shop.GetOrGeneratePackContents(redisClient, lobbyState, item)
+	content, err := shop.GetOrGeneratePackContents(redisClient, lobbyState, item)
 	if err != nil {
 		return
 	}
@@ -781,6 +781,8 @@ func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.In
 	playerState.LastPurchasedPackItemId = itemID
 	playerState.PlayersMoney -= item.Price // Deduct the money
 
+	packSelectionAI(redisClient, playerState, lobbyState, itemID, content)
+
 	// Save the updated player state
 	if err := redisClient.SaveInGamePlayer(playerState); err != nil {
 		log.Printf("[AI-SHOP-ERROR] Error saving player state: %v", err)
@@ -789,7 +791,7 @@ func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.In
 }
 
 func purchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
-	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
+	item redis_models.ShopItem, itemID int, clientPrice int) {
 	log.Printf("[AI-SHOP] Purchasing joker %d for player Noglerinho", itemID)
 	// Process the joker purchase with price validation
 	success, updatedPlayer, err := shop.PurchaseJoker(redisClient, playerState, item, clientPrice)
@@ -836,6 +838,52 @@ func sellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGam
 		log.Printf("[AI-SHOP-ERROR] Error saving player state: %v", err)
 		return
 	}
+}
+
+func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
+	lobbyState *redis_models.GameLobby, itemID int, content *redis_models.PackContents) {
+	log.Printf("PackSelectionAI initiated - User: %s", username)
+
+	// Select items
+	var selectionsMap map[string]interface{}
+
+	if content.Cards != nil {
+		whichCards := rand.Intn(len(content.Cards) + 1)
+		selectionsMap = map[string]interface{}{
+			"selectedCards": content.Cards[whichCards],
+		}
+	} else if content.Jokers != nil {
+		whichJokers := rand.Intn(len(content.Jokers) + 1)
+		selectionsMap = map[string]interface{}{
+			"selectedJokers": content.Jokers[whichJokers],
+		}
+	} else if content.Vouchers != nil {
+		whichModifiers := rand.Intn(len(content.Vouchers) + 1)
+		selectionsMap = map[string]interface{}{
+			"selectedVouchers": content.Vouchers[whichModifiers],
+		}
+	}
+
+	log.Printf("[AI-SHOP] Pack selection for player Noglerinho: %v", selectionsMap)
+
+	// Verify that the player actually bought this pack
+	if playerState.LastPurchasedPackItemId != itemID {
+		return
+	}
+
+	// Process the selection
+	updatedPlayer, err := shop.ProcessPackSelection(redisClient, lobbyState, playerState, itemID, selectionsMap)
+	if err != nil {
+		log.Printf("[SHOP-ERROR] Pack selection failed: %v", err)
+		return
+	}
+
+	// Save the updated player state
+	if err := redisClient.SaveInGamePlayer(updatedPlayer); err != nil {
+		log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+		return
+	}
+
 }
 
 // VOUCHERS
