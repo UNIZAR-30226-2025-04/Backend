@@ -82,6 +82,7 @@ func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 			"money":              player.PlayersMoney,
 			"players_jokers":     jokersWithPrices,
 			"max_jokers":         game_constants.MaxJokersPerPlayer,
+			"next_reroll_price":  GetRerollPrice(lobby),
 		})
 
 		log.Printf("[SHOP-MULTICAST] Sent personalized shop data to player %s", player.Username)
