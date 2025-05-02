@@ -8,6 +8,7 @@ import (
 	redis_services "Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
+	"Nogler/services/socket_io/utils/stages/play_round"
 	"Nogler/services/socket_io/utils/stages/shop"
 	"encoding/json"
 	"log"
@@ -161,7 +162,7 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 		playerState.PlayersMoney -= item.Price // Deduct the money
 
 		// NEW, KEY: set the corresponding purchased item IDs map entry to true
-		playerState.CurrentShopPurchasedItemIDs[item.ID] = true
+		play_round.SafelySetPlayerItemIDEntry(playerState, item)
 
 		// Save the updated player state
 		if err := redisClient.SaveInGamePlayer(playerState); err != nil {

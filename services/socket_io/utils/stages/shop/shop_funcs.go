@@ -6,6 +6,7 @@ import (
 	"Nogler/services/poker"
 	redis_services "Nogler/services/redis"
 	redis_utils "Nogler/services/redis/utils"
+	"Nogler/services/socket_io/utils/stages/play_round"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -329,8 +330,8 @@ func PurchaseJoker(redisClient *redis_services.RedisClient, player *redis.InGame
 	}
 	player.CurrentJokers = updatedJokersJSON
 
-	// NEW, KEY: set the corresponding entry of the player's purchased shop item IDs to true
-	player.CurrentShopPurchasedItemIDs[item.ID] = true
+	// NEW, KEY: set the corresponding purchased item IDs map entry to true
+	play_round.SafelySetPlayerItemIDEntry(player, item)
 
 	return true, player, nil
 }
@@ -378,7 +379,7 @@ func PurchaseVoucher(redisClient *redis_services.RedisClient, player *redis.InGa
 	player.Modifiers = updatedModifiersJSON
 
 	// NEW, KEY: set the corresponding purchased item IDs map entry to true
-	player.CurrentShopPurchasedItemIDs[item.ID] = true
+	play_round.SafelySetPlayerItemIDEntry(player, item)
 
 	return true, player, nil
 }

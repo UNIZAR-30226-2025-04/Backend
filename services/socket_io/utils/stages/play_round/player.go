@@ -310,3 +310,12 @@ func DistributePot(redisClient *redis.RedisClient, lobbyID string, sio *socketio
 	log.Printf("[POT-DISTRIBUTION] Successfully distributed pot for lobby %s", lobbyID)
 	return nil
 }
+
+// SetPlayerItemIDEntry sets the corresponding CurrentShopPurchasedItemIDs map item.ID entry to true
+func SafelySetPlayerItemIDEntry(player *redis_models.InGamePlayer, item redis_models.ShopItem) {
+	// NEW, KEY: set the corresponding purchased item IDs map entry to true
+	if player.CurrentShopPurchasedItemIDs == nil {
+		player.CurrentShopPurchasedItemIDs = make(map[int]bool)
+	}
+	player.CurrentShopPurchasedItemIDs[item.ID] = true
+}
