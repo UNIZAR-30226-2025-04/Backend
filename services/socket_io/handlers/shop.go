@@ -125,6 +125,9 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			"item_id":         item.ID,
 			"cards":           contents.Cards,
 			"jokers":          contents.Jokers,
+			"vouchers":        contents.Vouchers,        // Add vouchers to the response
+			"max_selectable":  item.MaxSelectable,       // Add max_selectable to the response
+			"pack_type":       item.PackType,            // Add pack_type to the response
 			"remaining_money": playerState.PlayersMoney, // Include remaining money in response
 		})
 	}
