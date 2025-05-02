@@ -404,9 +404,9 @@ func HandlePackSelection(redisClient *redis_services.RedisClient, client *socket
 			username, args, client.Id())
 
 		// Check if we have all required arguments
-		if len(args) < 3 {
+		if len(args) < 2 {
 			log.Printf("[SHOP-ERROR] Missing arguments for user %s", username)
-			client.Emit("error", gin.H{"error": "Missing pack ID, selected card, or selected joker"})
+			client.Emit("error", gin.H{"error": "Missing pack ID or selections"})
 			return
 		}
 
@@ -418,20 +418,12 @@ func HandlePackSelection(redisClient *redis_services.RedisClient, client *socket
 		}
 		itemID := int(itemIDFloat)
 
-		// Parse selected card
-		selectedCardMap, ok := args[1].(map[string]interface{})
+		// Parse selected items map
+		selectionsMap, ok := args[1].(map[string]interface{})
 		if !ok {
-			client.Emit("error", gin.H{"error": "Selected card must be an object"})
+			client.Emit("error", gin.H{"error": "Selections must be an object"})
 			return
 		}
-
-		// Parse selected joker
-		selectedJokerIDFloat, ok := args[2].(float64)
-		if !ok {
-			client.Emit("error", gin.H{"error": "Selected joker ID must be a number"})
-			return
-		}
-		selectedJokerID := int(selectedJokerIDFloat)
 
 		// Get player state
 		playerState, err := redisClient.GetInGamePlayer(username)
@@ -471,7 +463,7 @@ func HandlePackSelection(redisClient *redis_services.RedisClient, client *socket
 		}
 
 		// Process the selection
-		updatedPlayer, err := shop.ProcessPackSelection(redisClient, lobbyState, playerState, itemID, selectedCardMap, selectedJokerID)
+		updatedPlayer, err := shop.ProcessPackSelection(redisClient, lobbyState, playerState, itemID, selectionsMap)
 		if err != nil {
 			log.Printf("[SHOP-ERROR] Pack selection failed: %v", err)
 			client.Emit("error", gin.H{"error": err.Error()})
@@ -488,8 +480,7 @@ func HandlePackSelection(redisClient *redis_services.RedisClient, client *socket
 		// Notify client of successful selection
 		client.Emit("pack_selection_complete", gin.H{
 			"message":         "Successfully added selected items to your inventory",
-			"selected_card":   selectedCardMap,
-			"selected_joker":  selectedJokerID,
+			"selections":      selectionsMap,
 			"remaining_money": updatedPlayer.PlayersMoney,
 		})
 	}

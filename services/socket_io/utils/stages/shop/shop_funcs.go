@@ -440,38 +440,14 @@ func SellJoker(player *redis.InGamePlayer, jokerID int) (updatedPlayer *redis.In
 }
 
 // ProcessPackSelection validates and processes a player's selection from a purchased pack
-// TODO, CRITICAL: modify it to support multiple pack types (get pack contents is already done)
+// Supports multiple pack types (cards, jokers, vouchers) and enforces MaxSelectable limit
 func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.GameLobby,
-	player *redis.InGamePlayer, itemID int, selectedCardMap map[string]interface{},
-	selectedJokerID int) (*redis.InGamePlayer, error) {
+	player *redis.InGamePlayer, itemID int, selectionsMap map[string]interface{}) (*redis.InGamePlayer, error) {
 
-	// Convert selected card map to poker.Card
-	rankInterface, hasRank := selectedCardMap["Rank"]
-	suitInterface, hasSuit := selectedCardMap["Suit"]
-	enhancementInterface, hasEnhancement := selectedCardMap["Enhancement"]
-
-	if !hasRank || !hasSuit {
-		return nil, fmt.Errorf("selected card is missing rank or suit")
-	}
-
-	rank, rankOk := rankInterface.(string)
-	suit, suitOk := suitInterface.(string)
-
-	if !rankOk || !suitOk {
-		return nil, fmt.Errorf("card rank and suit must be strings")
-	}
-
-	// Create the card with Enhancement if available
-	selectedCard := poker.Card{
-		Rank: rank,
-		Suit: suit,
-	}
-
-	// Add enhancement if present
-	if hasEnhancement {
-		if enhancementValue, ok := enhancementInterface.(float64); ok {
-			selectedCard.Enhancement = int(enhancementValue)
-		}
+	// Get the shop item to determine pack type and MaxSelectable
+	item, exists := FindShopItem(*lobby, itemID)
+	if !exists {
+		return nil, fmt.Errorf("pack not found in shop")
 	}
 
 	// Get pack contents
@@ -481,69 +457,245 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		return nil, fmt.Errorf("pack contents not found for item ID %d", itemID)
 	}
 
-	// Verify the selected card exists in the pack
-	cardFound := false
-	for _, card := range packContents.Cards {
-		// TODO, check if we should really check enhancement
-		if card.Rank == selectedCard.Rank && card.Suit == selectedCard.Suit && card.Enhancement == selectedCard.Enhancement {
-			cardFound = true
-			break
+	// Parse selections based on pack type
+	var selectedCards []poker.Card
+	var selectedJokerIDs []int
+	var selectedVoucherIDs []int
+	totalSelected := 0
+
+	// Parse selected cards if present
+	if cardsInterface, hasCards := selectionsMap["selectedCards"]; hasCards {
+		cardsArray, ok := cardsInterface.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("selectedCards must be an array")
 		}
-	}
-	if !cardFound {
-		return nil, fmt.Errorf("the selected card is not in the pack")
+
+		for _, cardInterface := range cardsArray {
+			cardMap, ok := cardInterface.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("each selected card must be an object")
+			}
+
+			// Parse card details
+			rankInterface, hasRank := cardMap["Rank"]
+			suitInterface, hasSuit := cardMap["Suit"]
+			enhancementInterface, hasEnhancement := cardMap["Enhancement"]
+
+			if !hasRank || !hasSuit {
+				return nil, fmt.Errorf("card is missing rank or suit")
+			}
+
+			rank, rankOk := rankInterface.(string)
+			suit, suitOk := suitInterface.(string)
+
+			if !rankOk || !suitOk {
+				return nil, fmt.Errorf("card rank and suit must be strings")
+			}
+
+			// Create the card with Enhancement if available
+			card := poker.Card{
+				Rank: rank,
+				Suit: suit,
+			}
+
+			// Add enhancement if present
+			if hasEnhancement {
+				if enhancementValue, ok := enhancementInterface.(float64); ok {
+					card.Enhancement = int(enhancementValue)
+				}
+			}
+
+			selectedCards = append(selectedCards, card)
+		}
+
+		totalSelected += len(selectedCards)
 	}
 
-	// Verify the selected joker exists in the pack
-	jokerFound := false
-	for _, jokerGroup := range packContents.Jokers {
-		for _, jokerID := range jokerGroup.Juglares {
-			if jokerID == selectedJokerID {
-				jokerFound = true
-				break
+	// Parse selected jokers if present
+	if jokersInterface, hasJokers := selectionsMap["selectedJokers"]; hasJokers {
+		jokersArray, ok := jokersInterface.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("selectedJokers must be an array")
+		}
+
+		for _, jokerIDInterface := range jokersArray {
+			jokerIDFloat, ok := jokerIDInterface.(float64)
+			if !ok {
+				return nil, fmt.Errorf("each selected joker ID must be a number")
+			}
+			selectedJokerIDs = append(selectedJokerIDs, int(jokerIDFloat))
+		}
+
+		totalSelected += len(selectedJokerIDs)
+	}
+
+	// Parse selected vouchers if present
+	if vouchersInterface, hasVouchers := selectionsMap["selectedVouchers"]; hasVouchers {
+		vouchersArray, ok := vouchersInterface.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("selectedVouchers must be an array")
+		}
+
+		for _, voucherIDInterface := range vouchersArray {
+			voucherIDFloat, ok := voucherIDInterface.(float64)
+			if !ok {
+				return nil, fmt.Errorf("each selected voucher ID must be a number")
+			}
+			selectedVoucherIDs = append(selectedVoucherIDs, int(voucherIDFloat))
+		}
+
+		totalSelected += len(selectedVoucherIDs)
+	}
+
+	// Check if they've selected too many items
+	if totalSelected > item.MaxSelectable {
+		return nil, fmt.Errorf("you can only select up to %d items from this pack", item.MaxSelectable)
+	}
+
+	// If nothing selected, reject the selection
+	if totalSelected == 0 {
+		return nil, fmt.Errorf("you must select at least one item from the pack")
+	}
+
+	// Now validate and process each type of selection based on the pack type
+	switch item.PackType {
+	case game_constants.PACK_TYPE_CARDS:
+		// For card packs, verify selected cards
+		if len(selectedCards) == 0 {
+			return nil, fmt.Errorf("you must select at least one card from a cards pack")
+		}
+		if len(selectedJokerIDs) > 0 || len(selectedVoucherIDs) > 0 {
+			return nil, fmt.Errorf("you can only select cards from a cards pack")
+		}
+
+		// Verify selected cards exist in the pack
+		for _, selectedCard := range selectedCards {
+			cardFound := false
+			for _, card := range packContents.Cards {
+				if card.Rank == selectedCard.Rank && card.Suit == selectedCard.Suit && card.Enhancement == selectedCard.Enhancement {
+					cardFound = true
+					break
+				}
+			}
+			if !cardFound {
+				return nil, fmt.Errorf("card %s of %s is not in the pack", selectedCard.Rank, selectedCard.Suit)
 			}
 		}
-		if jokerFound {
-			break
-		}
-	}
-	if !jokerFound {
-		return nil, fmt.Errorf("the selected joker is not in the pack")
-	}
 
-	// Store selected card in PurchasedPackCards instead of CurrentDeck
-	var purchasedCards []poker.Card
-	if player.PurchasedPackCards != nil && len(player.PurchasedPackCards) > 0 {
-		if err := json.Unmarshal(player.PurchasedPackCards, &purchasedCards); err != nil {
-			return nil, fmt.Errorf("error parsing player's purchased cards: %v", err)
+		// Add selected cards to player's inventory
+		var purchasedCards []poker.Card
+		if player.PurchasedPackCards != nil && len(player.PurchasedPackCards) > 0 {
+			if err := json.Unmarshal(player.PurchasedPackCards, &purchasedCards); err != nil {
+				return nil, fmt.Errorf("error parsing player's purchased cards: %v", err)
+			}
+		} else {
+			purchasedCards = []poker.Card{}
 		}
-	} else {
-		purchasedCards = []poker.Card{}
-	}
-	purchasedCards = append(purchasedCards, selectedCard)
-	updatedPurchasedCardsJSON, err := json.Marshal(purchasedCards)
-	if err != nil {
-		return nil, fmt.Errorf("error updating purchased cards: %v", err)
-	}
-	player.PurchasedPackCards = updatedPurchasedCardsJSON
 
-	// Add selected joker to player's jokers
-	var currentJokers poker.Jokers
-	if player.CurrentJokers != nil && len(player.CurrentJokers) > 0 {
-		if err := json.Unmarshal(player.CurrentJokers, &currentJokers); err != nil {
-			return nil, fmt.Errorf("error parsing player's jokers: %v", err)
+		purchasedCards = append(purchasedCards, selectedCards...)
+		updatedPurchasedCardsJSON, err := json.Marshal(purchasedCards)
+		if err != nil {
+			return nil, fmt.Errorf("error updating purchased cards: %v", err)
 		}
-	} else {
-		currentJokers = poker.Jokers{
-			Juglares: []int{},
+		player.PurchasedPackCards = updatedPurchasedCardsJSON
+
+	case game_constants.PACK_TYPE_JOKERS:
+		// For joker packs, verify selected jokers
+		if len(selectedJokerIDs) == 0 {
+			return nil, fmt.Errorf("you must select at least one joker from a jokers pack")
 		}
+		if len(selectedCards) > 0 || len(selectedVoucherIDs) > 0 {
+			return nil, fmt.Errorf("you can only select jokers from a jokers pack")
+		}
+
+		// Verify selected jokers exist in the pack
+		for _, selectedJokerID := range selectedJokerIDs {
+			jokerFound := false
+			for _, jokerGroup := range packContents.Jokers {
+				for _, jokerID := range jokerGroup.Juglares {
+					if jokerID == selectedJokerID {
+						jokerFound = true
+						break
+					}
+				}
+				if jokerFound {
+					break
+				}
+			}
+			if !jokerFound {
+				return nil, fmt.Errorf("joker ID %d is not in the pack", selectedJokerID)
+			}
+		}
+
+		// Add selected jokers to player's inventory
+		var currentJokers poker.Jokers
+		if player.CurrentJokers != nil && len(player.CurrentJokers) > 0 {
+			if err := json.Unmarshal(player.CurrentJokers, &currentJokers); err != nil {
+				return nil, fmt.Errorf("error parsing player's jokers: %v", err)
+			}
+		} else {
+			currentJokers = poker.Jokers{
+				Juglares: []int{},
+			}
+		}
+
+		currentJokers.Juglares = append(currentJokers.Juglares, selectedJokerIDs...)
+		updatedJokersJSON, err := json.Marshal(currentJokers)
+		if err != nil {
+			return nil, fmt.Errorf("error updating jokers: %v", err)
+		}
+		player.CurrentJokers = updatedJokersJSON
+
+	case game_constants.PACK_TYPE_VOUCHERS:
+		// For voucher packs, verify selected vouchers
+		if len(selectedVoucherIDs) == 0 {
+			return nil, fmt.Errorf("you must select at least one voucher from a vouchers pack")
+		}
+		if len(selectedCards) > 0 || len(selectedJokerIDs) > 0 {
+			return nil, fmt.Errorf("you can only select vouchers from a vouchers pack")
+		}
+
+		// Verify selected vouchers exist in the pack
+		for _, selectedVoucherID := range selectedVoucherIDs {
+			voucherFound := false
+			for _, voucher := range packContents.Vouchers {
+				if voucher.Value == selectedVoucherID {
+					voucherFound = true
+					break
+				}
+			}
+			if !voucherFound {
+				return nil, fmt.Errorf("voucher ID %d is not in the pack", selectedVoucherID)
+			}
+		}
+
+		// Add selected vouchers to player's inventory
+		var currentModifiers poker.Modifiers
+		if player.Modifiers != nil && len(player.Modifiers) > 0 {
+			if err := json.Unmarshal(player.Modifiers, &currentModifiers); err != nil {
+				return nil, fmt.Errorf("error parsing player's modifiers: %v", err)
+			}
+		} else {
+			currentModifiers = poker.Modifiers{
+				Modificadores: []poker.Modifier{},
+			}
+		}
+
+		// Create new modifier objects for each selected voucher
+		for _, voucherID := range selectedVoucherIDs {
+			newModifier := poker.Modifier{
+				Value:    voucherID,
+				LeftUses: -1, // Set to -1 if it doesn't expire until manually used
+			}
+			currentModifiers.Modificadores = append(currentModifiers.Modificadores, newModifier)
+		}
+
+		updatedModifiersJSON, err := json.Marshal(currentModifiers)
+		if err != nil {
+			return nil, fmt.Errorf("error updating modifiers: %v", err)
+		}
+		player.Modifiers = updatedModifiersJSON
 	}
-	currentJokers.Juglares = append(currentJokers.Juglares, selectedJokerID)
-	updatedJokersJSON, err := json.Marshal(currentJokers)
-	if err != nil {
-		return nil, fmt.Errorf("error updating jokers: %v", err)
-	}
-	player.CurrentJokers = updatedJokersJSON
 
 	// Reset LastPurchasedPackItemId to prevent reuse
 	player.LastPurchasedPackItemId = -1
