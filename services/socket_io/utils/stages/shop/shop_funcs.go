@@ -310,6 +310,11 @@ func PurchaseJoker(redisClient *redis_services.RedisClient, player *redis.InGame
 		}
 	}
 
+	// Check if adding another joker would exceed the maximum allowed
+	if len(currentJokers.Juglares) >= game_constants.MaxJokersPerPlayer {
+		return false, nil, fmt.Errorf("cannot have more than %d jokers", game_constants.MaxJokersPerPlayer)
+	}
+
 	// Add the joker to player's collection
 	jokerID := item.JokerId
 	currentJokers.Juglares = append(currentJokers.Juglares, jokerID)

@@ -2,12 +2,14 @@ package handlers
 
 import (
 	game_constants "Nogler/constants/game"
+	"fmt"
 
 	"Nogler/services/poker"
 	redis_services "Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/stages/shop"
+	"encoding/json"
 	"log"
 
 	"golang.org/x/exp/rand"
@@ -92,6 +94,31 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 		if !exists || item.Type != game_constants.PACK_TYPE {
 			client.Emit("invalid_pack")
 			return
+		}
+
+		// Check if this is a joker pack and player already has max jokers
+		if item.PackType == game_constants.PACK_TYPE_JOKERS {
+			// Parse current jokers
+			var currentJokers poker.Jokers
+			if playerState.CurrentJokers != nil && len(playerState.CurrentJokers) > 0 {
+				if err := json.Unmarshal(playerState.CurrentJokers, &currentJokers); err != nil {
+					log.Printf("[SHOP-ERROR] Error parsing player's jokers: %v", err)
+					client.Emit("error", gin.H{"error": "Error processing jokers"})
+					return
+				}
+			} else {
+				currentJokers = poker.Jokers{
+					Juglares: []int{},
+				}
+			}
+
+			// Check if player already has max jokers
+			if len(currentJokers.Juglares) >= game_constants.MaxJokersPerPlayer {
+				client.Emit("purchase_failed", gin.H{
+					"error": fmt.Sprintf("You cannot have more than %d jokers", game_constants.MaxJokersPerPlayer),
+				})
+				return
+			}
 		}
 
 		// Validate the purchase
