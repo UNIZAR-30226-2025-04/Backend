@@ -662,6 +662,28 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 				}
 			}
 		}
+	} else {
+		// If has full jokers, sell one
+		var jokers poker.Jokers
+		err = json.Unmarshal(playerState.CurrentJokers, &jokers)
+		if err != nil {
+			log.Printf("[AI-SHOP-ERROR] Error parsing jokers: %v", err)
+			return
+		}
+		var numJokers int
+		for i := 0; i < len(jokers.Juglares); i++ {
+			if jokers.Juglares[i] != 0 {
+				numJokers++
+			}
+		}
+		if numJokers == 5 {
+			// 33% chance to sell a joker
+			randomValue := rand.Intn(3)
+			if randomValue == 0 {
+				jokerToSell := rand.Intn(numJokers)
+				sellJokerAI(redisClient, playerState, jokers.Juglares[jokerToSell])
+			}
+		}
 	}
 
 	// Order to buy pack (0), joker (1) or voucher (2)
