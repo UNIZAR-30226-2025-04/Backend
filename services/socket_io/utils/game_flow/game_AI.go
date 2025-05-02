@@ -135,8 +135,8 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 
 	// Increment the counter of proposed blinds (NEW, using a map to avoid same user incrementing the counter several times)
 	lobby.ProposedBlinds[username] = true
-	log.Printf("[AI-BLIND] Player %s proposed blind. Total proposals: %d/%d",
-		username, len(lobby.ProposedBlinds), lobby.PlayerCount)
+	log.Printf("[AI-BLIND] Player %s proposed blind: %d: . Total proposals: %d/%d",
+		username, proposedBlind, len(lobby.ProposedBlinds), lobby.PlayerCount)
 
 	// Save the updated lobby
 	err = redisClient.SaveGameLobby(lobby)
@@ -542,6 +542,8 @@ func discardCardsAI(redisClient *redis.RedisClient, player *redis_models.InGameP
 		log.Printf("[AI-DISCARD-ERROR] Error updating player data: %v", err)
 		return
 	}
+
+	log.Printf("[AI-DISCARD] Player %s discarded cards: %v", username, discard)
 }
 
 func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, player *redis_models.InGamePlayer, sio *socketio_types.SocketServer) bool {
@@ -848,20 +850,44 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 	var selectionsMap map[string]interface{}
 
 	if content.Cards != nil {
-		whichCards := rand.Intn(len(content.Cards) + 1)
+		// First selection
+		whichCard := rand.Intn(len(content.Cards))
 		selectionsMap = map[string]interface{}{
-			"selectedCards": content.Cards[whichCards],
+			"selectedCards": []poker.Card{content.Cards[whichCard]},
 		}
+		// Second selection
+		whichCard2 := rand.Intn(len(content.Cards))
+		for whichCard2 == whichCard {
+			whichCard2 = rand.Intn(len(content.Cards))
+		}
+		selectionsMap["selectedCards"] = append(selectionsMap["selectedCards"].([]poker.Card), content.Cards[whichCard2])
 	} else if content.Jokers != nil {
-		whichJokers := rand.Intn(len(content.Jokers) + 1)
+		// First selection
+		whichJoker := rand.Intn(len(content.Jokers))
 		selectionsMap = map[string]interface{}{
-			"selectedJokers": content.Jokers[whichJokers],
+			"selectedJokers": []poker.Jokers{content.Jokers[whichJoker]},
 		}
+		// Second selection
+		whichJoker2 := rand.Intn(len(content.Jokers))
+		for whichJoker2 == whichJoker {
+			whichJoker2 = rand.Intn(len(content.Jokers))
+		}
+		selectionsMap["selectedJokers"] = append(selectionsMap["selectedJokers"].([]poker.Jokers), content.Jokers[whichJoker2])
 	} else if content.Vouchers != nil {
-		whichModifiers := rand.Intn(len(content.Vouchers) + 1)
+		// First selection
+		whichModifier := rand.Intn(len(content.Vouchers))
 		selectionsMap = map[string]interface{}{
-			"selectedVouchers": content.Vouchers[whichModifiers],
+			"selectedVouchers": []poker.Modifier{content.Vouchers[whichModifier]},
 		}
+		// Second selection
+		whichModifier2 := rand.Intn(len(content.Vouchers))
+		for whichModifier2 == whichModifier {
+			whichModifier2 = rand.Intn(len(content.Vouchers))
+		}
+		selectionsMap["selectedVouchers"] = append(selectionsMap["selectedVouchers"].([]poker.Modifier), content.Vouchers[whichModifier2])
+	} else {
+		log.Printf("[AI-SHOP] No valid content found in pack for player %s", username)
+		return
 	}
 
 	log.Printf("[AI-SHOP] Pack selection for player Noglerinho: %v", selectionsMap)
@@ -874,13 +900,13 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 	// Process the selection
 	updatedPlayer, err := shop.ProcessPackSelection(redisClient, lobbyState, playerState, itemID, selectionsMap)
 	if err != nil {
-		log.Printf("[SHOP-ERROR] Pack selection failed: %v", err)
+		log.Printf("[AI-SHOP-ERROR] Pack selection failed: %v", err)
 		return
 	}
 
 	// Save the updated player state
 	if err := redisClient.SaveInGamePlayer(updatedPlayer); err != nil {
-		log.Printf("[SHOP-ERROR] Error saving player state: %v", err)
+		log.Printf("[AI-SHOP-ERROR] Error saving player state: %v", err)
 		return
 	}
 
