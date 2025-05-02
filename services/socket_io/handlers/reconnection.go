@@ -5,6 +5,7 @@ import (
 	"Nogler/services/redis"
 	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/stages/play_round"
+	"Nogler/services/socket_io/utils/stages/shop"
 	"encoding/json"
 	"log"
 	"time"
@@ -127,7 +128,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 				"current_points":    player.CurrentRoundPoints,
 				"total_points":      player.TotalGamePoints,
 				"hand_plays_left":   player.HandPlaysLeft,
-				"next_reroll":       player.Rerolls + 2,
+				"next_reroll_price": shop.GetRerollPrice(lobby), // player.Rerolls + 2, TODO, revisar si se hace con player o con shop state
 				"discards_left":     player.DiscardsLeft,
 				"played_cards":      len(deck.PlayedCards),
 				"unplayed_cards":    len(deck.TotalCards) + len(currentHand),
