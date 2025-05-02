@@ -145,6 +145,8 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 		case redis_models.PhasePlayRound:
 			response["players_finished_round"] = len(lobby.PlayersFinishedRound)
 		case redis_models.PhaseShop:
+			// KEY: remove player purchased items from the shop state
+			shop.RemovePurchasedItems(lobby.ShopState, player)
 			response["shop_items"] = lobby.ShopState
 			response["players_finished_shop"] = len(lobby.PlayersFinishedShop)
 		// NEW: vouchers phase info

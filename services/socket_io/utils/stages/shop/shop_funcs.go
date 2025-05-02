@@ -752,3 +752,51 @@ func GetRerollPrice(lobby *redis.GameLobby) int {
 	// Calculate the reroll price based on the number of rerolls
 	return lobby.ShopState.Rerolls + 2
 }
+
+// RemovePurchasedItems removes shop items that have been purchased by the player
+// It modifies the shopState directly and returns the modified pointer
+func RemovePurchasedItems(shopState *redis.LobbyShop, player *redis.InGamePlayer) *redis.LobbyShop {
+	// If player has no purchased items, return shopState unchanged
+	if player == nil || player.CurrentShopPurchasedItemIDs == nil || len(player.CurrentShopPurchasedItemIDs) == 0 {
+		return shopState
+	}
+
+	// Filter fixed packs
+	filteredPacks := make([]redis.ShopItem, 0, len(shopState.FixedPacks))
+	for _, item := range shopState.FixedPacks {
+		if !player.CurrentShopPurchasedItemIDs[item.ID] {
+			filteredPacks = append(filteredPacks, item)
+		}
+	}
+	shopState.FixedPacks = filteredPacks
+
+	// Filter fixed modifiers
+	filteredModifiers := make([]redis.ShopItem, 0, len(shopState.FixedModifiers))
+	for _, item := range shopState.FixedModifiers {
+		if !player.CurrentShopPurchasedItemIDs[item.ID] {
+			filteredModifiers = append(filteredModifiers, item)
+		}
+	}
+	shopState.FixedModifiers = filteredModifiers
+
+	// Filter jokers from ALL rerolls instead of just the latest one
+	for rerollIndex := 0; rerollIndex < len(shopState.Rerolled); rerollIndex++ {
+		// Since Jokers is a fixed-size array, we need to handle it differently
+		// Create a copy of the jokers array
+		var filteredJokers [3]redis.ShopItem
+		for i, joker := range shopState.Rerolled[rerollIndex].Jokers {
+			if player.CurrentShopPurchasedItemIDs[joker.ID] {
+				// Mark as invalid by setting ID to -1 (frontend should not display items with ID < 0)
+				filteredJokers[i] = redis.ShopItem{ID: -1}
+			} else {
+				// Keep the original joker
+				filteredJokers[i] = joker
+			}
+		}
+
+		// Update the jokers array in the shop state
+		shopState.Rerolled[rerollIndex].Jokers = filteredJokers
+	}
+
+	return shopState
+}
