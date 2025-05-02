@@ -32,4 +32,9 @@ type InGamePlayer struct {
 
 	// Field to store cards that the player has picked from purchased packs
 	PurchasedPackCards json.RawMessage `json:"picked_cards"` // Matches in_game_players.picked_cards
+
+	// Map with <K,V> pairs where each key corresponds to a shop item ID and
+	// the value is true <=> the user has purchased that item in the current round
+	// Otherwise, the entry might not even exist (or be set to false)
+	CurrentShopPurchasedItemIDs map[int]bool
 }

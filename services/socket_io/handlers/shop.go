@@ -160,6 +160,9 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 		playerState.LastPurchasedPackItemId = itemID
 		playerState.PlayersMoney -= item.Price // Deduct the money
 
+		// NEW, KEY: set the corresponding purchased item IDs map entry to true
+		playerState.CurrentShopPurchasedItemIDs[item.ID] = true
+
 		// Save the updated player state
 		if err := redisClient.SaveInGamePlayer(playerState); err != nil {
 			log.Printf("[SHOP-ERROR] Error saving player state: %v", err)

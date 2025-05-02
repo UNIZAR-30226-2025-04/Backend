@@ -329,6 +329,9 @@ func PurchaseJoker(redisClient *redis_services.RedisClient, player *redis.InGame
 	}
 	player.CurrentJokers = updatedJokersJSON
 
+	// NEW, KEY: set the corresponding entry of the player's purchased shop item IDs to true
+	player.CurrentShopPurchasedItemIDs[item.ID] = true
+
 	return true, player, nil
 }
 
@@ -373,6 +376,9 @@ func PurchaseVoucher(redisClient *redis_services.RedisClient, player *redis.InGa
 		return false, nil, fmt.Errorf("error updating modifiers: %v", err)
 	}
 	player.Modifiers = updatedModifiersJSON
+
+	// NEW, KEY: set the corresponding purchased item IDs map entry to true
+	player.CurrentShopPurchasedItemIDs[item.ID] = true
 
 	return true, player, nil
 }
