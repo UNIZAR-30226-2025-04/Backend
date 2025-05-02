@@ -128,10 +128,29 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			return
 		}
 
+		// Get pack contents and process jokers to include sell prices
 		contents, err := shop.GetOrGeneratePackContents(redisClient, lobbyState, item)
 		if err != nil {
 			client.Emit("pack_generation_failed")
 			return
+		}
+
+		// Process jokers to include sell prices if this is a joker pack or any pack containing jokers
+		jokersWithPrices := make([]gin.H, len(contents.Jokers))
+		for i, jokerGroup := range contents.Jokers {
+			// For each joker in the group, add its sell price
+			jokersWithIDs := make([]gin.H, len(jokerGroup.Juglares))
+			for j, jokerID := range jokerGroup.Juglares {
+				jokersWithIDs[j] = gin.H{
+					"id":         jokerID,
+					"sell_price": poker.CalculateJokerSellPrice(jokerID),
+				}
+			}
+
+			// Create a new structure that mirrors the original but with prices
+			jokersWithPrices[i] = gin.H{
+				"Juglares": jokersWithIDs,
+			}
 		}
 
 		// Update player's LastPurchasedPackItemId and deduct money
@@ -148,14 +167,15 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			return
 		}
 
+		// Emit the pack_purchased event with joker sell prices included
 		client.Emit("pack_purchased", gin.H{
 			"item_id":         item.ID,
 			"cards":           contents.Cards,
-			"jokers":          contents.Jokers,
-			"vouchers":        contents.Vouchers,        // Add vouchers to the response
-			"max_selectable":  item.MaxSelectable,       // Add max_selectable to the response
-			"pack_type":       item.PackType,            // Add pack_type to the response
-			"remaining_money": playerState.PlayersMoney, // Include remaining money in response
+			"jokers":          jokersWithPrices, // Use the processed jokers with sell prices
+			"vouchers":        contents.Vouchers,
+			"max_selectable":  item.MaxSelectable,
+			"pack_type":       item.PackType,
+			"remaining_money": playerState.PlayersMoney,
 		})
 	}
 }
