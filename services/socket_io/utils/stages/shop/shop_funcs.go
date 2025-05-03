@@ -750,7 +750,10 @@ func generatePackVouchers(rng *rand.Rand, count int) []poker.Modifier {
 
 func GetRerollPrice(lobby *redis.GameLobby) int {
 	// Calculate the reroll price based on the number of rerolls
-	return lobby.ShopState.Rerolls + 2
+	if lobby != nil && lobby.ShopState != nil {
+		return lobby.ShopState.Rerolls + 2
+	}
+	return -1
 }
 
 // RemovePurchasedItems removes shop items that have been purchased by the player
