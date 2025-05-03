@@ -49,6 +49,15 @@ func getAIoponent(redisClient *redis.RedisClient, lobbyID string) (*redis_models
 	return nil, nil
 }
 
+func contains(slice []int, value int) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
 // BLIND
 
 func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) {
@@ -454,7 +463,8 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		// Log the result
 		log.Printf("[AI-HAND] Player %s played hand: %v, Tokens: %d, Mult: %d, Gold: %d",
 			username, bestHand.Cards, finalFichas, finalMult, finalGold)
-		log.Println("Bot Noglerinho ha puntuado la friolera de:", valorFinal)
+		log.Printf("[AI-HAND] Player %s scored: %d. Current round score: %d", username,
+			valorFinal, player.CurrentRoundPoints)
 		// 7. Emit success response (FRONTEND WILL USE IT??????? SOME OF THEM????)
 		/*
 			client.Emit("AI_played_hand", gin.H{
@@ -783,7 +793,7 @@ func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.In
 	playerState.LastPurchasedPackItemId = itemID
 	playerState.PlayersMoney -= item.Price // Deduct the money
 
-	packSelectionAI(redisClient, playerState, lobbyState, itemID, content)
+	packSelectionAI(redisClient, playerState, lobbyState, itemID, item, content)
 
 	// Save the updated player state
 	if err := redisClient.SaveInGamePlayer(playerState); err != nil {
@@ -843,51 +853,84 @@ func sellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGam
 }
 
 func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
-	lobbyState *redis_models.GameLobby, itemID int, content *redis_models.PackContents) {
+	lobbyState *redis_models.GameLobby, itemID int, item redis_models.ShopItem, content *redis_models.PackContents) {
 	log.Printf("PackSelectionAI initiated - User: %s", username)
 
 	// Select items
-	var selectionsMap map[string]interface{}
+	selectionsMap := make(map[string]interface{})
 
-	if content.Cards != nil {
-		// First selection
-		whichCard := rand.Intn(len(content.Cards))
-		selectionsMap = map[string]interface{}{
-			"selectedCards": []poker.Card{content.Cards[whichCard]},
+	if len(content.Cards) > 0 {
+		// Select cards
+		whichCards := []int{}
+		for i := 0; i < item.MaxSelectable; i++ {
+			whichCard := rand.Intn(len(content.Cards))
+			// Check if the card is already selected
+			for contains(whichCards, whichCard) {
+				whichCard = rand.Intn(len(content.Cards))
+			}
+			whichCards = append(whichCards, whichCard)
 		}
-		// Second selection
-		whichCard2 := rand.Intn(len(content.Cards))
-		for whichCard2 == whichCard {
-			whichCard2 = rand.Intn(len(content.Cards))
+		selectedCards := make([]poker.Card, len(whichCards))
+		for i, cardIndex := range whichCards {
+			selectedCards[i] = content.Cards[cardIndex]
 		}
-		selectionsMap["selectedCards"] = append(selectionsMap["selectedCards"].([]poker.Card), content.Cards[whichCard2])
-	} else if content.Jokers != nil {
-		// First selection
-		whichJoker := rand.Intn(len(content.Jokers))
-		selectionsMap = map[string]interface{}{
-			"selectedJokers": []poker.Jokers{content.Jokers[whichJoker]},
-		}
-		// Second selection
-		whichJoker2 := rand.Intn(len(content.Jokers))
-		for whichJoker2 == whichJoker {
-			whichJoker2 = rand.Intn(len(content.Jokers))
-		}
-		selectionsMap["selectedJokers"] = append(selectionsMap["selectedJokers"].([]poker.Jokers), content.Jokers[whichJoker2])
-	} else if content.Vouchers != nil {
-		// First selection
-		whichModifier := rand.Intn(len(content.Vouchers))
-		selectionsMap = map[string]interface{}{
-			"selectedVouchers": []poker.Modifier{content.Vouchers[whichModifier]},
-		}
-		// Second selection
-		whichModifier2 := rand.Intn(len(content.Vouchers))
-		for whichModifier2 == whichModifier {
-			whichModifier2 = rand.Intn(len(content.Vouchers))
-		}
-		selectionsMap["selectedVouchers"] = append(selectionsMap["selectedVouchers"].([]poker.Modifier), content.Vouchers[whichModifier2])
+
+		selectionsMap["selectedCards"] = selectedCards
 	} else {
-		log.Printf("[AI-SHOP] No valid content found in pack for player %s", username)
-		return
+		selectionsMap["selectedCards"] = []poker.Card{}
+	}
+
+	if len(content.Jokers) > 0 {
+		// Check if the player already has 5 jokers
+		if playerState.CurrentJokers != nil {
+			var jokers poker.Jokers
+			err := json.Unmarshal(playerState.CurrentJokers, &jokers)
+			if err != nil {
+				log.Printf("[AI-SHOP-ERROR] Error parsing jokers: %v", err)
+				return
+			}
+			if len(jokers.Juglares) >= 5 {
+				log.Printf("[AI-SHOP-ERROR] Player %s already has 5 jokers", username)
+				return
+			}
+		}
+		// Select jokers
+		whichJokers := []int{}
+		for j := 0; j < item.MaxSelectable; j++ {
+			whichJoker := rand.Intn(len(content.Jokers))
+			// Check if the joker is already selected
+			for contains(whichJokers, whichJoker) {
+				whichJoker = rand.Intn(len(content.Jokers))
+			}
+			whichJokers = append(whichJokers, whichJoker)
+		}
+		selectedJokers := make([]int, len(whichJokers))
+		for i, jokerIndex := range whichJokers {
+			selectedJokers[i] = content.Jokers[jokerIndex].Juglares[0]
+		}
+		selectionsMap["selectedJokers"] = selectedJokers
+	} else {
+		selectionsMap["selectedJokers"] = []int{}
+	}
+
+	if len(content.Vouchers) > 0 {
+		// Select vouchers
+		whichVouchers := []int{}
+		for i := 0; i < item.MaxSelectable; i++ {
+			whichVoucher := rand.Intn(len(content.Vouchers))
+			// Check if the voucher is already selected
+			for contains(whichVouchers, whichVoucher) {
+				whichVoucher = rand.Intn(len(content.Vouchers))
+			}
+			whichVouchers = append(whichVouchers, whichVoucher)
+		}
+		selectedVouchers := make([]int, len(whichVouchers))
+		for i, voucherIndex := range whichVouchers {
+			selectedVouchers[i] = content.Vouchers[voucherIndex].Value
+		}
+		selectionsMap["selectedVouchers"] = selectedVouchers
+	} else {
+		selectionsMap["selectedVouchers"] = []int{}
 	}
 
 	log.Printf("[AI-SHOP] Pack selection for player Noglerinho: %v", selectionsMap)
