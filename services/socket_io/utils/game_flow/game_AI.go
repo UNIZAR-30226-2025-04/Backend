@@ -878,7 +878,8 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 			}
 			whichCards = append(whichCards, whichCard)
 		}
-		selectedCards := make([]poker.Card, len(whichCards))
+
+		selectedCards := make([]interface{}, len(whichCards))
 		for i, cardIndex := range whichCards {
 			selectedCards[i] = content.Cards[cardIndex]
 		}
@@ -910,7 +911,7 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 			}
 			whichJokers = append(whichJokers, whichJoker)
 		}
-		selectedJokers := make([]int, len(whichJokers))
+		selectedJokers := make([]interface{}, len(whichJokers))
 		for i, jokerIndex := range whichJokers {
 			selectedJokers[i] = content.Jokers[jokerIndex].Juglares[0]
 		}
@@ -928,7 +929,7 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 			}
 			whichVouchers = append(whichVouchers, whichVoucher)
 		}
-		selectedVouchers := make([]int, len(whichVouchers))
+		selectedVouchers := make([]interface{}, len(whichVouchers))
 		for i, voucherIndex := range whichVouchers {
 			selectedVouchers[i] = content.Vouchers[voucherIndex].Value
 		}
