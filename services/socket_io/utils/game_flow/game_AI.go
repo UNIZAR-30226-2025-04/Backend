@@ -876,8 +876,6 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 		}
 
 		selectionsMap["selectedCards"] = selectedCards
-	} else {
-		selectionsMap["selectedCards"] = []poker.Card{}
 	}
 
 	if len(content.Jokers) > 0 {
@@ -909,8 +907,6 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 			selectedJokers[i] = content.Jokers[jokerIndex].Juglares[0]
 		}
 		selectionsMap["selectedJokers"] = selectedJokers
-	} else {
-		selectionsMap["selectedJokers"] = []int{}
 	}
 
 	if len(content.Vouchers) > 0 {
@@ -929,8 +925,6 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 			selectedVouchers[i] = content.Vouchers[voucherIndex].Value
 		}
 		selectionsMap["selectedVouchers"] = selectedVouchers
-	} else {
-		selectionsMap["selectedVouchers"] = []int{}
 	}
 
 	log.Printf("[AI-SHOP] Pack selection for player Noglerinho: %v", selectionsMap)
