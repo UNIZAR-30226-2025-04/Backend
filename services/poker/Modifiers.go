@@ -63,21 +63,35 @@ func RAM(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int
 
 // Bans up to 4 players to play four of a kind for 1 round
 func Weezer(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
-	// TODO
+	_, _, mano, _ := BestHand(hand)
+	if mano == 6 {
+		mult = 0
+		fichas = 0
+	}
 	return fichas, mult, gold, leftUses
 }
 
 // Bans up to 2 players from playing straight for 1 round
 func Blonde(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
-	// TODO
+	_, _, mano, _ := BestHand(hand)
+	if mano == 9 {
+		mult = 0
+		fichas = 0
+	}
 	return fichas, mult, gold, leftUses
 }
 
 // Every King or Queen played scores negatie points. Choose 4 players for 1 round
 func AbbeyRoad(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
-	// TODO
+	if leftUses > 0 {
+		for _, card := range hand.Cards {
+			rank := grade(card)
+			if rank == 12 || rank == 13 {
+				mult -= 14
+			}
+		}
+	}
 	return fichas, mult, gold, leftUses
-
 }
 
 // Aces and K's score double
