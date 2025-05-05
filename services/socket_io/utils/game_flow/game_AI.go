@@ -9,6 +9,7 @@ import (
 	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/stages/shop"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 
@@ -17,7 +18,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const username = "Noglerinho" // AI username
+const Base_AI_username = "Noglerinho" // AI Base_AI_username
 
 func getAIplayer(redisClient *redis.RedisClient, lobbyID string) (*redis_models.InGamePlayer, error) {
 	// Get player data from Redis
@@ -62,14 +63,16 @@ func contains(slice []int, value int) bool {
 
 func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketio_types.SocketServer) {
 
-	log.Printf("[AI-BLIND] %s is proposing a blind", username)
-
 	// Get the lobby from Redis
 	lobby, err := redisClient.GetGameLobby(lobbyID)
 	if err != nil {
 		log.Printf("[AI-BLIND-ERROR] Error getting game lobby: %v", err)
 		return
 	}
+
+	currentAIPlayerUsername := FormatAIPlayerName(lobby.Id)
+
+	log.Printf("[AI-BLIND] %s is proposing a blind", currentAIPlayerUsername)
 
 	// Validate blind phase
 	valid, err := socketio_utils.ValidateBlindPhase(redisClient, nil, lobbyID)
@@ -117,13 +120,13 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 	// Check if proposed blind exceeds MAX_BLIND
 	if proposedBlind > game_constants.MAX_BLIND {
 		log.Printf("[AI-BLIND] Player %s proposed blind %d exceeding MAX_BLIND, capping at %d",
-			username, proposedBlind, int(game_constants.MAX_BLIND))
+			currentAIPlayerUsername, proposedBlind, int(game_constants.MAX_BLIND))
 		proposedBlind = game_constants.MAX_BLIND
 		AI.BetMinimumBlind = false
 	} else if proposedBlind < lobby.CurrentBaseBlind {
 		// If below or equal to base blind, set BetMinimumBlind to true
 		log.Printf("[AI-BLIND] Player %s proposed blind %d below or equal to base blind %d, marking as min blind better",
-			username, proposedBlind, lobby.CurrentBaseBlind)
+			currentAIPlayerUsername, proposedBlind, lobby.CurrentBaseBlind)
 		AI.BetMinimumBlind = true
 	} else {
 		// Otherwise, they're not betting the minimum
@@ -143,9 +146,9 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 	}
 
 	// Increment the counter of proposed blinds (NEW, using a map to avoid same user incrementing the counter several times)
-	lobby.ProposedBlinds[username] = true
+	lobby.ProposedBlinds[currentAIPlayerUsername] = true
 	log.Printf("[AI-BLIND] Player %s proposed blind: %d: . Total proposals: %d/%d",
-		username, proposedBlind, len(lobby.ProposedBlinds), lobby.PlayerCount)
+		currentAIPlayerUsername, proposedBlind, len(lobby.ProposedBlinds), lobby.PlayerCount)
 
 	// Save the updated lobby
 	err = redisClient.SaveGameLobby(lobby)
@@ -156,7 +159,7 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 
 	// Update current blind if this proposal is higher
 	if proposedBlind > currentBlind {
-		err := redisClient.SetCurrentHighBlind(lobbyID, proposedBlind, username)
+		err := redisClient.SetCurrentHighBlind(lobbyID, proposedBlind, currentAIPlayerUsername)
 		if err != nil {
 			log.Printf("[AI-BLIND-ERROR] Could not update current blind: %v", err)
 			return
@@ -166,7 +169,7 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 		sio.Sio_server.To(socket.Room(lobbyID)).Emit("blind_updated", gin.H{
 			"old_max_blind": currentBlind,
 			"new_blind":     proposedBlind,
-			"proposed_by":   username,
+			"proposed_by":   currentAIPlayerUsername,
 		})
 	}
 }
@@ -174,7 +177,7 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 // GET CARDS
 
 func getCardsAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer) {
-	log.Printf("GetCardsAI request - Noglerinho")
+	log.Printf("GetCardsAI request - %s", player.Username)
 
 	var err error
 	var deck *poker.Deck
@@ -237,7 +240,6 @@ func getCardsAI(redisClient *redis.RedisClient, player *redis_models.InGamePlaye
 // PLAY
 
 func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
-	log.Printf("PlayHandsAI started - Usuario: %s", username)
 
 	// 1. Get player data from Redis to extract lobby ID
 	player, err := getAIplayer(redisClient, lobbyID)
@@ -245,6 +247,8 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		log.Printf("[AI-HAND-ERROR] Error getting player data: %v", err)
 		return
 	}
+
+	log.Printf("PlayHandsAI started - Usuario: %s", player.Username)
 
 	// Validate play round phase
 	valid, err := socketio_utils.ValidatePlayRoundPhase(redisClient, nil, lobbyID)
@@ -260,7 +264,7 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 
 		// 2. Check if the player has enough plays left
 		if player.HandPlaysLeft <= 0 {
-			log.Printf("[AI-HAND-ERROR] No hand plays left %s", username)
+			log.Printf("[AI-HAND-ERROR] No hand plays left %s", player.Username)
 			return
 		}
 
@@ -462,8 +466,8 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 
 		// Log the result
 		log.Printf("[AI-HAND] Player %s played hand: %v, Tokens: %d, Mult: %d, Gold: %d",
-			username, bestHand.Cards, finalFichas, finalMult, finalGold)
-		log.Printf("[AI-HAND] Player %s scored: %d. Current round score: %d", username,
+			player.Username, bestHand.Cards, finalFichas, finalMult, finalGold)
+		log.Printf("[AI-HAND] Player %s scored: %d. Current round score: %d", player.Username,
 			valorFinal, player.CurrentRoundPoints)
 		// 7. Emit success response (FRONTEND WILL USE IT??????? SOME OF THEM????)
 		/*
@@ -483,7 +487,7 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		*/
 		finish := checkAIFinishedRound(redisClient, db, lobbyID, player, sio)
 		if finish {
-			log.Printf("[AI-HAND] Player %s has finished their round", username)
+			log.Printf("[AI-HAND] Player %s has finished their round", player.Username)
 			return
 		}
 	}
@@ -553,11 +557,12 @@ func discardCardsAI(redisClient *redis.RedisClient, player *redis_models.InGameP
 		return
 	}
 
-	log.Printf("[AI-DISCARD] Player %s discarded cards: %v", username, discard)
+	log.Printf("[AI-DISCARD] Player %s discarded cards: %v", player.Username, discard)
 }
 
 func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, player *redis_models.InGamePlayer, sio *socketio_types.SocketServer) bool {
-	log.Printf("[AI-ROUND-CHECK] Checking if player %s has finished round in lobby %s", username, lobbyID)
+
+	log.Printf("[AI-ROUND-CHECK] Checking if player %s has finished round in lobby %s", player.Username, lobbyID)
 
 	// Get the lobby to check blind value
 	lobby, err := redisClient.GetGameLobby(lobbyID)
@@ -573,13 +578,13 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 
 		// Log which condition was met
 		if player.HandPlaysLeft <= 0 {
-			log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays left)", username)
+			log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays left)", player.Username)
 		} else if player.BetMinimumBlind {
 			log.Printf("[ROUND-CHECK] Player %s has reached their base blind of %d with %d points",
-				username, lobby.CurrentBaseBlind, player.CurrentRoundPoints)
+				player.Username, lobby.CurrentBaseBlind, player.CurrentRoundPoints)
 		} else {
 			log.Printf("[ROUND-CHECK] Player %s has reached the high blind of %d with %d points",
-				username, lobby.CurrentHighBlind, player.CurrentRoundPoints)
+				player.Username, lobby.CurrentHighBlind, player.CurrentRoundPoints)
 		}
 
 		// Mark player as finished in the lobby
@@ -587,7 +592,7 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 			lobby.PlayersFinishedRound = make(map[string]bool)
 		}
 
-		lobby.PlayersFinishedRound[username] = true
+		lobby.PlayersFinishedRound[player.Username] = true
 		log.Printf("[ROUND-CHECK] Incremented finished players count to %d/%d for lobby %s",
 			len(lobby.PlayersFinishedRound), lobby.PlayerCount, lobbyID)
 
@@ -606,14 +611,13 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 		}
 		return true
 	}
-	log.Printf("[ROUND-CHECK] Player %s has not finished their round yet", username)
+	log.Printf("[ROUND-CHECK] Player %s has not finished their round yet", player.Username)
 	return false
 }
 
 // SHOP
 
 func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopState *redis_models.LobbyShop, sio *socketio_types.SocketServer) {
-	log.Printf("ShopAI initiated - User: %s", username)
 
 	// Get player state
 	playerState, err := getAIplayer(redisClient, lobbyID)
@@ -622,7 +626,9 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 		return
 	}
 
-	log.Printf("[AI-INFO] Getting lobby ID info: %s for AI: %s", lobbyID, username)
+	log.Printf("ShopAI initiated - User: %s", playerState.Username)
+
+	log.Printf("[AI-INFO] Getting lobby ID info: %s for AI: %s", lobbyID, playerState.Username)
 
 	valid, err := socketio_utils.ValidateShopPhase(redisClient, nil, lobbyID)
 	if err != nil || !valid {
@@ -657,7 +663,7 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 				}
 			}
 			if numJokers == 0 {
-				log.Printf("[AI-SHOP-ERROR] No jokers to sell for player %s", username)
+				log.Printf("[AI-SHOP-ERROR] No jokers to sell for player %s", playerState.Username)
 			} else {
 				jokerToSell := rand.Intn(numJokers)
 				sellJokerAI(redisClient, playerState, jokers.Juglares[jokerToSell])
@@ -739,7 +745,7 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 						return
 					}
 					if len(jokers.Juglares) >= 5 {
-						log.Printf("[AI-SHOP-ERROR] Player %s already has 5 jokers", username)
+						log.Printf("[AI-SHOP-ERROR] Player %s already has 5 jokers", playerState.Username)
 						continue
 					}
 				}
@@ -854,7 +860,7 @@ func sellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGam
 
 func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	lobbyState *redis_models.GameLobby, itemID int, item redis_models.ShopItem, content *redis_models.PackContents) {
-	log.Printf("PackSelectionAI initiated - User: %s", username)
+	log.Printf("PackSelectionAI initiated - User: %s", playerState.Username)
 
 	// Select items
 	selectionsMap := make(map[string]interface{})
@@ -888,7 +894,7 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 				return
 			}
 			if len(jokers.Juglares) >= 5 {
-				log.Printf("[AI-SHOP-ERROR] Player %s already has 5 jokers", username)
+				log.Printf("[AI-SHOP-ERROR] Player %s already has 5 jokers", playerState.Username)
 				return
 			}
 		}
@@ -952,7 +958,6 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 // VOUCHERS
 
 func VouchersAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
-	log.Printf("VouchersAI initiated - User: %s", username)
 
 	// Get player data from Redis
 	player, err := getAIplayer(redisClient, lobbyID)
@@ -960,6 +965,8 @@ func VouchersAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		log.Printf("[AI-VOUCHER-ERROR] Error getting player data: %v", err)
 		return
 	}
+
+	log.Printf("VouchersAI initiated - User: %s", player.Username)
 
 	// Validate vouchers phase
 	valid, err := socketio_utils.ValidateVouchersPhase(redisClient, nil, lobbyID)
@@ -1003,7 +1010,7 @@ func VouchersAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 			}
 		}
 	}
-	log.Printf("[AI-VOUCHER-INFO] Player %s activated %d vouchers", username, numModifiers)
+	log.Printf("[AI-VOUCHER-INFO] Player %s activated %d vouchers", player.Username, numModifiers)
 
 	// Continue to next blind phase
 	continueToNextBlind(redisClient, db, lobbyID, sio)
@@ -1011,7 +1018,7 @@ func VouchersAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 
 func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer,
 	modifier poker.Modifier) {
-	log.Printf("[AI-MODIFIER] Activating voucher %d for player Noglerinho", modifier.Value)
+	log.Printf("[AI-MODIFIER] Activating voucher %d for player %s", modifier.Value, player.Username)
 	var player_modifiers []poker.Modifier
 	err := json.Unmarshal(player.Modifiers, &player_modifiers)
 	if err != nil {
@@ -1033,7 +1040,7 @@ func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGa
 		}
 	}
 	if !found {
-		log.Printf("[AI-MODIFIER-ERROR] Modifier %d not available for user %s", mod, username)
+		log.Printf("[AI-MODIFIER-ERROR] Modifier %d not available for user %s", mod, player.Username)
 		return
 	}
 
@@ -1046,7 +1053,7 @@ func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGa
 		return
 	}
 	player.ActivatedModifiers = activated_modifiersJSON
-	log.Printf("[AI-MODIFIER-INFO] Activated modifiers for user %s: %v", username, activated_modifiers)
+	log.Printf("[AI-MODIFIER-INFO] Activated modifiers for user %s: %v", player.Username, activated_modifiers)
 
 	// Remove the activated modifier from the available modifiers
 	for i, v := range player_modifiers {
@@ -1098,7 +1105,7 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 		}
 	}
 	if !found {
-		log.Printf("[AI-MODIFIER-ERROR] Modifier %d not available for user %s", mod, username)
+		log.Printf("[AI-MODIFIER-ERROR] Modifier %d not available for user %s", mod, player.Username)
 		return
 	}
 
@@ -1126,7 +1133,7 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 		return
 	}
 
-	// Get the opponent's username
+	// Get the opponent's player.Username
 	receiver, err := getAIoponent(redisClient, lobbyID)
 	if err != nil {
 		log.Printf("[AI-MODIFIER-ERROR] Error getting players in lobby: %v", err)
@@ -1137,7 +1144,7 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	var activated_modifiers []poker.ReceivedModifier
 	activated_modifiers = append(activated_modifiers, poker.ReceivedModifier{
 		Modifier: modifier,
-		Sender:   username,
+		Sender:   player.Username,
 	})
 
 	var receiver_modifiers []poker.ReceivedModifier
@@ -1165,16 +1172,15 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	// Notify the receiving player
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("modifiers_received", gin.H{
 		"modifiers": receiver.ReceivedModifiers,
-		"sender":    username,
+		"sender":    player.Username,
 	})
 
-	log.Printf("[AI-MODIFIER-SUCCESS] Modifiers sent to user %s from %s: %v", receiver.Username, username, modifier)
+	log.Printf("[AI-MODIFIER-SUCCESS] Modifiers sent to user %s from %s: %v", receiver.Username, player.Username, modifier)
 }
 
 // CONTINUE NEXT PHASE
 
 func continueToNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
-	log.Printf("ContinueToNextBlindAI initiated - User: %s", username)
 
 	// Get game lobby
 	lobby, err := redisClient.GetGameLobby(lobbyID)
@@ -1183,12 +1189,16 @@ func continueToNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lobbyID st
 		return
 	}
 
+	currentAIPlayerUsername := FormatAIPlayerName(lobby.Id)
+
+	log.Printf("ContinueToNextBlindAI initiated - User: %s", currentAIPlayerUsername)
+
 	log.Printf("[AI-NEXT-BLIND] Noglerinho requesting to continue to next blind in lobby %s", lobbyID)
 
 	// Increment the finished vouchers counter (NEW, using maps now)
-	lobby.PlayersFinishedVouchers[username] = true
+	lobby.PlayersFinishedVouchers[currentAIPlayerUsername] = true
 	log.Printf("[AI-NEXT-BLIND] Player %s ready for next blind. Total ready: %d/%d",
-		username, len(lobby.PlayersFinishedVouchers), lobby.PlayerCount)
+		currentAIPlayerUsername, len(lobby.PlayersFinishedVouchers), lobby.PlayerCount)
 
 	// Save the updated lobby
 	err = redisClient.SaveGameLobby(lobby)
@@ -1208,7 +1218,6 @@ func continueToNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lobbyID st
 }
 
 func continueToVouchers(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
-	log.Printf("ContinueToVouchersAI initiated - User: %s", username)
 
 	// Get game lobby
 	lobby, err := redisClient.GetGameLobby(lobbyID)
@@ -1217,10 +1226,14 @@ func continueToVouchers(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 		return
 	}
 
+	currentAIPlayerUsername := FormatAIPlayerName(lobby.Id)
+
+	log.Printf("ContinueToVouchersAI initiated - User: %s", currentAIPlayerUsername)
+
 	log.Printf("[AI-VOUCHERS] Noglerinho requesting to continue to vouchers phase in lobby %s", lobbyID)
 
 	// Increment the finished shop counter
-	lobby.PlayersFinishedShop[username] = true
+	lobby.PlayersFinishedShop[currentAIPlayerUsername] = true
 	log.Printf("[AI-VOUCHERS] Noglerinho ready for vouchers phase. Total ready: %d/%d",
 		len(lobby.PlayersFinishedShop), lobby.PlayerCount)
 
@@ -1239,4 +1252,9 @@ func continueToVouchers(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 		// Use game_flow to advance to vouchers phase
 		AdvanceToVouchersIfUndone(redisClient, db, lobbyID, sio, lobby.CurrentRound)
 	}
+}
+
+func FormatAIPlayerName(lobbyID string) string {
+	// Format the AI player name
+	return fmt.Sprintf("%s-%s", Base_AI_username, lobbyID)
 }

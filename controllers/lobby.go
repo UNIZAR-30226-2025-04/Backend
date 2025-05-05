@@ -7,6 +7,7 @@ import (
 	redis_models "Nogler/models/redis"
 	"Nogler/services/poker"
 	"Nogler/services/redis"
+	"Nogler/services/socket_io/utils/game_flow"
 	"Nogler/utils"
 	"encoding/json"
 	"log"
@@ -110,9 +111,10 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			purchasedPackCards := make([]poker.Card, 0)
 			purchasedPackCardsJSON, _ := json.Marshal(purchasedPackCards)
 			redisAIPlayer := &redis_models.InGamePlayer{
-				Username:                "Noglerinho",
+				Username:                game_flow.FormatAIPlayerName(NewLobby.ID),
 				LobbyId:                 NewLobby.ID,
-				PlayersMoney:            10,                           // Initial money --> TODO: ver cuánto es la cifra inicial
+				PlayersMoney:            10, // Initial money --> TODO: ver cuánto es la cifra inicial
+				Rerolls:                 0,
 				CurrentDeck:             poker.InitializePlayerDeck(), // Will be initialized when game starts
 				Modifiers:               nil,                          // Will be initialized when game starts
 				CurrentJokers:           nil,                          // Will be initialized when game starts
