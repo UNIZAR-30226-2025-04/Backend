@@ -236,7 +236,7 @@ func getCardsAI(redisClient *redis.RedisClient, player *redis_models.InGamePlaye
 
 // PLAY
 
-func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
+func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio *socketio_types.SocketServer) {
 	log.Printf("PlayHandsAI started - Usuario: %s", username)
 
 	// 1. Get player data from Redis to extract lobby ID
@@ -451,7 +451,7 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		deck.RemoveCards(newCards)
 		player.CurrentDeck = deck.ToJSON()
 
-		player.CurrentRoundPoints = valorFinal
+		player.CurrentRoundPoints += valorFinal
 		player.TotalGamePoints += valorFinal
 		player.HandPlaysLeft--
 		err = redisClient.UpdateDeckPlayer(*player)

@@ -235,7 +235,7 @@ func AdvanceToNextRoundPlayIfUndone(redisClient *redis.RedisClient, db *gorm.DB,
 
 	// If the game is against the AI, we need to set the AI's play
 	if lobby.IsPublic == 2 {
-		go PlayHandIA(redisClient, db, lobbyID, sio)
+		go PlayHandAI(redisClient, db, lobbyID, sio)
 	}
 }
 
