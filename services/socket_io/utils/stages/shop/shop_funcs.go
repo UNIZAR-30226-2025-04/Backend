@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"log"
 	"time"
 
 	"golang.org/x/exp/rand"
@@ -477,7 +478,6 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 
 	// Parse selected cards if present
 	if cardsInterface, hasCards := selectionsMap["selectedCards"]; hasCards {
-		var selectedCards []poker.Card
 
 		if isCallFromBackend {
 			// Backend calls pass in []poker.Card directly
@@ -540,7 +540,6 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 
 	// Parse selected jokers if present
 	if jokersInterface, hasJokers := selectionsMap["selectedJokers"]; hasJokers {
-		var selectedJokerIDs []int
 
 		if isCallFromBackend {
 			// Backend calls pass in []int directly
@@ -574,7 +573,6 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 
 	// Parse selected vouchers if present
 	if vouchersInterface, hasVouchers := selectionsMap["selectedVouchers"]; hasVouchers {
-		var selectedVoucherIDs []int
 
 		if isCallFromBackend {
 			// Backend calls pass in []int directly
@@ -627,6 +625,8 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 			return nil, fmt.Errorf("you can only select cards from a cards pack")
 		}
 
+		log.Println("[PROCESS PACK SELECTION] selectedCards for player %s: %v", player.Username, selectedCards)
+
 		// Verify selected cards exist in the pack
 		for _, selectedCard := range selectedCards {
 			cardFound := false
@@ -666,6 +666,8 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		if len(selectedCards) > 0 || len(selectedVoucherIDs) > 0 {
 			return nil, fmt.Errorf("you can only select jokers from a jokers pack")
 		}
+
+		log.Println("[PROCESS PACK SELECTION] selectedJokers for player %s: %v", player.Username, selectedJokerIDs)
 
 		// Verify selected jokers exist in the pack
 		for _, selectedJokerID := range selectedJokerIDs {
@@ -713,6 +715,8 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		if len(selectedCards) > 0 || len(selectedJokerIDs) > 0 {
 			return nil, fmt.Errorf("you can only select vouchers from a vouchers pack")
 		}
+
+		log.Println("[PROCESS PACK SELECTION] selectedVouchers for player %s: %v", player.Username, selectedVoucherIDs)
 
 		// Verify selected vouchers exist in the pack
 		for _, selectedVoucherID := range selectedVoucherIDs {
