@@ -274,8 +274,8 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 
 		// 3. Calculate base points
 
-		// Generate all combinations of 4 cards from the current hand
-		combinations := poker.GenerateHands(currentHand, 4)
+		// Generate all combinations of 5 cards from the current hand
+		combinations := poker.GenerateHands(currentHand, 5)
 
 		// Iterate through all combinations to find the best hand
 		var bestTokens, bestMult int = 0, 0
