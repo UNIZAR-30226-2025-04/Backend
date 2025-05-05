@@ -722,7 +722,7 @@ func SetLobbyVisibility(db *gorm.DB, redisClient *redis.RedisClient) gin.Handler
 // @Failure 400 {object} object{error=string}
 // @Failure 500 {object} object{error=string}
 // @Router /auth/isUserInLobby [get]
-func IsUserInLobby(db *gorm.DB) gin.HandlerFunc {
+func IsUserInLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		email, err := middleware.JWT_decoder(c)
 		if err != nil {
@@ -744,27 +744,22 @@ func IsUserInLobby(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		var inGamePlayer models.InGamePlayer
-		if err := db.Where("username = ?", username).First(&inGamePlayer).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				c.JSON(http.StatusOK, gin.H{"in_lobby": false, "lobby_id": "", "public": ""})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting lobby"})
+		// --- Use Redis instead of Postgres ---
+		inGamePlayer, err := redisClient.GetInGamePlayer(username)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"in_lobby": false, "lobby_id": "", "public": ""})
 			return
 		}
 
-		var lobby models.GameLobby
-		if err := db.Where("id = ?", inGamePlayer.LobbyID).First(&lobby).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
-			}
+		lobby, err := redisClient.GetGameLobby(inGamePlayer.LobbyId)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Lobby not found"})
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"in_lobby": true,
-			"lobby_id": inGamePlayer.LobbyID,
+			"lobby_id": inGamePlayer.LobbyId,
 			"public":   lobby.IsPublic,
 		})
 	}
