@@ -625,8 +625,6 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 			return nil, fmt.Errorf("you can only select cards from a cards pack")
 		}
 
-		log.Println("[PROCESS PACK SELECTION] selectedCards for player %s: %v", player.Username, selectedCards)
-
 		// Verify selected cards exist in the pack
 		for _, selectedCard := range selectedCards {
 			cardFound := false
@@ -658,6 +656,8 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		}
 		player.PurchasedPackCards = updatedPurchasedCardsJSON
 
+		log.Printf("[PROCESS PACK SELECTION] UPDATED selectedCards for player %s: %v", player.Username, selectedCards)
+
 	case game_constants.PACK_TYPE_JOKERS:
 		// For joker packs, verify selected jokers
 		if len(selectedJokerIDs) == 0 {
@@ -666,8 +666,6 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		if len(selectedCards) > 0 || len(selectedVoucherIDs) > 0 {
 			return nil, fmt.Errorf("you can only select jokers from a jokers pack")
 		}
-
-		log.Println("[PROCESS PACK SELECTION] selectedJokers for player %s: %v", player.Username, selectedJokerIDs)
 
 		// Verify selected jokers exist in the pack
 		for _, selectedJokerID := range selectedJokerIDs {
@@ -707,6 +705,8 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		}
 		player.CurrentJokers = updatedJokersJSON
 
+		log.Printf("[PROCESS PACK SELECTION] UPDATED selectedJokers for player %s: %v", player.Username, selectedJokerIDs)
+
 	case game_constants.PACK_TYPE_VOUCHERS:
 		// For voucher packs, verify selected vouchers
 		if len(selectedVoucherIDs) == 0 {
@@ -715,8 +715,6 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		if len(selectedCards) > 0 || len(selectedJokerIDs) > 0 {
 			return nil, fmt.Errorf("you can only select vouchers from a vouchers pack")
 		}
-
-		log.Println("[PROCESS PACK SELECTION] selectedVouchers for player %s: %v", player.Username, selectedVoucherIDs)
 
 		// Verify selected vouchers exist in the pack
 		for _, selectedVoucherID := range selectedVoucherIDs {
@@ -758,6 +756,8 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 			return nil, fmt.Errorf("error updating modifiers: %v", err)
 		}
 		player.Modifiers = updatedModifiersJSON
+
+		log.Printf("[PROCESS PACK SELECTION] UPDATED selectedVouchers for player %s: %v", player.Username, selectedVoucherIDs)
 	}
 
 	// Reset LastPurchasedPackItemId to prevent reuse
