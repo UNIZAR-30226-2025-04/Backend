@@ -626,7 +626,17 @@ func SetLobbyVisibility(db *gorm.DB, redisClient *redis.RedisClient) gin.Handler
 
 		// Get visibility parameter
 		isPublicStr := c.PostForm("is_public")
-		isPublic := isPublicStr == "true"
+
+		// NOTE: should be named something like "game_type", the values it takes are:
+		// 0: private
+		// 1: public
+		// 2: vs AI
+		var isPublic int
+		if isPublicStr == "true" {
+			isPublic = 1
+		} else {
+			isPublic = 0
+		}
 
 		// Get user from JWT token
 		email, err := middleware.JWT_decoder(c)
@@ -679,7 +689,7 @@ func SetLobbyVisibility(db *gorm.DB, redisClient *redis.RedisClient) gin.Handler
 			return
 		}
 
-		redisLobby.IsPublic = 1
+		redisLobby.IsPublic = isPublic
 		if err := redisClient.SaveGameLobby(redisLobby); err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update Redis lobby"})
