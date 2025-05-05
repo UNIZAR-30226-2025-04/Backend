@@ -517,7 +517,7 @@ func HandlePackSelection(redisClient *redis_services.RedisClient, client *socket
 		}
 
 		// Process the selection
-		updatedPlayer, err := shop.ProcessPackSelection(redisClient, lobbyState, playerState, itemID, selectionsMap)
+		updatedPlayer, err := shop.ProcessPackSelection(redisClient, lobbyState, playerState, itemID, selectionsMap, false)
 		if err != nil {
 			log.Printf("[SHOP-ERROR] Pack selection failed: %v", err)
 			client.Emit("error", gin.H{"error": err.Error()})

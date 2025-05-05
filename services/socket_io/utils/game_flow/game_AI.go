@@ -879,7 +879,7 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 			whichCards = append(whichCards, whichCard)
 		}
 
-		selectedCards := make([]interface{}, len(whichCards))
+		selectedCards := make([]poker.Card, len(whichCards))
 		for i, cardIndex := range whichCards {
 			selectedCards[i] = content.Cards[cardIndex]
 		}
@@ -911,7 +911,7 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 			}
 			whichJokers = append(whichJokers, whichJoker)
 		}
-		selectedJokers := make([]interface{}, len(whichJokers))
+		selectedJokers := make([]int, len(whichJokers))
 		for i, jokerIndex := range whichJokers {
 			selectedJokers[i] = content.Jokers[jokerIndex].Juglares[0]
 		}
@@ -929,7 +929,7 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 			}
 			whichVouchers = append(whichVouchers, whichVoucher)
 		}
-		selectedVouchers := make([]interface{}, len(whichVouchers))
+		selectedVouchers := make([]int, len(whichVouchers))
 		for i, voucherIndex := range whichVouchers {
 			selectedVouchers[i] = content.Vouchers[voucherIndex].Value
 		}
@@ -944,7 +944,7 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 	}
 
 	// Process the selection
-	updatedPlayer, err := shop.ProcessPackSelection(redisClient, lobbyState, playerState, itemID, selectionsMap)
+	updatedPlayer, err := shop.ProcessPackSelection(redisClient, lobbyState, playerState, itemID, selectionsMap, true)
 	if err != nil {
 		log.Printf("[AI-SHOP-ERROR] Pack selection failed: %v", err)
 		return

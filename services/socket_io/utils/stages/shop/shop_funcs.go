@@ -454,7 +454,7 @@ func SellJoker(player *redis.InGamePlayer, jokerID int) (updatedPlayer *redis.In
 // ProcessPackSelection validates and processes a player's selection from a purchased pack
 // Supports multiple pack types (cards, jokers, vouchers) and enforces MaxSelectable limit
 func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.GameLobby,
-	player *redis.InGamePlayer, itemID int, selectionsMap map[string]interface{}) (*redis.InGamePlayer, error) {
+	player *redis.InGamePlayer, itemID int, selectionsMap map[string]interface{}, isCallFromBackend bool) (*redis.InGamePlayer, error) {
 
 	// Get the shop item to determine pack type and MaxSelectable
 	item, exists := FindShopItem(*lobby, itemID)
@@ -477,85 +477,132 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 
 	// Parse selected cards if present
 	if cardsInterface, hasCards := selectionsMap["selectedCards"]; hasCards {
-		cardsArray, ok := cardsInterface.([]interface{})
-		if !ok {
-			return nil, fmt.Errorf("selectedCards must be an array")
-		}
+		var selectedCards []poker.Card
 
-		for _, cardInterface := range cardsArray {
-			cardMap, ok := cardInterface.(map[string]interface{})
+		if isCallFromBackend {
+			// Backend calls pass in []poker.Card directly
+			backendCards, ok := cardsInterface.([]poker.Card)
 			if !ok {
-				return nil, fmt.Errorf("each selected card must be an object")
+				return nil, fmt.Errorf("backend: selectedCards must be []poker.Card")
 			}
 
-			// Parse card details
-			rankInterface, hasRank := cardMap["Rank"]
-			suitInterface, hasSuit := cardMap["Suit"]
-			enhancementInterface, hasEnhancement := cardMap["Enhancement"]
-
-			if !hasRank || !hasSuit {
-				return nil, fmt.Errorf("card is missing rank or suit")
+			// Just use the cards directly
+			selectedCards = backendCards
+		} else {
+			// Frontend calls pass JSON that becomes []interface{}
+			frontendCards, ok := cardsInterface.([]interface{})
+			if !ok {
+				return nil, fmt.Errorf("frontend: selectedCards must be an array")
 			}
 
-			rank, rankOk := rankInterface.(string)
-			suit, suitOk := suitInterface.(string)
-
-			if !rankOk || !suitOk {
-				return nil, fmt.Errorf("card rank and suit must be strings")
-			}
-
-			// Create the card with Enhancement if available
-			card := poker.Card{
-				Rank: rank,
-				Suit: suit,
-			}
-
-			// Add enhancement if present
-			if hasEnhancement {
-				if enhancementValue, ok := enhancementInterface.(float64); ok {
-					card.Enhancement = int(enhancementValue)
+			// Parse each card from the frontend format
+			for _, cardInterface := range frontendCards {
+				cardMap, ok := cardInterface.(map[string]interface{})
+				if !ok {
+					return nil, fmt.Errorf("each card must be an object")
 				}
-			}
 
-			selectedCards = append(selectedCards, card)
+				// Parse card fields
+				rankInterface, hasRank := cardMap["Rank"]
+				suitInterface, hasSuit := cardMap["Suit"]
+
+				if !hasRank || !hasSuit {
+					return nil, fmt.Errorf("card is missing rank or suit")
+				}
+
+				rank, rankOk := rankInterface.(string)
+				suit, suitOk := suitInterface.(string)
+
+				if !rankOk || !suitOk {
+					return nil, fmt.Errorf("rank and suit must be strings")
+				}
+
+				// Create card
+				card := poker.Card{
+					Rank: rank,
+					Suit: suit,
+				}
+
+				// Add enhancement if present
+				if enhancementInterface, hasEnhancement := cardMap["Enhancement"]; hasEnhancement {
+					if enhancementValue, ok := enhancementInterface.(float64); ok {
+						card.Enhancement = int(enhancementValue)
+					}
+				}
+
+				selectedCards = append(selectedCards, card)
+			}
 		}
 
+		// Now selectedCards is populated correctly regardless of source
 		totalSelected += len(selectedCards)
 	}
 
 	// Parse selected jokers if present
 	if jokersInterface, hasJokers := selectionsMap["selectedJokers"]; hasJokers {
-		jokersArray, ok := jokersInterface.([]interface{})
-		if !ok {
-			return nil, fmt.Errorf("selectedJokers must be an array")
-		}
+		var selectedJokerIDs []int
 
-		for _, jokerIDInterface := range jokersArray {
-			jokerIDFloat, ok := jokerIDInterface.(float64)
+		if isCallFromBackend {
+			// Backend calls pass in []int directly
+			backendJokers, ok := jokersInterface.([]int)
 			if !ok {
-				return nil, fmt.Errorf("each selected joker ID must be a number")
+				return nil, fmt.Errorf("backend: selectedJokers must be []int")
 			}
-			selectedJokerIDs = append(selectedJokerIDs, int(jokerIDFloat))
+
+			// Just use the joker IDs directly
+			selectedJokerIDs = backendJokers
+		} else {
+			// Frontend calls pass JSON that becomes []interface{}
+			frontendJokers, ok := jokersInterface.([]interface{})
+			if !ok {
+				return nil, fmt.Errorf("frontend: selectedJokers must be an array")
+			}
+
+			// Parse each joker ID from the frontend format
+			for _, jokerIDInterface := range frontendJokers {
+				jokerIDFloat, ok := jokerIDInterface.(float64)
+				if !ok {
+					return nil, fmt.Errorf("each selected joker ID must be a number")
+				}
+				selectedJokerIDs = append(selectedJokerIDs, int(jokerIDFloat))
+			}
 		}
 
+		// Now selectedJokerIDs is populated correctly regardless of source
 		totalSelected += len(selectedJokerIDs)
 	}
 
 	// Parse selected vouchers if present
 	if vouchersInterface, hasVouchers := selectionsMap["selectedVouchers"]; hasVouchers {
-		vouchersArray, ok := vouchersInterface.([]interface{})
-		if !ok {
-			return nil, fmt.Errorf("selectedVouchers must be an array")
-		}
+		var selectedVoucherIDs []int
 
-		for _, voucherIDInterface := range vouchersArray {
-			voucherIDFloat, ok := voucherIDInterface.(float64)
+		if isCallFromBackend {
+			// Backend calls pass in []int directly
+			backendVouchers, ok := vouchersInterface.([]int)
 			if !ok {
-				return nil, fmt.Errorf("each selected voucher ID must be a number")
+				return nil, fmt.Errorf("backend: selectedVouchers must be []int")
 			}
-			selectedVoucherIDs = append(selectedVoucherIDs, int(voucherIDFloat))
+
+			// Just use the voucher IDs directly
+			selectedVoucherIDs = backendVouchers
+		} else {
+			// Frontend calls pass JSON that becomes []interface{}
+			frontendVouchers, ok := vouchersInterface.([]interface{})
+			if !ok {
+				return nil, fmt.Errorf("frontend: selectedVouchers must be an array")
+			}
+
+			// Parse each voucher ID from the frontend format
+			for _, voucherIDInterface := range frontendVouchers {
+				voucherIDFloat, ok := voucherIDInterface.(float64)
+				if !ok {
+					return nil, fmt.Errorf("each selected voucher ID must be a number")
+				}
+				selectedVoucherIDs = append(selectedVoucherIDs, int(voucherIDFloat))
+			}
 		}
 
+		// Now selectedVoucherIDs is populated correctly regardless of source
 		totalSelected += len(selectedVoucherIDs)
 	}
 
