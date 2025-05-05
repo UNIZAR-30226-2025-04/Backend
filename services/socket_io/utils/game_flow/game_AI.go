@@ -323,16 +323,6 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 
 		// 5. Apply modifiers
 
-		// Get the most played hand from the player
-		var mostPlayedHand poker.Hand
-		if player.MostPlayedHand != nil {
-			err = json.Unmarshal(player.MostPlayedHand, &mostPlayedHand)
-			if err != nil {
-				log.Printf("[AI-HAND-ERROR] Error parsing most played hand: %v", err)
-				return
-			}
-		}
-
 		// Apply activated modifiers
 		var activatedModifiers poker.Modifiers
 		if player.ActivatedModifiers != nil {
@@ -343,7 +333,7 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 			}
 		}
 
-		finalFichas, finalMult, finalGold = poker.ApplyModifiers(bestHand, mostPlayedHand, &activatedModifiers, finalFichas, finalMult, finalGold)
+		finalFichas, finalMult, finalGold = poker.ApplyModifiers(bestHand, &activatedModifiers, finalFichas, finalMult, finalGold)
 		if err != nil {
 			log.Printf("[AI-HAND-ERROR] Error applying modifiers: %v", err)
 			return
@@ -379,7 +369,7 @@ func PlayHandIA(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 			}
 		}
 
-		finalFichas, finalMult, finalGold = poker.ApplyModifiers(bestHand, mostPlayedHand, &activatedModifiers, finalFichas, finalMult, finalGold)
+		finalFichas, finalMult, finalGold = poker.ApplyModifiers(bestHand, &activatedModifiers, finalFichas, finalMult, finalGold)
 		if err != nil {
 			log.Printf("[AI-HAND-ERROR] Error applying modifiers: %v", err)
 			return

@@ -4,18 +4,6 @@ import (
 	"fmt"
 )
 
-func compareHands(hand1, hand2 Hand) bool {
-	if len(hand1.Cards) != len(hand2.Cards) {
-		return false
-	}
-	for i := range hand1.Cards {
-		if hand1.Cards[i] != hand2.Cards[i] {
-			return false
-		}
-	}
-	return true
-}
-
 type Modifier struct {
 	Value    int `json:"value"`
 	LeftUses int `json:"expires_at"`
@@ -30,13 +18,18 @@ type ReceivedModifier struct {
 	Sender   string   `json:"sender"`
 }
 
-type ModifierFunc func(hand Hand, bestHand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int)
+type ModifierFunc func(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int)
 
 var modifierTable = map[int]ModifierFunc{
-	1: EvilEye,
-	2: LuckyGlove,
-	3: HotStreak,
-	4: CoinPurse,
+	1: Damn,
+	2: PabloHoney,
+	3: RAM,
+	4: Weezer,
+	5: Blonde,
+	6: AbbeyRoad,
+	7: RockTransgresivo,
+	8: DiamondEyes,
+	9: TheMoneyStore,
 }
 
 var ModifierWeights = []struct {
@@ -49,43 +42,84 @@ var ModifierWeights = []struct {
 	{4, 10}, // Rare: 10% chance
 }
 
-// -1 to the multiplier of the target’s most-used hand type.
-func EvilEye(hand Hand, bestHand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
-	if compareHands(hand, bestHand) {
-		return fichas, mult - 1, gold, leftUses - 1
+// Divide starting chips and mult by 2. 1 round duration
+func Damn(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	fichas = fichas / 2
+	mult = mult / 2
+	return fichas, mult, gold, leftUses
+}
+
+// Eern 1 dollar for each card played. 1 round duration
+func PabloHoney(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	gold += len(hand.Cards)
+	return fichas, mult, gold, leftUses
+}
+
+// Remove one joker from other player's rack chosen randomly. 1 use only
+func RAM(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	// TODO
+	return fichas, mult, gold, leftUses
+}
+
+// Bans up to 4 players to play four of a kind for 1 round
+func Weezer(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	// TODO
+	return fichas, mult, gold, leftUses
+}
+
+// Bans up to 2 players from playing straight for 1 round
+func Blonde(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	// TODO
+	return fichas, mult, gold, leftUses
+}
+
+// Every King or Queen played scores negatie points. Choose 4 players for 1 round
+func AbbeyRoad(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	// TODO
+	return fichas, mult, gold, leftUses
+
+}
+
+// Aces and K's score double
+func RockTransgresivo(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	if leftUses > 0 {
+		for _, card := range hand.Cards {
+			rank := grade(card)
+			if rank == 13 || rank == 14 {
+				mult *= 2
+			}
+		}
 	}
-	return fichas, mult, gold, leftUses - 1
+	return fichas, mult, gold, leftUses
 }
 
-// Gain +2 Gold at the start of each round
-func CoinPurse(hand Hand, bestHand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
-	return fichas, mult, gold + 2, leftUses - 1
+// Applicable to up to 3 players. Substracts from their mult the money the have
+func DiamondEyes(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	return fichas, mult - gold, gold, leftUses
 }
 
-// +15 Chips to all Flush hands
-func LuckyGlove(hand Hand, bestHand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
-	_, isFlush := Flush(hand)
-	if isFlush {
-		return fichas + 15, mult, gold, leftUses - 1
+// Each black card played (spades and clubs) grants 1 dollar, +10 chips, +2 mult. 1 round duration
+func TheMoneyStore(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	for _, card := range hand.Cards {
+		if card.Suit == "s" || card.Suit == "c" {
+			gold++
+			fichas += 10
+			mult += 2
+		}
 	}
-	return fichas, mult, gold, leftUses - 1
+	return fichas, mult, gold, leftUses
 }
 
-// 2x Multiplier
-func HotStreak(hand Hand, bestHand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
-	return fichas, mult * 2, gold, leftUses - 1
-}
-
-func Apply(modifier Modifier, hand Hand, bestHand Hand, fichas int, mult int, gold int) (int, int, int, int) {
+func Apply(modifier Modifier, hand Hand, fichas int, mult int, gold int) (int, int, int, int) {
 	if modifierFunc, exists := modifierTable[modifier.Value]; exists {
-		return modifierFunc(hand, bestHand, modifier.LeftUses, fichas, mult, gold)
+		return modifierFunc(hand, modifier.LeftUses, fichas, mult, gold)
 	}
 	fmt.Printf("Warning: Unknown joker ID — what is %d?\n", modifier.Value)
 	return fichas, mult, gold, modifier.LeftUses
 }
 
 // Modifiers at each play
-func ApplyModifiers(hand Hand, bestHand Hand, ms *Modifiers, initialFichas int, initialMult int, currentGold int) (int, int, int) {
+func ApplyModifiers(hand Hand, ms *Modifiers, initialFichas int, initialMult int, currentGold int) (int, int, int) {
 	currentFichas, currentMult, currentGold := initialFichas, initialMult, currentGold
 	finalFichas := initialFichas
 	finalMult := initialMult
@@ -96,7 +130,7 @@ func ApplyModifiers(hand Hand, bestHand Hand, ms *Modifiers, initialFichas int, 
 			continue
 		}
 		if modifierID.Value == 1 || modifierID.Value == 2 || modifierID.Value == 3 {
-			currentFichas, currentMult, currentGold, modifierID.LeftUses = Apply(modifierID, hand, bestHand, currentFichas, currentMult, currentGold)
+			currentFichas, currentMult, currentGold, modifierID.LeftUses = Apply(modifierID, hand, currentFichas, currentMult, currentGold)
 		}
 		finalFichas += currentFichas
 		finalMult += currentMult
@@ -115,11 +149,26 @@ func ApplyRoundModifiers(ms *Modifiers, currentGold int) int {
 		}
 		if modifierID.Value == 4 {
 			emptyHand := Hand{}
-			_, _, currentGold, modifierID.LeftUses = Apply(modifierID, emptyHand, emptyHand, 0, 0, currentGold)
+			_, _, currentGold, modifierID.LeftUses = Apply(modifierID, emptyHand, 0, 0, currentGold)
 		}
 		finalGold += currentGold
 
 	}
 
 	return finalGold
+}
+
+// Update vouchers list. Returns the deleted modifiers
+// This function is called after each round
+func UpdateVouchersList(ms *Modifiers) []Modifier {
+	deletedModifiers := []Modifier{}
+	for i := 0; i < len(ms.Modificadores); i++ {
+		ms.Modificadores[i].LeftUses--
+		if ms.Modificadores[i].LeftUses == 0 {
+			ms.Modificadores = append(ms.Modificadores[:i], ms.Modificadores[i+1:]...)
+			deletedModifiers = append(deletedModifiers, ms.Modificadores[i])
+			i--
+		}
+	}
+	return deletedModifiers
 }
