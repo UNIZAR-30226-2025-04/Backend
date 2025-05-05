@@ -592,67 +592,14 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		userScore := userProfile.UserScore
-		log.Printf("User score: %d", userScore)
-
-		for true {
-			difference := 100
-
-			var gameLobbies []models.GameLobby
-			// Get public and not started lobbies players from database
-			if err := db.Preload("InGamePlayers").Where("game_has_begun = ? AND is_public = ?", false, true).Find(&gameLobbies).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve lobbies"})
-				return
-			}
-
-			log.Printf("Found %d game lobbies", len(gameLobbies))
-
-			for i := 0; i < 10; i++ {
-				var averageScore int
-
-				// Search for a lobby with players with similar score
-				for _, lobby := range gameLobbies {
-					// Only lobbies with less than 8 players and more than 0
-					if len(lobby.InGamePlayers) >= 8 || len(lobby.InGamePlayers) == 0 {
-						continue
-					}
-
-					// Get usernames of players in the lobby
-					var usernames []string
-					for _, player := range lobby.InGamePlayers {
-						usernames = append(usernames, player.Username)
-					}
-
-					// Get score of the player from PostgreSQL
-					var players []models.GameProfile
-					if err := db.Where("username IN ?", usernames).Find(&players).Error; err != nil {
-						c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve players in lobby"})
-						return
-					}
-
-					// Calculate total score of the lobby
-					var totalScore int
-					for _, player := range players {
-						totalScore += player.UserScore
-					}
-					// Calculate average score
-					averageScore = totalScore / len(players)
-
-					log.Printf("Lobby ID: %s, Average score: %d", lobby.ID, averageScore)
-
-					// Check if the lobby is suitable for the user
-					if userScore >= averageScore-difference && userScore <= averageScore+difference {
-						c.JSON(http.StatusOK, gin.H{
-							"lobby_id": lobby.ID,
-							"message":  "Lobby found",
-						})
-						return
-					}
-				}
-				difference += 100
-			}
-			time.Sleep(2 * time.Second) // Sleep for 2 seconds before searching again
+		var lobby models.GameLobby
+		// Get public and not started lobbies players from database
+		if err := db.Preload("InGamePlayers").Where("game_has_begun = ? AND is_public = ?", false, 1).Take(&lobby).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve lobby"})
+			return
 		}
+
+		c.JSON(http.StatusOK, gin.H{"lobby_id": lobby.ID})
 	}
 }
 
