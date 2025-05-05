@@ -204,7 +204,7 @@ func getCardsAI(redisClient *redis.RedisClient, player *redis_models.InGamePlaye
 	// 3. Determine how many cards the player needs
 	cardsNeeded := 8 - len(hand)
 	if cardsNeeded <= 0 {
-		log.Printf("[AI-GET_CARDS-ERROR] Noglerinho already has a full hand")
+		log.Printf("[AI-GET_CARDS-ERROR] %s already has a full hand", player.Username)
 		return
 	}
 
@@ -234,7 +234,7 @@ func getCardsAI(redisClient *redis.RedisClient, player *redis_models.InGamePlaye
 		return
 	}
 
-	log.Printf("[AI-GET_CARDS-SUCCESS] Noglerinho got %d new cards: %v", len(newCards), newCards)
+	log.Printf("[AI-GET_CARDS-SUCCESS] %s got %d new cards: %v", player.Username, len(newCards), newCards)
 }
 
 // PLAY
@@ -779,7 +779,7 @@ func ShopAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, shopSta
 
 func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	lobbyState *redis_models.GameLobby, item redis_models.ShopItem, itemID int, clientPrice int) {
-	log.Printf("[AI-SHOP] Purchasing pack %d for player Noglerinho", itemID)
+	log.Printf("[AI-SHOP] Purchasing pack %d for player %s", itemID, playerState.Username)
 
 	// Validate the purchase
 	if err := shop.ValidatePurchase(item, game_constants.PACK_TYPE, clientPrice, playerState); err != nil {
@@ -810,7 +810,9 @@ func purchasePackAI(redisClient *redis.RedisClient, playerState *redis_models.In
 
 func purchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	item redis_models.ShopItem, itemID int, clientPrice int) {
-	log.Printf("[AI-SHOP] Purchasing joker %d for player Noglerinho", itemID)
+
+	log.Printf("[AI-SHOP] Purchasing joker %d for player %s", itemID, playerState.Username)
+
 	// Process the joker purchase with price validation
 	success, updatedPlayer, err := shop.PurchaseJoker(redisClient, playerState, item, clientPrice)
 	if err != nil || !success {
@@ -827,7 +829,7 @@ func purchaseJokerAI(redisClient *redis.RedisClient, playerState *redis_models.I
 
 func purchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer,
 	item redis_models.ShopItem, itemID int, clientPrice int) {
-	log.Printf("[AI-SHOP] Purchasing voucher %d for player Noglerinho", itemID)
+	log.Printf("[AI-SHOP] Purchasing voucher %d for player %s", itemID, playerState.Username)
 	// Process the voucher purchase with price validation
 	success, updatedPlayer, err := shop.PurchaseVoucher(redisClient, playerState, item, clientPrice)
 	if err != nil || !success {
@@ -843,7 +845,7 @@ func purchaseVoucherAI(redisClient *redis.RedisClient, playerState *redis_models
 }
 
 func sellJokerAI(redisClient *redis.RedisClient, playerState *redis_models.InGamePlayer, jokerID int) {
-	log.Printf("[AI-SHOP] Selling joker %d for player Noglerinho", jokerID)
+	log.Printf("[AI-SHOP] Selling joker %d for player %s", jokerID, playerState.Username)
 	// Process the joker sale
 	updatedPlayer, _, err := shop.SellJoker(playerState, jokerID)
 	if err != nil {
@@ -933,7 +935,7 @@ func packSelectionAI(redisClient *redis.RedisClient, playerState *redis_models.I
 		selectionsMap["selectedVouchers"] = selectedVouchers
 	}
 
-	log.Printf("[AI-SHOP] Pack selection for player Noglerinho: %v", selectionsMap)
+	log.Printf("[AI-SHOP] Pack selection for player %s: %v", playerState.Username, selectionsMap)
 
 	// Verify that the player actually bought this pack
 	if playerState.LastPurchasedPackItemId != itemID {
@@ -1193,7 +1195,7 @@ func continueToNextBlind(redisClient *redis.RedisClient, db *gorm.DB, lobbyID st
 
 	log.Printf("ContinueToNextBlindAI initiated - User: %s", currentAIPlayerUsername)
 
-	log.Printf("[AI-NEXT-BLIND] Noglerinho requesting to continue to next blind in lobby %s", lobbyID)
+	log.Printf("[AI-NEXT-BLIND] %s requesting to continue to next blind in lobby %s", currentAIPlayerUsername, lobbyID)
 
 	// Increment the finished vouchers counter (NEW, using maps now)
 	lobby.PlayersFinishedVouchers[currentAIPlayerUsername] = true
@@ -1230,12 +1232,12 @@ func continueToVouchers(redisClient *redis.RedisClient, db *gorm.DB, lobbyID str
 
 	log.Printf("ContinueToVouchersAI initiated - User: %s", currentAIPlayerUsername)
 
-	log.Printf("[AI-VOUCHERS] Noglerinho requesting to continue to vouchers phase in lobby %s", lobbyID)
+	log.Printf("[AI-VOUCHERS] %s requesting to continue to vouchers phase in lobby %s", currentAIPlayerUsername, lobbyID)
 
 	// Increment the finished shop counter
 	lobby.PlayersFinishedShop[currentAIPlayerUsername] = true
-	log.Printf("[AI-VOUCHERS] Noglerinho ready for vouchers phase. Total ready: %d/%d",
-		len(lobby.PlayersFinishedShop), lobby.PlayerCount)
+	log.Printf("[AI-VOUCHERS] %s ready for vouchers phase. Total ready: %d/%d",
+		currentAIPlayerUsername, len(lobby.PlayersFinishedShop), lobby.PlayerCount)
 
 	// Save the updated lobby
 	err = redisClient.SaveGameLobby(lobby)
