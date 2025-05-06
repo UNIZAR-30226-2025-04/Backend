@@ -160,10 +160,11 @@ func damnapril(hand Hand, fichas int, mult int, gold int, used []bool, index int
 }
 
 func itssoover(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	used[index] = true
 
 	// +10 de oro si solo se juega 1 carta (mano de tamaño 1)
 	if len(hand.Cards) == 1 {
+		used[index] = true
+
 		gold += 10
 	}
 
@@ -171,7 +172,6 @@ func itssoover(hand Hand, fichas int, mult int, gold int, used []bool, index int
 }
 
 func paris(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	used[index] = true
 	// +3 mult por cada pareja de cartas del mismo palo
 	suitCount := make(map[string]int)
 	for _, card := range hand.Cards {
@@ -180,15 +180,18 @@ func paris(hand Hand, fichas int, mult int, gold int, used []bool, index int) (i
 	pairs := 0
 	for _, count := range suitCount {
 		pairs += count / 2
+		used[index] = true
+
 	}
 	return fichas, mult + (3 * pairs), gold, used
 }
 
 func diego_joker(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	used[index] = true
 
 	// Solo activa si se juegan EXACTAMENTE 3 cartas
 	if len(hand.Cards) == 3 {
+		used[index] = true
+
 		mult *= 4 // Multiplicador x4
 	}
 
@@ -196,12 +199,13 @@ func diego_joker(hand Hand, fichas int, mult int, gold int, used []bool, index i
 }
 
 func bicicleta(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	used[index] = true
 
 	// Contar cuántos 2 hay en la mano
 	countTwos := 0
 	for _, card := range hand.Cards {
 		if grade(card) == 2 { // Asume que grade() devuelve 2 para cartas de valor 2
+			used[index] = true
+
 			countTwos++
 		}
 	}
@@ -219,13 +223,13 @@ func nasus(hand Hand, fichas int, mult int, gold int, used []bool, index int) (i
 }
 
 func sombrilla(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	used[index] = true
 
 	// Check for face cards (J=11, Q=12, K=13, A=1/14)
 	hasFaceCard := false
 	for _, card := range hand.Cards {
 		val := grade(card)
 		if val >= 11 || val == 1 {
+
 			hasFaceCard = true
 			break
 		}
@@ -234,13 +238,14 @@ func sombrilla(hand Hand, fichas int, mult int, gold int, used []bool, index int
 	// Add +20 Mult if no face cards played
 	if !hasFaceCard {
 		mult += 20
+		used[index] = true
+
 	}
 
 	return fichas, mult, gold, used
 }
 
 func salebalatrito(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	used[index] = true
 
 	// Contar cuántas veces aparece cada valor de carta
 	valueCounts := make(map[int]int)
@@ -259,6 +264,8 @@ func salebalatrito(hand Hand, fichas int, mult int, gold int, used []bool, index
 
 	// +50 fichas si hay trío
 	if hasTrio {
+		used[index] = true
+
 		fichas += 50
 	}
 
@@ -270,6 +277,8 @@ func kaefece(hand Hand, fichas int, mult int, gold int, used []bool, index int) 
 	darkCards := 0
 	for _, card := range hand.Cards {
 		if card.Suit == "Spades" || card.Suit == "Clubs" {
+			used[index] = true
+
 			darkCards++
 		}
 	}
@@ -287,12 +296,13 @@ func kaefece(hand Hand, fichas int, mult int, gold int, used []bool, index int) 
 }
 
 func crowave(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
-	used[index] = true
 
 	// Count red cards (hearts/diamonds)
 	redCards := 0
 	for _, card := range hand.Cards {
 		if card.Suit == "Hearts" || card.Suit == "Diamonds" {
+
+			used[index] = true
 			redCards++
 		}
 	}
