@@ -149,15 +149,17 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 		log.Printf("[ELIMINATION-INFO] No blind proposer for lobby %s, only applying base blind eliminations", lobbyID)
 	}
 
-	// First, handle all minimum-blind players (they ALWAYS get eliminated if they don't reach the base blind)
-	for _, player := range players {
-		if player.BetMinimumBlind && player.CurrentRoundPoints < baseBlind {
-			// Minimum-betting players are eliminated if below base blind, regardless of proposer's success
-			eliminatedPlayers = append(eliminatedPlayers, player.Username)
-			log.Printf("[ELIMINATION] Player %s eliminated for betting minimum and not reaching base blind of %d (scored %d)",
-				player.Username, baseBlind, player.CurrentRoundPoints)
+	/*
+		// First, handle all minimum-blind players (they ALWAYS get eliminated if they don't reach the base blind)
+		for _, player := range players {
+			if player.BetMinimumBlind && player.CurrentRoundPoints < baseBlind {
+				// Minimum-betting players are eliminated if below base blind, regardless of proposer's success
+				eliminatedPlayers = append(eliminatedPlayers, player.Username)
+				log.Printf("[ELIMINATION] Player %s eliminated for betting minimum and not reaching base blind of %d (scored %d)",
+					player.Username, baseBlind, player.CurrentRoundPoints)
+			}
 		}
-	}
+	*/
 
 	// Only process proposer-specific logic if we have a valid proposer
 	if highestBlindProposer != "" && proposerPlayer != nil {
@@ -166,19 +168,11 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 			eliminatedPlayers = append(eliminatedPlayers, highestBlindProposer)
 			log.Printf("[ELIMINATION] Proposer %s eliminated for not reaching their proposed blind of %d (scored %d)",
 				highestBlindProposer, currentHighBlind, proposerPlayer.CurrentRoundPoints)
-
-			// Players who bet higher than minimum are safe in this scenario
-			for _, player := range players {
-				if !player.BetMinimumBlind && player.Username != highestBlindProposer {
-					log.Printf("[ELIMINATION-SAFE] Player %s safe due to proposer failure (scored %d)",
-						player.Username, player.CurrentRoundPoints)
-				}
-			}
 		} else {
 			// Proposer succeeded: Everyone must reach their respective targets
 			for _, player := range players {
 				// Skip players already processed (min-blind players and the proposer)
-				if player.BetMinimumBlind || player.Username == highestBlindProposer {
+				if player.Username == highestBlindProposer {
 					continue
 				}
 

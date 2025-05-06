@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	game_constants "Nogler/constants/game"
 	"Nogler/services/redis"
 	socketio_types "Nogler/services/socket_io/types"
 	socketio_utils "Nogler/services/socket_io/utils"
@@ -73,13 +72,7 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		// Check if proposed blind exceeds MAX_BLIND
-		if proposedBlind > game_constants.MAX_BLIND {
-			log.Printf("[BLIND] Player %s proposed blind %d exceeding MAX_BLIND, capping at %d",
-				username, proposedBlind, int(game_constants.MAX_BLIND))
-			proposedBlind = game_constants.MAX_BLIND
-			player.BetMinimumBlind = false
-		} else if proposedBlind <= lobby.CurrentBaseBlind {
+		if proposedBlind <= lobby.CurrentBaseBlind {
 			// If below or equal to base blind, set BetMinimumBlind to true
 			log.Printf("[BLIND] Player %s proposed blind %d below or equal to base blind %d, marking as min blind better",
 				username, proposedBlind, lobby.CurrentBaseBlind)
