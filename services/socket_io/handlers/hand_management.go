@@ -798,7 +798,25 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		modifiers := args[0].([]int)
+		// Convert args[0] to []interface{} first
+		modifiersInterface, ok := args[0].([]interface{})
+		if !ok {
+			log.Printf("[MODIFIER-ERROR] Invalid type for modifiers: expected []interface{}, got %T", args[0])
+			client.Emit("error", gin.H{"error": "Invalid modifiers format"})
+			return
+		}
+
+		// Convert []interface{} to []int
+		modifiers := make([]int, len(modifiersInterface))
+		for i, v := range modifiersInterface {
+			modifier, ok := v.(float64) // JSON numbers are parsed as float64
+			if !ok {
+				log.Printf("[MODIFIER-ERROR] Invalid modifier value: expected number, got %T", v)
+				client.Emit("error", gin.H{"error": "Invalid modifier value"})
+				return
+			}
+			modifiers[i] = int(modifier) // Convert float64 to int
+		}
 
 		if player.Modifiers == nil {
 			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
@@ -903,7 +921,25 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		modifiers := args[0].([]int)
+		// Convert args[0] to []interface{} first
+		modifiersInterface, ok := args[0].([]interface{})
+		if !ok {
+			log.Printf("[MODIFIER-ERROR] Invalid type for modifiers: expected []interface{}, got %T", args[0])
+			client.Emit("error", gin.H{"error": "Invalid modifiers format"})
+			return
+		}
+
+		// Convert []interface{} to []int
+		modifiers := make([]int, len(modifiersInterface))
+		for i, v := range modifiersInterface {
+			modifier, ok := v.(float64)
+			if !ok {
+				log.Printf("[MODIFIER-ERROR] Invalid modifier value: expected number, got %T", v)
+				client.Emit("error", gin.H{"error": "Invalid modifier value"})
+				return
+			}
+			modifiers[i] = int(modifier) // Convert float64 to int
+		}
 
 		if player.Modifiers == nil {
 			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
