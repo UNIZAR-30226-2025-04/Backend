@@ -798,7 +798,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		modifiers := args[0].([]poker.Modifier)
+		modifiers := args[0].([]int)
 
 		if player.Modifiers == nil {
 			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
@@ -814,30 +814,28 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
+		var new_activated_modifiers []poker.Modifier
+
 		// Check if the modifiers are available
-		found := false
-		var mod int
-		for _, m := range player_modifiers {
-			for _, modifier := range modifiers {
-				if m == modifier {
+		for _, modifier := range modifiers {
+			found := false
+			for _, m := range player_modifiers {
+				if m.Value == modifier {
 					found = true
-					mod = int(m.Value)
+					new_activated_modifiers = append(new_activated_modifiers, m)
 					break
 				}
 			}
-			if found {
-				break
+			if !found {
+				log.Printf("[MODIFIER-ERROR] Modifier %d not available for user %s", modifier, username)
+				client.Emit("error", gin.H{"error": "Modifier not available"})
+				return
 			}
-		}
-		if !found {
-			log.Printf("[MODIFIER-ERROR] Modifier %d not available for user %s", mod, username)
-			client.Emit("error", gin.H{"error": "Modifier not available"})
-			return
 		}
 
 		// Add the activated modifiers to the player
 		var activated_modifiers []poker.Modifier
-		activated_modifiers = append(activated_modifiers, modifiers...)
+		activated_modifiers = append(activated_modifiers, new_activated_modifiers...)
 		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
@@ -850,7 +848,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 		// Remove the activated modifier from the available modifiers
 		for i, v := range player_modifiers {
 			for _, value := range modifiers {
-				if v == value {
+				if v.Value == value {
 					player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
 				}
 			}
@@ -905,7 +903,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		modifiers := args[0].([]poker.Modifier)
+		modifiers := args[0].([]int)
 
 		if player.Modifiers == nil {
 			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
@@ -921,31 +919,29 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
+		var new_activated_modifiers []poker.Modifier
+
 		// Check if the modifiers are available
-		found := false
-		var mod int
-		for _, m := range player_modifiers {
-			for _, modifier := range modifiers {
-				if m == modifier {
+		for _, modifier := range modifiers {
+			found := false
+			for _, m := range player_modifiers {
+				if m.Value == modifier {
 					found = true
-					mod = int(m.Value)
+					new_activated_modifiers = append(new_activated_modifiers, m)
 					break
 				}
 			}
-			if found {
-				break
+			if !found {
+				log.Printf("[MODIFIER-ERROR] Modifier %d not available for user %s", modifier, username)
+				client.Emit("error", gin.H{"error": "Modifier not available"})
+				return
 			}
-		}
-		if !found {
-			log.Printf("[MODIFIER-ERROR] Modifier %d not available for user %s", mod, username)
-			client.Emit("error", gin.H{"error": "Modifier not available"})
-			return
 		}
 
 		// Remove the activated modifier from the available modifiers
 		for i, v := range player_modifiers {
 			for _, value := range modifiers {
-				if v == value {
+				if v.Value == value {
 					player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
 				}
 			}
@@ -979,7 +975,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// Add the activated modifiers to the player
 		var activated_modifiers []poker.ReceivedModifier
-		for _, modifier := range modifiers {
+		for _, modifier := range new_activated_modifiers {
 			activated_modifiers = append(activated_modifiers, poker.ReceivedModifier{
 				Modifier: modifier,
 				Sender:   username,
