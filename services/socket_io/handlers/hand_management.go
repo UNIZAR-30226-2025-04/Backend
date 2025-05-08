@@ -824,27 +824,32 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		modifiersInterface, ok := args[0].([]interface{})
+		modifiersNested, ok := args[0].([]interface{})
 		if !ok {
 			log.Printf("[MODIFIER-ERROR] Invalid type for modifiers: expected []interface{}, got %T", args[0])
 			client.Emit("error", gin.H{"error": "Invalid modifiers format"})
 			return
 		}
 
-		modifiersJson, err := json.Marshal(modifiersInterface) // Convert the argument to JSON
-		if err != nil {
-			log.Printf("[DISCARD-ERROR] Error al convertir la mano a JSON: %v", err)
-			client.Emit("error", gin.H{"error": "Error al convertir la mano"})
+		modifiersInterface, ok := modifiersNested[0].([]interface{})
+		if !ok {
+			log.Printf("[MODIFIER-ERROR] Expected nested array, got %T", modifiersNested[0])
+			client.Emit("error", gin.H{"error": "Invalid modifiers format"})
 			return
 		}
 
-		// Parse the JSON into int
-		var modifiers []int
-		err = json.Unmarshal(modifiersJson, &modifiers)
-		if err != nil {
-			log.Printf("[DISCARD-ERROR] Error al parsear la mano: %v", err)
-			client.Emit("error", gin.H{"error": "Error al procesar la mano"})
-			return
+		modifiers := make([]int, len(modifiersInterface))
+		for i, v := range modifiersInterface {
+			switch val := v.(type) {
+			case float64:
+				modifiers[i] = int(val)
+			case int:
+				modifiers[i] = val
+			default:
+				log.Printf("[MODIFIER-ERROR] Invalid modifier type: expected number, got %T", v)
+				client.Emit("error", gin.H{"error": "Invalid modifier value"})
+				return
+			}
 		}
 
 		if player.Modifiers == nil {
@@ -950,27 +955,32 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		modifiersInterface, ok := args[0].([]interface{})
+		modifiersNested, ok := args[0].([]interface{})
 		if !ok {
 			log.Printf("[MODIFIER-ERROR] Invalid type for modifiers: expected []interface{}, got %T", args[0])
 			client.Emit("error", gin.H{"error": "Invalid modifiers format"})
 			return
 		}
 
-		modifiersJson, err := json.Marshal(modifiersInterface) // Convert the argument to JSON
-		if err != nil {
-			log.Printf("[DISCARD-ERROR] Error al convertir la mano a JSON: %v", err)
-			client.Emit("error", gin.H{"error": "Error al convertir la mano"})
+		modifiersInterface, ok := modifiersNested[0].([]interface{})
+		if !ok {
+			log.Printf("[MODIFIER-ERROR] Expected nested array, got %T", modifiersNested[0])
+			client.Emit("error", gin.H{"error": "Invalid modifiers format"})
 			return
 		}
 
-		// Parse the JSON into int
-		var modifiers []int
-		err = json.Unmarshal(modifiersJson, &modifiers)
-		if err != nil {
-			log.Printf("[DISCARD-ERROR] Error al parsear la mano: %v", err)
-			client.Emit("error", gin.H{"error": "Error al procesar la mano"})
-			return
+		modifiers := make([]int, len(modifiersInterface))
+		for i, v := range modifiersInterface {
+			switch val := v.(type) {
+			case float64:
+				modifiers[i] = int(val)
+			case int:
+				modifiers[i] = val
+			default:
+				log.Printf("[MODIFIER-ERROR] Invalid modifier type: expected number, got %T", v)
+				client.Emit("error", gin.H{"error": "Invalid modifier value"})
+				return
+			}
 		}
 
 		if player.Modifiers == nil {
