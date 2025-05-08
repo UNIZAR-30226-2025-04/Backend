@@ -124,17 +124,6 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// 5. Apply modifiers
 
-		// Get the most played hand from the player
-		var mostPlayedHand poker.Hand
-		if player.MostPlayedHand != nil {
-			err = json.Unmarshal(player.MostPlayedHand, &mostPlayedHand)
-			if err != nil {
-				log.Printf("[HAND-ERROR] Error parsing most played hand: %v", err)
-				client.Emit("error", gin.H{"error": "Error parsing most played hand"})
-				return
-			}
-		}
-
 		// Apply activated modifiers
 		var activatedModifiers poker.Modifiers
 		if player.ActivatedModifiers != nil {
@@ -146,7 +135,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 		}
 
-		finalFichas, finalMult, finalGold = poker.ApplyModifiers(hand, mostPlayedHand, &activatedModifiers, finalFichas, finalMult, finalGold)
+		finalFichas, finalMult, finalGold = poker.ApplyModifiers(hand, &activatedModifiers, finalFichas, finalMult, finalGold)
 		if err != nil {
 			log.Printf("[HAND-ERROR] Error applying modifiers: %v", err)
 			client.Emit("error", gin.H{"error": "Error applying modifiers"})
@@ -185,7 +174,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 		}
 
-		finalFichas, finalMult, finalGold = poker.ApplyModifiers(hand, mostPlayedHand, &activatedModifiers, finalFichas, finalMult, finalGold)
+		finalFichas, finalMult, finalGold = poker.ApplyModifiers(hand, &activatedModifiers, finalFichas, finalMult, finalGold)
 		if err != nil {
 			log.Printf("[HAND-ERROR] Error applying modifiers: %v", err)
 			client.Emit("error", gin.H{"error": "Error applying modifiers"})
