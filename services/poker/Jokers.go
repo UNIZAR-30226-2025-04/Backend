@@ -63,7 +63,7 @@ func AverageSizeMichel(hand Hand, fichas int, mult int, gold int, used []bool, i
 
 func PoorJoker(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
 	used[index] = true
-	return gold + 4, fichas, mult, used
+	return fichas, mult, gold + 4, used
 }
 
 func CarbSponge(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
