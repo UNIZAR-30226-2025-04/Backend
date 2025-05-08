@@ -95,7 +95,8 @@ func ApplyModifiers(hand Hand, bestHand Hand, ms *Modifiers, initialFichas int, 
 		if modifierID.Value == 0 {
 			continue
 		}
-		if modifierID.Value == 1 || modifierID.Value == 2 || modifierID.Value == 3 {
+		if modifierID.Value == 2 || modifierID.Value == 4 || modifierID.Value == 5 || modifierID.Value == 6 ||
+			modifierID.Value == 7 || modifierID.Value == 8 || modifierID.Value == 9 {
 			currentFichas, currentMult, currentGold, modifierID.LeftUses = Apply(modifierID, hand, bestHand, currentFichas, currentMult, currentGold)
 		}
 		finalFichas += currentFichas
@@ -113,7 +114,7 @@ func ApplyRoundModifiers(ms *Modifiers, currentGold int) int {
 		if modifierID.Value == 0 {
 			continue
 		}
-		if modifierID.Value == 4 {
+		if modifierID.Value == 1 || modifierID.Value == 3 {
 			emptyHand := Hand{}
 			_, _, currentGold, modifierID.LeftUses = Apply(modifierID, emptyHand, emptyHand, 0, 0, currentGold)
 		}
