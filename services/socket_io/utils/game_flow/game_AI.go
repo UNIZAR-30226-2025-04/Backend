@@ -353,26 +353,6 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 			return
 		}
 
-		// Delete modifiers if there are no more plays left of the activated modifiers
-		var remainingModifiers []poker.Modifier
-
-		var deletedModifiers []poker.Modifier
-
-		for _, modifier := range activatedModifiers.Modificadores {
-			if modifier.LeftUses != 0 {
-				remainingModifiers = append(remainingModifiers, modifier)
-			} else if modifier.LeftUses == 0 {
-				deletedModifiers = append(deletedModifiers, modifier)
-			}
-		}
-
-		activatedModifiers.Modificadores = remainingModifiers
-		player.ActivatedModifiers, err = json.Marshal(activatedModifiers)
-		if err != nil {
-			log.Printf("[AI-HAND-ERROR] Error serializing activated modifiers: %v", err)
-			return
-		}
-
 		// Apply received modifiers
 		var receivedModifiers poker.Modifiers
 		if player.ActivatedModifiers != nil {
@@ -390,26 +370,6 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		}
 
 		valorFinal := finalFichas * finalMult
-
-		// Delete modifiers if there are no more plays left of the received modifiers
-		var remainingReceivedModifiers []poker.Modifier
-
-		var deletedReceiedModifiers []poker.Modifier
-
-		for _, modifier := range activatedModifiers.Modificadores {
-			if modifier.LeftUses != 0 {
-				remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
-			} else if modifier.LeftUses == 0 {
-				deletedReceiedModifiers = append(deletedReceiedModifiers, modifier)
-			}
-		}
-
-		receivedModifiers.Modificadores = remainingReceivedModifiers
-		player.ReceivedModifiers, err = json.Marshal(receivedModifiers)
-		if err != nil {
-			log.Printf("[AI-HAND-ERROR] Error serializing received modifiers: %v", err)
-			return
-		}
 
 		// 6. Update player data in Redis
 		// Delete the played hand from the current hand
@@ -560,6 +520,79 @@ func discardCardsAI(redisClient *redis.RedisClient, player *redis_models.InGameP
 	log.Printf("[AI-DISCARD] Player %s discarded cards: %v", player.Username, discard)
 }
 
+func updateModifiersAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer) {
+
+	var err error
+
+	var activatedModifiers poker.Modifiers
+	if player.ActivatedModifiers != nil {
+		err = json.Unmarshal(player.ActivatedModifiers, &activatedModifiers)
+		if err != nil {
+			log.Printf("[AI-HAND-ERROR] Error parsing activated modifiers: %v", err)
+			return
+		}
+	}
+
+	// Delete modifiers if there are no more plays left of the activated modifiers
+	var remainingModifiers []poker.Modifier
+	var deletedModifiers []poker.Modifier
+
+	for _, modifier := range activatedModifiers.Modificadores {
+		modifier.LeftUses-- // Decrease the number of uses left
+		if modifier.LeftUses != 0 {
+			remainingModifiers = append(remainingModifiers, modifier)
+		} else if modifier.LeftUses == 0 {
+			deletedModifiers = append(deletedModifiers, modifier)
+		}
+	}
+
+	var receivedModifiers poker.Modifiers
+	if player.ReceivedModifiers != nil {
+		err = json.Unmarshal(player.ReceivedModifiers, &receivedModifiers)
+		if err != nil {
+			log.Printf("[AI-HAND-ERROR] Error parsing received modifiers: %v", err)
+			return
+		}
+	}
+
+	// Delete modifiers if there are no more plays left of the received modifiers
+	var remainingReceivedModifiers []poker.Modifier
+
+	for _, modifier := range receivedModifiers.Modificadores {
+		modifier.LeftUses-- // Decrease the number of uses left
+		if modifier.LeftUses != 0 {
+			remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
+		} else if modifier.LeftUses == 0 {
+			deletedModifiers = append(deletedModifiers, modifier)
+		}
+	}
+
+	if len(deletedModifiers) > 0 {
+		log.Printf("[AI-HAND-INFO] Deleted modifiers for user %s: %v", player.Username, deletedModifiers)
+	}
+
+	activatedModifiers.Modificadores = remainingModifiers
+	player.ActivatedModifiers, err = json.Marshal(activatedModifiers)
+	if err != nil {
+		log.Printf("[AI-HAND-ERROR] Error serializing activated modifiers: %v", err)
+		return
+	}
+
+	receivedModifiers.Modificadores = remainingReceivedModifiers
+	player.ReceivedModifiers, err = json.Marshal(receivedModifiers)
+	if err != nil {
+		log.Printf("[AI-HAND-ERROR] Error serializing received modifiers: %v", err)
+		return
+	}
+
+	// Update player data in Redis
+	err = redisClient.UpdateDeckPlayer(*player)
+	if err != nil {
+		log.Printf("[AI-HAND-ERROR] Error updating player data: %v", err)
+		return
+	}
+}
+
 func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, player *redis_models.InGamePlayer, sio *socketio_types.SocketServer) bool {
 
 	log.Printf("[AI-ROUND-CHECK] Checking if player %s has finished round in lobby %s", player.Username, lobbyID)
@@ -602,6 +635,9 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 			log.Printf("[ROUND-CHECK-ERROR] Error saving lobby: %v", err)
 			return false
 		}
+
+		// Update modifiers
+		updateModifiersAI(redisClient, player)
 
 		// If all players have finished the round, end it
 		if len(lobby.PlayersFinishedRound) >= lobby.PlayerCount {
