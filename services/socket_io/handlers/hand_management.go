@@ -322,6 +322,17 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			log.Printf("[HAND-INFO] Deleted received modifiers for user %s: %v", username, deletedReceiedModifiers)
 		}
 
+
+		player.PlayersMoney = finalGold
+
+		// Save player data
+		if err := redisClient.SaveInGamePlayer(player); err != nil {
+			log.Printf("[PLAY-ERROR] Error saving player data: %v", err)
+			client.Emit("error", gin.H{"error": "Error saving player data"})
+			return
+		}
+
+		
 		// NOTE: check it outside the `if` sentence, since the player might have reached the blind
 		checkPlayerFinishedRound(redisClient, db, username, lobbyID, sio)
 
