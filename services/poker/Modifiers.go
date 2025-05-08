@@ -145,7 +145,7 @@ func ApplyModifiers(hand Hand, ms *Modifiers, initialFichas int, initialMult int
 		}
 		if modifierID.Value == 2 || modifierID.Value == 4 || modifierID.Value == 5 || modifierID.Value == 6 ||
 			modifierID.Value == 7 || modifierID.Value == 8 || modifierID.Value == 9 {
-			currentFichas, currentMult, currentGold, modifierID.LeftUses = Apply(modifierID, hand, bestHand, currentFichas, currentMult, currentGold)
+			currentFichas, currentMult, currentGold, modifierID.LeftUses = Apply(modifierID, hand, currentFichas, currentMult, currentGold)
 		}
 		finalFichas += currentFichas
 		finalMult += currentMult
