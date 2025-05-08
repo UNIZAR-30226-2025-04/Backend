@@ -199,7 +199,6 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		for _, mod := range receivedModifiers.Modificadores {
 			if mod.Value == 3 { // 3 is the key for RAM
 				hasRAM = true
-				mod.LeftUses--
 				break
 			}
 		}
@@ -233,10 +232,13 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		var deletedModifiers []poker.Modifier
 
 		for _, modifier := range activatedModifiers.Modificadores {
-			if modifier.LeftUses != 0 {
-				remainingModifiers = append(remainingModifiers, modifier)
-			} else if modifier.LeftUses == 0 {
-				deletedModifiers = append(deletedModifiers, modifier)
+			if modifier.Value == 1 || modifier.Value == 3 {
+				modifier.LeftUses--
+				if modifier.LeftUses != 0 {
+					remainingModifiers = append(remainingModifiers, modifier)
+				} else if modifier.LeftUses == 0 {
+					deletedModifiers = append(deletedModifiers, modifier)
+				}
 			}
 		}
 
@@ -252,11 +254,14 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 
 		var deletedReceiedModifiers []poker.Modifier
 
-		for _, modifier := range activatedModifiers.Modificadores {
-			if modifier.LeftUses != 0 {
-				remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
-			} else if modifier.LeftUses == 0 {
-				deletedReceiedModifiers = append(deletedReceiedModifiers, modifier)
+		for _, modifier := range receivedModifiers.Modificadores {
+			if modifier.Value == 1 || modifier.Value == 3 {
+				modifier.LeftUses--
+				if modifier.LeftUses != 0 {
+					remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
+				} else if modifier.LeftUses == 0 {
+					deletedReceiedModifiers = append(deletedReceiedModifiers, modifier)
+				}
 			}
 		}
 

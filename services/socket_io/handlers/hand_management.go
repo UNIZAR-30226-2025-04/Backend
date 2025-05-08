@@ -311,11 +311,13 @@ func updateModifiers(redisClient *redis.RedisClient, client *socket.Socket, user
 	var deletedModifiers []poker.Modifier
 
 	for _, modifier := range activatedModifiers.Modificadores {
-		modifier.LeftUses-- // Decrease the number of uses left
-		if modifier.LeftUses != 0 {
-			remainingModifiers = append(remainingModifiers, modifier)
-		} else if modifier.LeftUses == 0 {
-			deletedModifiers = append(deletedModifiers, modifier)
+		if modifier.Value != 1 && modifier.Value != 3 {
+			modifier.LeftUses-- // Decrease the number of uses left
+			if modifier.LeftUses != 0 {
+				remainingModifiers = append(remainingModifiers, modifier)
+			} else if modifier.LeftUses == 0 {
+				deletedModifiers = append(deletedModifiers, modifier)
+			}
 		}
 	}
 
@@ -331,19 +333,26 @@ func updateModifiers(redisClient *redis.RedisClient, client *socket.Socket, user
 
 	// Delete modifiers if there are no more plays left of the received modifiers
 	var remainingReceivedModifiers []poker.Modifier
+	var deletedReceivedModifiers []poker.Modifier
 
 	for _, modifier := range receivedModifiers.Modificadores {
-		modifier.LeftUses-- // Decrease the number of uses left
-		if modifier.LeftUses != 0 {
-			remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
-		} else if modifier.LeftUses == 0 {
-			deletedModifiers = append(deletedModifiers, modifier)
+		if modifier.Value != 1 && modifier.Value != 3 {
+			modifier.LeftUses-- // Decrease the number of uses left
+			if modifier.LeftUses != 0 {
+				remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
+			} else if modifier.LeftUses == 0 {
+				deletedReceivedModifiers = append(deletedReceivedModifiers, modifier)
+			}
 		}
 	}
 
 	if len(deletedModifiers) > 0 {
 		client.Emit("deleted_modifiers", gin.H{"deleted_activated_modifiers": deletedModifiers})
 		log.Printf("[HAND-INFO] Deleted modifiers for user %s: %v", username, deletedModifiers)
+	}
+	if len(deletedReceivedModifiers) > 0 {
+		client.Emit("deleted_modifiers", gin.H{"deleted_received_modifiers": deletedReceivedModifiers})
+		log.Printf("[HAND-INFO] Deleted received modifiers for user %s: %v", username, deletedReceivedModifiers)
 	}
 
 	activatedModifiers.Modificadores = remainingModifiers
@@ -852,7 +861,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			}
 		}
 
-		if player.Modifiers == nil {
+		if len(player.Modifiers) == 0 {
 			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
 			client.Emit("error", gin.H{"error": "No modifiers available"})
 			return
@@ -983,7 +992,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 		}
 
-		if player.Modifiers == nil {
+		if len(player.Modifiers) == 0 {
 			log.Printf("[MODIFIER-ERROR] No modifiers available for user %s", username)
 			client.Emit("error", gin.H{"error": "No modifiers available"})
 			return

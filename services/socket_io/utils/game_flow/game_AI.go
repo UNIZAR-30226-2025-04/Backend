@@ -528,11 +528,13 @@ func updateModifiersAI(redisClient *redis.RedisClient, player *redis_models.InGa
 	var deletedModifiers []poker.Modifier
 
 	for _, modifier := range activatedModifiers.Modificadores {
-		modifier.LeftUses-- // Decrease the number of uses left
-		if modifier.LeftUses != 0 {
-			remainingModifiers = append(remainingModifiers, modifier)
-		} else if modifier.LeftUses == 0 {
-			deletedModifiers = append(deletedModifiers, modifier)
+		if modifier.Value != 1 && modifier.Value != 3 {
+			modifier.LeftUses-- // Decrease the number of uses left
+			if modifier.LeftUses != 0 {
+				remainingModifiers = append(remainingModifiers, modifier)
+			} else if modifier.LeftUses == 0 {
+				deletedModifiers = append(deletedModifiers, modifier)
+			}
 		}
 	}
 
@@ -549,11 +551,13 @@ func updateModifiersAI(redisClient *redis.RedisClient, player *redis_models.InGa
 	var remainingReceivedModifiers []poker.Modifier
 
 	for _, modifier := range receivedModifiers.Modificadores {
-		modifier.LeftUses-- // Decrease the number of uses left
-		if modifier.LeftUses != 0 {
-			remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
-		} else if modifier.LeftUses == 0 {
-			deletedModifiers = append(deletedModifiers, modifier)
+		if modifier.Value != 1 && modifier.Value != 3 {
+			modifier.LeftUses-- // Decrease the number of uses left
+			if modifier.LeftUses != 0 {
+				remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
+			} else if modifier.LeftUses == 0 {
+				deletedModifiers = append(deletedModifiers, modifier)
+			}
 		}
 	}
 
