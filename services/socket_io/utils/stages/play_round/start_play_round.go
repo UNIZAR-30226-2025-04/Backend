@@ -212,26 +212,14 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		// Apply received modifiers to the player (Currently there are no received modifiers that affect at the start of the round)
 		goldReceived := poker.ApplyRoundModifiers(&receivedModifiers, goldActivated)
 
-		if goldActivated != currentGold {
-			// Notify player of gold change
-			sio.UserConnections[player.Username].Emit("round_modifier", gin.H{
-				"current_gold": goldReceived,
-				"extra_gold":   goldReceived - currentGold,
-			})
-		}
-
 		// Delete modifiers if there are no more plays left of the activated modifiers
 		var remainingModifiers []poker.Modifier
-
-		var deletedModifiers []poker.Modifier
 
 		for _, modifier := range activatedModifiers.Modificadores {
 			if modifier.Value == 1 || modifier.Value == 3 {
 				modifier.LeftUses--
 				if modifier.LeftUses != 0 {
 					remainingModifiers = append(remainingModifiers, modifier)
-				} else if modifier.LeftUses == 0 {
-					deletedModifiers = append(deletedModifiers, modifier)
 				}
 			}
 		}
@@ -246,15 +234,11 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		// Delete modifiers if there are no more plays left of the received modifiers
 		var remainingReceivedModifiers []poker.Modifier
 
-		var deletedReceivedModifiers []poker.Modifier
-
 		for _, modifier := range receivedModifiers.Modificadores {
 			if modifier.Value == 1 || modifier.Value == 3 {
 				modifier.LeftUses--
 				if modifier.LeftUses != 0 {
 					remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
-				} else if modifier.LeftUses == 0 {
-					deletedReceivedModifiers = append(deletedReceivedModifiers, modifier)
 				}
 			}
 		}
@@ -264,16 +248,6 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		if err != nil {
 			log.Printf("[HAND-ERROR] Error serializing received modifiers: %v", err)
 			return
-		}
-
-		// Emit the deleted modifiers to the client
-		if len(deletedModifiers) > 0 || len(deletedReceivedModifiers) > 0 {
-			sio.UserConnections[player.Username].Emit("deleted_modifiers", gin.H{
-				"deleted_activated_modifiers": deletedModifiers,
-				"deleted_received_modifiers":  deletedReceivedModifiers,
-			})
-			log.Printf("[HAND-INFO] Deleted modifiers for user %s: activated: %v, received: %v",
-				player.Username, deletedModifiers, deletedReceivedModifiers)
 		}
 
 		// Update redis

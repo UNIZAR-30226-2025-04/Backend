@@ -561,10 +561,6 @@ func updateModifiersAI(redisClient *redis.RedisClient, player *redis_models.InGa
 		}
 	}
 
-	if len(deletedModifiers) > 0 {
-		log.Printf("[AI-HAND-INFO] Deleted modifiers for user %s: %v", player.Username, deletedModifiers)
-	}
-
 	activatedModifiers.Modificadores = remainingModifiers
 	player.ActivatedModifiers, err = json.Marshal(activatedModifiers)
 	if err != nil {
@@ -585,6 +581,8 @@ func updateModifiersAI(redisClient *redis.RedisClient, player *redis_models.InGa
 		log.Printf("[AI-HAND-ERROR] Error updating player data: %v", err)
 		return
 	}
+
+	log.Printf("[AI-HAND] Player %s updated modifiers: %v", player.Username, deletedModifiers)
 }
 
 func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, player *redis_models.InGamePlayer, sio *socketio_types.SocketServer) bool {
@@ -1094,15 +1092,18 @@ func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGa
 	log.Printf("[AI-MODIFIER-INFO] Activated modifiers for user %s: %v", player.Username, activated_modifiers)
 
 	// Remove the activated modifier from the available modifiers
-	for i, v := range player_modifiers.Modificadores {
+	var remainingModifiers []poker.Modifier
+	for _, v := range player_modifiers.Modificadores {
 		if v == modifier {
 			found = true
-			player_modifiers.Modificadores = append(player_modifiers.Modificadores[:i], player_modifiers.Modificadores[i+1:]...)
+			remainingModifiers = append(remainingModifiers, v)
 		}
 		if found {
 			break
 		}
 	}
+
+	player_modifiers.Modificadores = remainingModifiers
 
 	modifiersJSON, err := json.Marshal(player_modifiers)
 	if err != nil {
@@ -1130,11 +1131,14 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	}
 
 	// Remove the activated modifier from the available modifiers
-	for i, v := range player_modifiers.Modificadores {
-		if v == modifier {
-			player_modifiers.Modificadores = append(player_modifiers.Modificadores[:i], player_modifiers.Modificadores[i+1:]...)
+	var remainingModifiers []poker.Modifier
+	for _, v := range player_modifiers.Modificadores {
+		if v != modifier {
+			remainingModifiers = append(remainingModifiers, v)
 		}
 	}
+
+	player_modifiers.Modificadores = remainingModifiers
 
 	modifiersJSON, err := json.Marshal(player_modifiers)
 	if err != nil {
