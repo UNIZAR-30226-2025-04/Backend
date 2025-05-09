@@ -96,7 +96,7 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 	// TODO, change it
 	baseBlind := lobby.CurrentBaseBlind
 	var proposedBlind int
-	if lobby.CurrentRound == 1 {
+	if lobby.CurrentRound < 4 {
 		// If it's the first round, set a low blind
 		i := rand.Intn(3) + 1 // +10
 		j := rand.Intn(9) + 1 // +1
