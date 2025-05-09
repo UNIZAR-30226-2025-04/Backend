@@ -1128,9 +1128,11 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			log.Printf("[MODIFIER-INFO] Activated modifiers for user %s: %v", receiver.Username, activated_modifiers)
 
 			// Notify the receiving player
-			sio.UserConnections[receiver.Username].Emit("modifiers_received", gin.H{
-				"modifiers": activated_modifiers,
-			})
+			if !receiver.IsBot {
+				sio.UserConnections[receiver.Username].Emit("modifiers_received", gin.H{
+					"modifiers": activated_modifiers,
+				})
+			}
 
 			log.Printf("[MODIFIER-SUCCESS] Modifiers sent to user %s from %s", request_player, username)
 		}
