@@ -11,6 +11,7 @@ import (
 	"Nogler/utils"
 	"encoding/json"
 	"log"
+	"math/rand"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -141,6 +142,16 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			log.Printf("[HAND-ERROR] Error applying modifiers: %v", err)
 			client.Emit("error", gin.H{"error": "Error applying modifiers"})
 			return
+		}
+
+		// ONLY FOR APPLYING RAM, SINCE IT NEEDS THE JOKERS. SORRY FOR UGLY CODE.
+		for _, modifierID := range activatedModifiers.Modificadores {
+			if modifierID.Value == 3 && len(player.CurrentJokers) > 0 {
+				randomIndex := rand.Intn(len(player.CurrentJokers)) // Dont wanna set the seed, we use pseudorandomness
+				removedJoker := player.CurrentJokers[randomIndex]
+				player.CurrentJokers = append(player.CurrentJokers[:randomIndex], player.CurrentJokers[randomIndex+1:]...) // deletes joker from slice
+				log.Printf("Removed joker (fake random): %v", removedJoker)
+			}
 		}
 
 		// Apply received modifiers
