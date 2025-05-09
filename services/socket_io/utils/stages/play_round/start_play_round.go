@@ -194,14 +194,30 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 			}
 		}
 
+		var currentJokers []poker.Jokers
+		if player.CurrentJokers != nil {
+			err = json.Unmarshal(player.CurrentJokers, &currentJokers)
+			if err != nil {
+				log.Printf("[HAND-ERROR] Error parsing current jokers: %v", err)
+				return
+			}
+		}
+
 		// ONLY FOR APPLYING RAM, SINCE IT NEEDS THE JOKERS. SORRY FOR UGLY CODE.
 		for _, modifierID := range receivedModifiers.Modificadores {
-			if modifierID.Value == 3 && len(player.CurrentJokers) > 0 {
-				randomIndex := rand.Intn(len(player.CurrentJokers)) // Dont wanna set the seed, we use pseudorandomness
-				removedJoker := player.CurrentJokers[randomIndex]
-				player.CurrentJokers = append(player.CurrentJokers[:randomIndex], player.CurrentJokers[randomIndex+1:]...) // deletes joker from slice
+			if modifierID.Value == 3 && len(currentJokers) > 0 {
+				randomIndex := rand.Intn(len(currentJokers)) // Dont wanna set the seed, we use pseudorandomness
+				removedJoker := currentJokers[randomIndex]
+				currentJokers = append(currentJokers[:randomIndex], currentJokers[randomIndex+1:]...) // deletes joker from slice
 				log.Printf("Removed joker (fake random): %v", removedJoker)
 			}
+		}
+
+		// Update the player's current jokers
+		player.CurrentJokers, err = json.Marshal(currentJokers)
+		if err != nil {
+			log.Printf("[HAND-ERROR] Error serializing current jokers: %v", err)
+			return
 		}
 
 		currentGold := player.PlayersMoney
