@@ -151,7 +151,7 @@ func Rustyahh(hand Hand, fichas int, mult int, gold int, used []bool, index int)
 
 func damnapril(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
 	used[index] = true
-	// Asegura que fichas no sea negativo
+	// None should be negative
 	total := 14 + rand.Intn(6)     // 14-19
 	maxDelta := min(total, fichas) // Previene fichas negativas
 	delta := rand.Intn(maxDelta + 1)
@@ -219,7 +219,8 @@ func bicicleta(hand Hand, fichas int, mult int, gold int, used []bool, index int
 
 func nasus(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
 	used[index] = true
-	return fichas, mult * gold, gold, used
+	
+	return fichas, max(mult * gold, 1), gold, used
 }
 
 func sombrilla(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
