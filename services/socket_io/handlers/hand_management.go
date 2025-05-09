@@ -136,6 +136,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 		}
 
+		// Apply activated modifiers
 		finalFichas, finalMult, finalGold = poker.ApplyModifiers(hand, &activatedModifiers, finalFichas, finalMult, finalGold)
 		if err != nil {
 			log.Printf("[HAND-ERROR] Error applying modifiers: %v", err)
@@ -154,7 +155,8 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 		}
 
-		finalFichas, finalMult, finalGold = poker.ApplyModifiers(hand, &activatedModifiers, finalFichas, finalMult, finalGold)
+		// Apply received modifiers
+		finalFichas, finalMult, finalGold = poker.ApplyModifiers(hand, &receivedModifiers, finalFichas, finalMult, finalGold)
 		if err != nil {
 			log.Printf("[HAND-ERROR] Error applying modifiers: %v", err)
 			client.Emit("error", gin.H{"error": "Error applying modifiers"})

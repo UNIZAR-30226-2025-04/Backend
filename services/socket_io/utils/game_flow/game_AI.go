@@ -337,6 +337,7 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 			}
 		}
 
+		// Apply activated modifiers
 		finalFichas, finalMult, finalGold = poker.ApplyModifiers(bestHand, &activatedModifiers, finalFichas, finalMult, finalGold)
 		if err != nil {
 			log.Printf("[AI-HAND-ERROR] Error applying modifiers: %v", err)
@@ -353,7 +354,8 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 			}
 		}
 
-		finalFichas, finalMult, finalGold = poker.ApplyModifiers(bestHand, &activatedModifiers, finalFichas, finalMult, finalGold)
+		// Apply received modifiers
+		finalFichas, finalMult, finalGold = poker.ApplyModifiers(bestHand, &receivedModifiers, finalFichas, finalMult, finalGold)
 		if err != nil {
 			log.Printf("[AI-HAND-ERROR] Error applying modifiers: %v", err)
 			return
