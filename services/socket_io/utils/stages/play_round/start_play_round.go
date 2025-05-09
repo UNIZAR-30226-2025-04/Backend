@@ -252,7 +252,7 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		// Delete modifiers if there are no more plays left of the received modifiers
 		var remainingReceivedModifiers []poker.Modifier
 
-		var deletedReceiedModifiers []poker.Modifier
+		var deletedReceivedModifiers []poker.Modifier
 
 		for _, modifier := range receivedModifiers.Modificadores {
 			if modifier.Value == 1 || modifier.Value == 3 {
@@ -260,7 +260,7 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 				if modifier.LeftUses != 0 {
 					remainingReceivedModifiers = append(remainingReceivedModifiers, modifier)
 				} else if modifier.LeftUses == 0 {
-					deletedReceiedModifiers = append(deletedReceiedModifiers, modifier)
+					deletedReceivedModifiers = append(deletedReceivedModifiers, modifier)
 				}
 			}
 		}
@@ -273,15 +273,13 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		}
 
 		// Emit the deleted modifiers to the client
-		if len(deletedModifiers) > 0 {
-			sio.UserConnections[player.Username].Emit("deleted_modifiers", gin.H{"deleted_activated_modifiers": deletedModifiers})
-			log.Printf("[HAND-INFO] Deleted modifiers for user %s: %v", player.Username, deletedModifiers)
-		}
-
-		// Emit the deleted received modifiers to the client
-		if len(deletedReceiedModifiers) > 0 {
-			sio.UserConnections[player.Username].Emit("deleted_modifiers", gin.H{"deleted_received_modifiers": deletedReceiedModifiers})
-			log.Printf("[HAND-INFO] Deleted received modifiers for user %s: %v", player.Username, deletedReceiedModifiers)
+		if len(deletedModifiers) > 0 || len(deletedReceivedModifiers) > 0 {
+			sio.UserConnections[player.Username].Emit("deleted_modifiers", gin.H{
+				"deleted_activated_modifiers": deletedModifiers,
+				"deleted_received_modifiers":  deletedReceivedModifiers,
+			})
+			log.Printf("[HAND-INFO] Deleted modifiers for user %s: activated: %v, received: %v",
+				player.Username, deletedModifiers, deletedReceivedModifiers)
 		}
 
 		// Update redis

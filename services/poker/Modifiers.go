@@ -18,6 +18,10 @@ type ReceivedModifier struct {
 	Sender   string   `json:"sender"`
 }
 
+type ReceivedModifiers struct {
+	Received []ReceivedModifier `json:"modifiers"`
+}
+
 type ModifierFunc func(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int)
 
 var modifierTable = map[int]ModifierFunc{
@@ -171,19 +175,4 @@ func ApplyRoundModifiers(ms *Modifiers, currentGold int) int {
 	}
 
 	return finalGold
-}
-
-// Update vouchers list. Returns the deleted modifiers
-// This function is called after each round
-func UpdateVouchersList(ms *Modifiers) []Modifier {
-	deletedModifiers := []Modifier{}
-	for i := 0; i < len(ms.Modificadores); i++ {
-		ms.Modificadores[i].LeftUses--
-		if ms.Modificadores[i].LeftUses == 0 {
-			ms.Modificadores = append(ms.Modificadores[:i], ms.Modificadores[i+1:]...)
-			deletedModifiers = append(deletedModifiers, ms.Modificadores[i])
-			i--
-		}
-	}
-	return deletedModifiers
 }

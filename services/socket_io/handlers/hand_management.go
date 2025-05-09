@@ -346,13 +346,14 @@ func updateModifiers(redisClient *redis.RedisClient, client *socket.Socket, user
 		}
 	}
 
-	if len(deletedModifiers) > 0 {
-		client.Emit("deleted_modifiers", gin.H{"deleted_activated_modifiers": deletedModifiers})
-		log.Printf("[HAND-INFO] Deleted modifiers for user %s: %v", username, deletedModifiers)
-	}
-	if len(deletedReceivedModifiers) > 0 {
-		client.Emit("deleted_modifiers", gin.H{"deleted_received_modifiers": deletedReceivedModifiers})
-		log.Printf("[HAND-INFO] Deleted received modifiers for user %s: %v", username, deletedReceivedModifiers)
+	// Emit the deleted modifiers to the client
+	if len(deletedModifiers) > 0 || len(deletedReceivedModifiers) > 0 {
+		client.Emit("deleted_modifiers", gin.H{
+			"deleted_activated_modifiers": deletedModifiers,
+			"deleted_received_modifiers":  deletedReceivedModifiers,
+		})
+		log.Printf("[HAND-INFO] Deleted modifiers for user %s: activated: %v, received: %v",
+			player.Username, deletedModifiers, deletedReceivedModifiers)
 	}
 
 	activatedModifiers.Modificadores = remainingModifiers
@@ -867,7 +868,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 			return
 		}
 
-		var player_modifiers []poker.Modifier
+		var player_modifiers poker.Modifiers
 		err = json.Unmarshal(player.Modifiers, &player_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
@@ -880,7 +881,7 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 		// Check if the modifiers are available
 		for _, modifier := range modifiers {
 			found := false
-			for _, m := range player_modifiers {
+			for _, m := range player_modifiers.Modificadores {
 				if m.Value == modifier {
 					found = true
 					new_activated_modifiers = append(new_activated_modifiers, m)
@@ -895,8 +896,15 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 		}
 
 		// Add the activated modifiers to the player
-		var activated_modifiers []poker.Modifier
-		activated_modifiers = append(activated_modifiers, new_activated_modifiers...)
+		var activated_modifiers poker.Modifiers
+		err = json.Unmarshal(player.ActivatedModifiers, &activated_modifiers)
+		if err != nil {
+			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
+			client.Emit("error", gin.H{"error": "Error parsing modifiers"})
+			return
+		}
+
+		activated_modifiers.Modificadores = append(activated_modifiers.Modificadores, new_activated_modifiers...)
 		activated_modifiersJSON, err := json.Marshal(activated_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
@@ -907,10 +915,10 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 		log.Printf("[MODIFIER-INFO] Activated modifiers for user %s: %v", username, activated_modifiers)
 
 		// Remove the activated modifier from the available modifiers
-		for i, v := range player_modifiers {
+		for i, v := range player_modifiers.Modificadores {
 			for _, value := range modifiers {
 				if v.Value == value {
-					player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
+					player_modifiers.Modificadores = append(player_modifiers.Modificadores[:i], player_modifiers.Modificadores[i+1:]...)
 				}
 			}
 		}
@@ -998,7 +1006,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		var player_modifiers []poker.Modifier
+		var player_modifiers poker.Modifiers
 		err = json.Unmarshal(player.Modifiers, &player_modifiers)
 		if err != nil {
 			log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
@@ -1011,7 +1019,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 		// Check if the modifiers are available
 		for _, modifier := range modifiers {
 			found := false
-			for _, m := range player_modifiers {
+			for _, m := range player_modifiers.Modificadores {
 				if m.Value == modifier {
 					found = true
 					new_activated_modifiers = append(new_activated_modifiers, m)
@@ -1026,10 +1034,10 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 		}
 
 		// Remove the activated modifier from the available modifiers
-		for i, v := range player_modifiers {
+		for i, v := range player_modifiers.Modificadores {
 			for _, value := range modifiers {
 				if v.Value == value {
-					player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
+					player_modifiers.Modificadores = append(player_modifiers.Modificadores[:i], player_modifiers.Modificadores[i+1:]...)
 				}
 			}
 		}
@@ -1061,15 +1069,15 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			}
 
 			// Add the activated modifiers to the player
-			var activated_modifiers []poker.ReceivedModifier
+			var activated_modifiers poker.ReceivedModifiers
 			for _, modifier := range new_activated_modifiers {
-				activated_modifiers = append(activated_modifiers, poker.ReceivedModifier{
+				activated_modifiers.Received = append(activated_modifiers.Received, poker.ReceivedModifier{
 					Modifier: modifier,
 					Sender:   username,
 				})
 			}
 
-			var receiver_modifiers []poker.ReceivedModifier
+			var receiver_modifiers poker.ReceivedModifiers
 			err = json.Unmarshal(receiver.ReceivedModifiers, &receiver_modifiers)
 			if err != nil {
 				log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
@@ -1077,7 +1085,7 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 				return
 			}
 
-			receiver_modifiers = append(receiver_modifiers, activated_modifiers...)
+			receiver_modifiers.Received = append(receiver_modifiers.Received, activated_modifiers.Received...)
 			receiver.ReceivedModifiers, err = json.Marshal(receiver_modifiers)
 			if err != nil {
 				log.Printf("[MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
@@ -1098,7 +1106,6 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			// Notify the receiving player
 			sio.UserConnections[receiver.Username].Emit("modifiers_received", gin.H{
 				"modifiers": activated_modifiers,
-				"sender":    username,
 			})
 
 			log.Printf("[MODIFIER-SUCCESS] Modifiers sent to user %s from %s", request_player, username)

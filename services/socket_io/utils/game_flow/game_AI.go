@@ -1035,8 +1035,8 @@ func VouchersAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 			if modifiers.Modificadores[i].Value == 0 {
 				continue
 			}
-			// If the voucher is "EvilEye", send it to the opponent
-			if modifiers.Modificadores[i].Value == 1 {
+			// If the voucher is "Damm" or "RAM", send it to the opponent
+			if modifiers.Modificadores[i].Value == 1 || modifiers.Modificadores[i].Value == 3 {
 				sendVoucherAI(redisClient, player, lobbyID, modifiers.Modificadores[i], sio)
 			} else {
 				activateVoucherAI(redisClient, player, modifiers.Modificadores[i])
@@ -1052,7 +1052,7 @@ func VouchersAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer,
 	modifier poker.Modifier) {
 	log.Printf("[AI-MODIFIER] Activating voucher %d for player %s", modifier.Value, player.Username)
-	var player_modifiers []poker.Modifier
+	var player_modifiers poker.Modifiers
 	err := json.Unmarshal(player.Modifiers, &player_modifiers)
 	if err != nil {
 		log.Printf("[AI-MODIFIER-ERROR] Error parsing modifiers: %v", err)
@@ -1062,7 +1062,7 @@ func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGa
 	// Check if the modifier is available
 	found := false
 	var mod int
-	for _, m := range player_modifiers {
+	for _, m := range player_modifiers.Modificadores {
 		if m == modifier {
 			found = true
 			mod = int(m.Value)
@@ -1078,8 +1078,13 @@ func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGa
 	}
 
 	// Add the activated modifiers to the player
-	var activated_modifiers []poker.Modifier
-	activated_modifiers = append(activated_modifiers, modifier)
+	var activated_modifiers poker.Modifiers
+	err = json.Unmarshal(player.ActivatedModifiers, &activated_modifiers)
+	if err != nil {
+		log.Printf("[AI-MODIFIER-ERROR] Error parsing modifiers: %v", err)
+		return
+	}
+	activated_modifiers.Modificadores = append(activated_modifiers.Modificadores, modifier)
 	activated_modifiersJSON, err := json.Marshal(activated_modifiers)
 	if err != nil {
 		log.Printf("[AI-MODIFIER-ERROR] Error marshaling activated modifiers: %v", err)
@@ -1089,10 +1094,10 @@ func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGa
 	log.Printf("[AI-MODIFIER-INFO] Activated modifiers for user %s: %v", player.Username, activated_modifiers)
 
 	// Remove the activated modifier from the available modifiers
-	for i, v := range player_modifiers {
+	for i, v := range player_modifiers.Modificadores {
 		if v == modifier {
 			found = true
-			player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
+			player_modifiers.Modificadores = append(player_modifiers.Modificadores[:i], player_modifiers.Modificadores[i+1:]...)
 		}
 		if found {
 			break
@@ -1117,39 +1122,17 @@ func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGa
 func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePlayer,
 	lobbyID string, modifier poker.Modifier, sio *socketio_types.SocketServer) {
 	log.Printf("[AI-MODIFIER] Sending voucher %d to opponent", modifier.Value)
-	var player_modifiers []poker.Modifier
+	var player_modifiers poker.Modifiers
 	err := json.Unmarshal(player.Modifiers, &player_modifiers)
 	if err != nil {
 		log.Printf("[AI-MODIFIER-ERROR] Error parsing modifiers: %v", err)
 		return
 	}
 
-	// Check if the modifiers are available
-	found := false
-	var mod int
-	for _, m := range player_modifiers {
-		if m == modifier {
-			found = true
-			mod = int(m.Value)
-			break
-		}
-		if found {
-			break
-		}
-	}
-	if !found {
-		log.Printf("[AI-MODIFIER-ERROR] Modifier %d not available for user %s", mod, player.Username)
-		return
-	}
-
 	// Remove the activated modifier from the available modifiers
-	for i, v := range player_modifiers {
+	for i, v := range player_modifiers.Modificadores {
 		if v == modifier {
-			found = true
-			player_modifiers = append(player_modifiers[:i], player_modifiers[i+1:]...)
-		}
-		if found {
-			break
+			player_modifiers.Modificadores = append(player_modifiers.Modificadores[:i], player_modifiers.Modificadores[i+1:]...)
 		}
 	}
 
@@ -1174,20 +1157,20 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	}
 
 	// Add the activated modifiers to the player
-	var activated_modifiers []poker.ReceivedModifier
-	activated_modifiers = append(activated_modifiers, poker.ReceivedModifier{
+	var activated_modifiers poker.ReceivedModifiers
+	activated_modifiers.Received = append(activated_modifiers.Received, poker.ReceivedModifier{
 		Modifier: modifier,
 		Sender:   player.Username,
 	})
 
-	var receiver_modifiers []poker.ReceivedModifier
+	var receiver_modifiers poker.ReceivedModifiers
 	err = json.Unmarshal(receiver.ReceivedModifiers, &receiver_modifiers)
 	if err != nil {
 		log.Printf("[MODIFIER-ERROR] Error parsing modifiers: %v", err)
 		return
 	}
 
-	receiver_modifiers = append(receiver_modifiers, activated_modifiers...)
+	receiver_modifiers.Received = append(receiver_modifiers.Received, activated_modifiers.Received...)
 	receiver.ReceivedModifiers, err = json.Marshal(receiver_modifiers)
 	if err != nil {
 		log.Printf("[MODIFIER-ERROR] Error marshaling modifiers: %v", err)
@@ -1205,7 +1188,6 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	// Notify the receiving player
 	sio.Sio_server.To(socket.Room(lobbyID)).Emit("modifiers_received", gin.H{
 		"modifiers": receiver.ReceivedModifiers,
-		"sender":    player.Username,
 	})
 
 	log.Printf("[AI-MODIFIER-SUCCESS] Modifiers sent to user %s from %s: %v", receiver.Username, player.Username, modifier)
