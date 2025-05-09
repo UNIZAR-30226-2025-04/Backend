@@ -195,7 +195,7 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 		}
 
 		// ONLY FOR APPLYING RAM, SINCE IT NEEDS THE JOKERS. SORRY FOR UGLY CODE.
-		for _, modifierID := range activatedModifiers.Modificadores {
+		for _, modifierID := range receivedModifiers.Modificadores {
 			if modifierID.Value == 3 && len(player.CurrentJokers) > 0 {
 				randomIndex := rand.Intn(len(player.CurrentJokers)) // Dont wanna set the seed, we use pseudorandomness
 				removedJoker := player.CurrentJokers[randomIndex]
