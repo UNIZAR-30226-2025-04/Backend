@@ -902,11 +902,19 @@ func HandleActivateModifiers(redisClient *redis.RedisClient, client *socket.Sock
 
 		// Remove the activated modifier from the available modifiers
 		var remainingModifiers []poker.Modifier
+		usedModifiers := make(map[int]int) // Map to track used modifiers
+
+		// Initialize the map with the count of each modifier
+		for _, value := range modifiers {
+			usedModifiers[value]++
+		}
+
+		// Iterate through the available modifiers and reduce the count
 		for _, v := range player_modifiers.Modificadores {
-			for _, value := range modifiers {
-				if v.Value != value {
-					remainingModifiers = append(remainingModifiers, v)
-				}
+			if usedModifiers[v.Value] > 0 {
+				usedModifiers[v.Value]-- // Reduce the count of the used modifier
+			} else {
+				remainingModifiers = append(remainingModifiers, v) // Keep the remaining modifier
 			}
 		}
 
@@ -1024,11 +1032,19 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 
 		// Remove the activated modifier from the available modifiers
 		var remainingModifiers []poker.Modifier
+		usedModifiers := make(map[int]int) // Map to track used modifiers
+
+		// Initialize the map with the count of each modifier
+		for _, value := range modifiers {
+			usedModifiers[value]++
+		}
+
+		// Iterate through the available modifiers and reduce the count
 		for _, v := range player_modifiers.Modificadores {
-			for _, value := range modifiers {
-				if v.Value != value {
-					remainingModifiers = append(remainingModifiers, v)
-				}
+			if usedModifiers[v.Value] > 0 {
+				usedModifiers[v.Value]-- // Reduce the count of the used modifier
+			} else {
+				remainingModifiers = append(remainingModifiers, v) // Keep the remaining modifier
 			}
 		}
 

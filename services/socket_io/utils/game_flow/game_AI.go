@@ -1095,13 +1095,19 @@ func activateVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGa
 
 	// Remove the activated modifier from the available modifiers
 	var remainingModifiers []poker.Modifier
+	usedModifiers := make(map[int]int) // Map to track used modifiers
+
+	// Initialize the map with the count of each modifier
+	for _, value := range modifiers {
+		usedModifiers[value]++
+	}
+
+	// Iterate through the available modifiers and reduce the count
 	for _, v := range player_modifiers.Modificadores {
-		if v == modifier {
-			found = true
-			remainingModifiers = append(remainingModifiers, v)
-		}
-		if found {
-			break
+		if usedModifiers[v.Value] > 0 {
+			usedModifiers[v.Value]-- // Reduce the count of the used modifier
+		} else {
+			remainingModifiers = append(remainingModifiers, v) // Keep the remaining modifier
 		}
 	}
 
@@ -1134,12 +1140,22 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 
 	// Remove the activated modifier from the available modifiers
 	var remainingModifiers []poker.Modifier
-	for _, v := range player_modifiers.Modificadores {
-		if v != modifier {
-			remainingModifiers = append(remainingModifiers, v)
-		}
+	usedModifiers := make(map[int]int) // Map to track used modifiers
+
+	// Initialize the map with the count of each modifier
+	for _, value := range modifiers {
+		usedModifiers[value]++
 	}
 
+	// Iterate through the available modifiers and reduce the count
+	for _, v := range player_modifiers.Modificadores {
+		if usedModifiers[v.Value] > 0 {
+			usedModifiers[v.Value]-- // Reduce the count of the used modifier
+		} else {
+			remainingModifiers = append(remainingModifiers, v) // Keep the remaining modifier
+		}
+	}
+	
 	player_modifiers.Modificadores = remainingModifiers
 
 	modifiersJSON, err := json.Marshal(player_modifiers)
