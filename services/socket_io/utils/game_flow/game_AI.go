@@ -1141,7 +1141,7 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 	usedModifiers := make(map[int]int) // Map to track used modifiers
 
 	// Initialize the map with the count of the modifier
-	usedModifiers[modifiers.Value]++
+	usedModifiers[modifier.Value]++
 	
 
 	// Iterate through the available modifiers and reduce the count
