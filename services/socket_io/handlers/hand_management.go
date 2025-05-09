@@ -1057,7 +1057,31 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		request_players := args[1].([]string)
+		request_players_nested, ok := args[0].([]interface{})
+		if !ok {
+			log.Printf("[MODIFIER-ERROR] Invalid type for modifiers: expected []interface{}, got %T", args[0])
+			client.Emit("error", gin.H{"error": "Invalid modifiers format"})
+			return
+		}
+
+		request_players_interface, ok := request_players_nested[1].([]interface{})
+		if !ok {
+			log.Printf("[MODIFIER-ERROR] Expected nested array, got %T", modifiersNested[0])
+			client.Emit("error", gin.H{"error": "Invalid modifiers format"})
+			return
+		}
+
+		request_players := make([]string, len(request_players_interface))
+		for i, user := range request_players_interface {
+			if userStr, ok := user.(string); ok {
+				request_players[i] = userStr
+			} else {
+				log.Printf("[MODIFIER-ERROR] Invalid type for user: expected string, got %T", user)
+				client.Emit("error", gin.H{"error": "Invalid user format"})
+				return
+			}
+		}
+
 		for _, request_player := range request_players {
 			// Update the receiving player
 
