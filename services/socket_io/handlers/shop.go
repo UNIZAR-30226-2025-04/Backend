@@ -626,6 +626,10 @@ func HandleRerollShop(redisClient *redis_services.RedisClient, client *socket.So
 
 		} else {
 			playerState.Rerolls++
+			if playerState.Rerolls >= len(lobby.ShopState.Rerolled) {
+				client.Emit("error", gin.H{"error": "Reroll index out of range"})
+				return
+			}
 			newJokers := lobby.ShopState.Rerolled[playerState.Rerolls]
 
 			// Save the updated player state
