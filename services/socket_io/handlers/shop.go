@@ -173,12 +173,7 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			return
 		}
 
-		log.Println("[PURCHASE-PACK] Pack purchased successfully, contents to return: ", contents)
-		log.Println("[PURCHASE-PACK] Pack purchased successfully, jokers with prices: ", jokersWithPrices)
-		log.Println("[PURCHASE-PACK] Pack purchased successfully, pack type: ", item.PackType)
-
-		// Emit the pack_purchased event with joker sell prices included
-		client.Emit("pack_purchased", gin.H{
+		res := gin.H{
 			"item_id":         item.ID,
 			"cards":           contents.Cards,
 			"jokers":          jokersWithPrices, // Use the processed jokers with sell prices
@@ -186,7 +181,18 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			"max_selectable":  item.MaxSelectable,
 			"pack_type":       item.PackType,
 			"remaining_money": playerState.PlayersMoney,
-		})
+		}
+
+		log.Println("[PURCHASE-PACK] Pack purchased successfully, contents to return: ", contents)
+		log.Println("[PURCHASE-PACK] Pack purchased successfully, jokers with prices: ", jokersWithPrices)
+		log.Println("[PURCHASE-PACK] Pack purchased successfully, pack type: ", item.PackType)
+
+		log.Println("[PURCHASE-PACK] Response to return: ", res)
+
+		// Emit the pack_purchased event with joker sell prices included
+		client.Emit("pack_purchased", res)
+
+		log.Println("[PURCHASE-PACK] Returned response: ", res)
 	}
 }
 
