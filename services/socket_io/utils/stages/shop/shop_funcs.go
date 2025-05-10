@@ -456,7 +456,6 @@ func SellJoker(player *redis.InGamePlayer, jokerID int) (updatedPlayer *redis.In
 	player.CurrentJokers = updatedJokersJSON
 
 	// Add sell price to player's money
-	player.PlayersMoney += sellPrice
 
 	return player, sellPrice, nil
 }

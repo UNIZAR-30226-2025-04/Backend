@@ -447,6 +447,8 @@ func HandleSellJoker(redisClient *redis_services.RedisClient, client *socket.Soc
 			return
 		}
 
+		playerState.PlayersMoney += sellPrice
+
 		// Save the updated player state
 		if err := redisClient.SaveInGamePlayer(updatedPlayer); err != nil {
 			log.Printf("[SHOP-ERROR] Error saving player state: %v", err)

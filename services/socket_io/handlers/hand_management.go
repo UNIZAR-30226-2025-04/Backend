@@ -1132,9 +1132,13 @@ func HandleSendModifiers(redisClient *redis.RedisClient, client *socket.Socket,
 
 			// Notify the receiving player
 			if !receiver.IsBot {
-				sio.UserConnections[receiver.Username].Emit("modifiers_received", gin.H{
-					"modifiers": activated_modifiers,
-				})
+				if conn, exists := sio.UserConnections[receiver.Username]; exists {
+					conn.Emit("modifiers_received", gin.H{
+						"modifiers": activated_modifiers,
+					})
+				} else {
+					log.Printf("[MODIFIER-WARNING] No active connection for user %s", receiver.Username)
+				}
 			}
 
 			log.Printf("[MODIFIER-SUCCESS] Modifiers sent to user %s from %s", request_player, username)
