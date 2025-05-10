@@ -37,7 +37,7 @@ func PrepareRoundStart(redisClient *redis.RedisClient, lobbyID string) (*redis_m
 	lobby.CurrentPhase = redis_models.PhasePlayRound
 
 	// Get the blind value
-	blind := lobby.CurrentHighBlind
+	blind := max(lobby.CurrentHighBlind, lobby.CurrentBaseBlind)
 
 	// NEW: mark the current blind phase as completed
 	lobby.BlindsCompleted[lobby.CurrentRound] = true
