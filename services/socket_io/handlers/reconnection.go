@@ -6,10 +6,10 @@ import (
 	socketio_utils "Nogler/services/socket_io/utils"
 	"Nogler/services/socket_io/utils/stages/play_round"
 	"Nogler/services/socket_io/utils/stages/shop"
+	"Nogler/utils"
 	"encoding/json"
 	"log"
 	"time"
-	"Nogler/utils"
 
 	"Nogler/services/poker"
 
@@ -103,19 +103,23 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			actualCurrentBet = lobby.CurrentHighBlind
 		}
 
-		// Get all users with their usernames and icons from Redis
-		users, err := redisClient.GetAllPlayersInLobby(lobbyID)
+		// Get all players in the lobby
+		players, err := redisClient.GetAllPlayersInLobby(lobbyID)
 		if err != nil {
-			log.Printf("[PHASE-INFO-ERROR] Error getting users in lobby: %v", err)
-			client.Emit("error", gin.H{"error": "Error retrieving users in lobby"})
+			log.Printf("[RECONNECTION-ERROR] Error getting players: %v", err)
 			return
 		}
 
-		// Create a map to store usernames and icons
-		usernamesAndIcons := make(map[string]int)
-		for _, user := range users {
-			icon := utils.UserIcon(db, user.Username)
-			usernamesAndIcons[user.Username] = icon
+		// Prepare the users_in_lobby array with username and icon
+		usersInLobby := make([]gin.H, 0, len(players))
+		for _, player := range players {
+			// Get the player icon from PostgreSQL
+			icon := utils.UserIcon(db, player.Username)
+
+			usersInLobby = append(usersInLobby, gin.H{
+				"username": player.Username,
+				"icon":     icon,
+			})
 		}
 
 		// Create a response with comprehensive game and player state
@@ -129,7 +133,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			"current_high_blind": lobby.CurrentHighBlind,
 			"current_base_blind": lobby.CurrentBaseBlind,
 			"max_rounds":         lobby.MaxRounds,
-			"players":            usernamesAndIcons,
+			"players":            usersInLobby,
 
 			// Player-specific state
 			"player_data": gin.H{
