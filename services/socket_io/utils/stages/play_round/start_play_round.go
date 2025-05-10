@@ -8,7 +8,6 @@ import (
 	socketio_types "Nogler/services/socket_io/types"
 	"encoding/json"
 	"log"
-	"math/rand"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -200,16 +199,6 @@ func ApplyRoundModifiers(redisClient *redis.RedisClient, lobbyID string, sio *so
 			if err != nil {
 				log.Printf("[HAND-ERROR] Error parsing current jokers: %v", err)
 				return
-			}
-		}
-
-		// ONLY FOR APPLYING RAM, SINCE IT NEEDS THE JOKERS. SORRY FOR UGLY CODE.
-		for _, modifierID := range receivedModifiers.Modificadores {
-			if modifierID.Value == 3 && len(currentJokers) > 0 {
-				randomIndex := rand.Intn(len(currentJokers)) // Dont wanna set the seed, we use pseudorandomness
-				removedJoker := currentJokers[randomIndex]
-				currentJokers = append(currentJokers[:randomIndex], currentJokers[randomIndex+1:]...) // deletes joker from slice
-				log.Printf("Removed joker (fake random): %v", removedJoker)
 			}
 		}
 

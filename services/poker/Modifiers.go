@@ -2,6 +2,7 @@ package poker
 
 import (
 	"fmt"
+	"math/rand"
 )
 
 type Modifier struct {
@@ -40,10 +41,10 @@ var ModifierWeights = []struct {
 	ID     int
 	Weight int
 }{
-	{1, 30}, // Most common: 40% chance
-	{2, 27}, // Common: 30% chance
-	{3, 23}, // Uncommon: 20% chance
-	{4, 20}, // Rare: 10% chance
+	{1, 30}, // Most common: 30% chance
+	{2, 27}, // Common: 27% chance
+	{3, 23}, // Uncommon: 23% chance
+	{4, 20}, // Rare: 20% chance
 }
 
 // Divide starting chips and mult by 2. 1 round duration
@@ -59,10 +60,9 @@ func PabloHoney(hand Hand, leftUses int, fichas int, mult int, gold int) (int, i
 	return fichas, mult, gold, leftUses
 }
 
-// Remove one joker from other player's rack chosen randomly. 1 use only
+// multiply the chips by random number between 1 and 3
 func RAM(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
-	// TODO
-	return fichas, mult, gold, leftUses
+	return fichas*rand.Intn(3) + 1, mult, gold, leftUses
 }
 
 // Bans up to 4 players to play four of a kind for 1 round
@@ -147,7 +147,7 @@ func ApplyModifiers(hand Hand, ms *Modifiers, initialFichas int, initialMult int
 		if modifierID.Value == 0 {
 			continue
 		}
-		if modifierID.Value == 2 || modifierID.Value == 4 || modifierID.Value == 5 || modifierID.Value == 6 ||
+		if modifierID.Value == 2 || modifierID.Value == 4 || modifierID.Value == 3 || modifierID.Value == 5 || modifierID.Value == 6 ||
 			modifierID.Value == 7 || modifierID.Value == 8 || modifierID.Value == 9 {
 			currentFichas, currentMult, currentGold, modifierID.LeftUses = Apply(modifierID, hand, currentFichas, currentMult, currentGold)
 		}
@@ -166,7 +166,7 @@ func ApplyRoundModifiers(ms *Modifiers, currentGold int) int {
 		if modifierID.Value == 0 {
 			continue
 		}
-		if modifierID.Value == 1 || modifierID.Value == 3 {
+		if modifierID.Value == 1 {
 			emptyHand := Hand{}
 			_, _, currentGold, modifierID.LeftUses = Apply(modifierID, emptyHand, 0, 0, currentGold)
 		}
