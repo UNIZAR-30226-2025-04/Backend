@@ -278,10 +278,13 @@ func FindShopItem(lobby redis.GameLobby, itemID int) (redis.ShopItem, bool) {
 	if total_rerolls_len > 0 {
 		log.Println("[FIND-SHOP-ITEM] Checking latest rerolled items: ", lobby.ShopState.Rerolled[total_rerolls_len-1])
 		// Check the last rerolled items
-		for _, item := range lobby.ShopState.Rerolled[total_rerolls_len-1].Jokers {
-			log.Println("[FIND-SHOP-ITEM] Checking item ID:", item.ID)
-			if item.ID == itemID {
-				return item, true
+		// NEW, CRITICAL: the player's current reroll might not be the last one, so we should check previous rerolls
+		for _, reroll := range lobby.ShopState.Rerolled {
+			for _, item := range reroll.Jokers {
+				log.Println("[FIND-SHOP-ITEM] Checking item ID:", item.ID)
+				if item.ID == itemID {
+					return item, true
+				}
 			}
 		}
 	}
