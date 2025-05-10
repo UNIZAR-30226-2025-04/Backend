@@ -16,6 +16,6 @@ func FormatLobbyKey(lobbyId string) string {
 	return fmt.Sprintf("lobby:%s", lobbyId)
 }
 
-func FormatPackKey(lobbyId string, maxRounds int, rerrolls int, itemId int, currentRound int) string {
-	return fmt.Sprintf("lobby:%s:round:%d:reroll:%d:pack:%d:current:%d", lobbyId, maxRounds, rerrolls, itemId, currentRound)
+func FormatPackKey(lobbyId string, currentRound int, itemId int) string {
+	return fmt.Sprintf("lobby:%s:round:%d:item_id:%d", lobbyId, currentRound, itemId)
 }
