@@ -40,10 +40,10 @@ var ModifierWeights = []struct {
 	ID     int
 	Weight int
 }{
-	{1, 40}, // Most common: 40% chance
-	{2, 30}, // Common: 30% chance
-	{3, 20}, // Uncommon: 20% chance
-	{4, 10}, // Rare: 10% chance
+	{1, 30}, // Most common: 40% chance
+	{2, 27}, // Common: 30% chance
+	{3, 23}, // Uncommon: 20% chance
+	{4, 20}, // Rare: 10% chance
 }
 
 // Divide starting chips and mult by 2. 1 round duration
