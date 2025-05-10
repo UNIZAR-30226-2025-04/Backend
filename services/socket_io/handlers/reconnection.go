@@ -63,6 +63,9 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			phaseTimeout = lobby.GameRoundTimeout
 		case redis_models.PhaseShop:
 			phaseTimeout = lobby.ShopTimeout
+			// KEY: missing vouchers phase timeout
+		case redis_models.PhaseVouchers:
+			phaseTimeout = lobby.VouchersTimeout
 		default:
 			phaseTimeout = time.Time{} // Zero time for other phases
 		}
