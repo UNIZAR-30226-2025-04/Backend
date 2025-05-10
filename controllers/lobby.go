@@ -612,7 +612,7 @@ func MatchMaking(db *gorm.DB) gin.HandlerFunc {
 // @Produce json
 // @Param Authorization header string true "Bearer JWT token"
 // @Param lobby_id path string true "Lobby ID"
-// @Param is_public formData boolean true "Set to true for public lobby, false for private lobby"
+// @Param public formData int true "Set to 1 for public lobby, 2 for AI lobby and 0 for private lobby"
 // @Success 200 {object} object{message=string,is_public=boolean}
 // @Failure 400 {object} object{error=string}
 // @Failure 401 {object} object{error=string}
@@ -633,11 +633,11 @@ func SetLobbyVisibility(db *gorm.DB, redisClient *redis.RedisClient) gin.Handler
 		// 0: private
 		// 1: public
 		// 2: vs AI
-		var isPublic int
-		if isPublicStr == "true" {
-			isPublic = 1
-		} else {
+		isPublic := 0
+		if isPublicStr == "0" {
 			isPublic = 0
+		} else if isPublicStr == "1" {
+			isPublic = 1
 		}
 
 		// Get user from JWT token
