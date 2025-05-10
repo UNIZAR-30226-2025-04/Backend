@@ -1036,7 +1036,7 @@ func VouchersAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 				continue
 			}
 			// If the voucher is "Damm" or "RAM", send it to the opponent
-			if modifiers.Modificadores[i].Value == 1 || modifiers.Modificadores[i].Value == 3 {
+			if modifiers.Modificadores[i].Value == 1 {
 				sendVoucherAI(redisClient, player, lobbyID, modifiers.Modificadores[i], sio)
 			} else {
 				activateVoucherAI(redisClient, player, modifiers.Modificadores[i])
@@ -1142,7 +1142,6 @@ func sendVoucherAI(redisClient *redis.RedisClient, player *redis_models.InGamePl
 
 	// Initialize the map with the count of the modifier
 	usedModifiers[modifier.Value]++
-	
 
 	// Iterate through the available modifiers and reduce the count
 	for _, v := range player_modifiers.Modificadores {

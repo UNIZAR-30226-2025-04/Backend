@@ -209,6 +209,8 @@ func HandleContinueToVouchers(redisClient *redis.RedisClient, client *socket.Soc
 			return
 		}
 
+		player.Rerolls = 0
+
 		lobbyID := player.LobbyId
 		if lobbyID == "" {
 			log.Printf("[VOUCHERS-ERROR] Player %s not in any lobby", username)
@@ -236,6 +238,7 @@ func HandleContinueToVouchers(redisClient *redis.RedisClient, client *socket.Soc
 		log.Printf("[VOUCHERS] Player %s ready for vouchers phase. Total ready: %d/%d",
 			username, len(lobby.PlayersFinishedShop), lobby.PlayerCount)
 
+		lobby.ShopState.Rerolls = 0
 		// Save the updated lobby
 		err = redisClient.SaveGameLobby(lobby)
 		if err != nil {
