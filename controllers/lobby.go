@@ -633,11 +633,11 @@ func SetLobbyVisibility(db *gorm.DB, redisClient *redis.RedisClient) gin.Handler
 		// 0: private
 		// 1: public
 		// 2: vs AI
-		var isPublic int
-		if isPublicStr == "true" {
+		isPublic := 0
+		if isPublicStr == "1" {
 			isPublic = 1
-		} else {
-			isPublic = 0
+		} else if isPublicStr == "2" {
+			isPublic = 2
 		}
 
 		// Get user from JWT token
