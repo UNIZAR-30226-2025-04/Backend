@@ -26,7 +26,7 @@ const (
 	PLAY_ROUND_TIMEOUT = 2 * time.Minute
 	BLIND_TIMEOUT      = 20 * time.Second
 	SHOP_TIMEOUT       = 1 * time.Minute
-	VOUCHER_TIMEOUT    = 30 * time.Second // New timeout constant for voucher phase
+	VOUCHER_TIMEOUT    = 1 * time.Minute // New timeout constant for voucher phase
 )
 
 // ---------------------------------------------------------------
