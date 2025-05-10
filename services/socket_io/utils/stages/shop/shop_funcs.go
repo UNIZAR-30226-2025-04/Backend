@@ -182,6 +182,8 @@ func GenerateRerollableItems(rng *rand.Rand, nextUniqueId *int) redis.RerolledJo
 
 // TODO: Add a function that calculates the probabilities of a given item in a group to appear
 
+// TODO: would be nice to FLUSH all the redis content's after each game/round, WOULD BE VERY NICE
+
 func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.GameLobby, item redis.ShopItem) (*redis.PackContents, error) {
 	// Unique key per pack state
 	packKey := redis_utils.FormatPackKey(lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, item.ID, lobby.CurrentRound)
