@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"log"
 	"time"
+	"Nogler/utils"
 
 	"Nogler/services/poker"
 
@@ -102,6 +103,21 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			actualCurrentBet = lobby.CurrentHighBlind
 		}
 
+		// Get all users with their usernames and icons from Redis
+		users, err := redisClient.GetAllPlayersInLobby(lobbyID)
+		if err != nil {
+			log.Printf("[PHASE-INFO-ERROR] Error getting users in lobby: %v", err)
+			client.Emit("error", gin.H{"error": "Error retrieving users in lobby"})
+			return
+		}
+
+		// Create a map to store usernames and icons
+		usernamesAndIcons := make(map[string]int)
+		for _, user := range users {
+			icon := utils.UserIcon(db, user.Username)
+			usernamesAndIcons[user.Username] = icon
+		}
+
 		// Create a response with comprehensive game and player state
 		response := gin.H{
 			// Game state information
@@ -113,6 +129,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			"current_high_blind": lobby.CurrentHighBlind,
 			"current_base_blind": lobby.CurrentBaseBlind,
 			"max_rounds":         lobby.MaxRounds,
+			"players":            usernamesAndIcons,
 
 			// Player-specific state
 			"player_data": gin.H{
