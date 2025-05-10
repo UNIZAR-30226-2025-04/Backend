@@ -124,7 +124,6 @@ func CreateLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 				Winner:                  false,
 				CurrentRoundPoints:      0,
 				TotalGamePoints:         0,
-				BetMinimumBlind:         true,
 				IsBot:                   true, // Mark as AI player
 				LastPurchasedPackItemId: -1,
 				PurchasedPackCards:      purchasedPackCardsJSON,
@@ -440,7 +439,6 @@ func JoinLobby(db *gorm.DB, redisClient *redis.RedisClient) gin.HandlerFunc {
 			Winner:             false,
 			CurrentRoundPoints: 0,
 			TotalGamePoints:    0,
-			BetMinimumBlind:    true,
 			// NEW: initially, the player hasn't bought any packs yet
 			LastPurchasedPackItemId:     -1,
 			PurchasedPackCards:          purchasedPackCardsJSON,

@@ -95,22 +95,6 @@ func AdvanceToNextBlindIfUndone(redisClient *redis.RedisClient, db *gorm.DB, lob
 	log.Printf("[ROUND-ADVANCE] Updated base blind for lobby %s to %d for round %d",
 		lobbyID, newBaseBlind, newRound)
 
-	// Set all players' BetMinimumBlind to true as default
-	players, err := redisClient.GetAllPlayersInLobby(lobbyID)
-	if err != nil {
-		log.Printf("[ROUND-ADVANCE-ERROR] Error getting players: %v", err)
-		return fmt.Errorf("error getting players: %v", err)
-	}
-
-	for i := range players {
-		players[i].BetMinimumBlind = true
-		if err := redisClient.SaveInGamePlayer(&players[i]); err != nil {
-			log.Printf("[ROUND-ADVANCE-ERROR] Error setting default blind bet for player %s: %v",
-				players[i].Username, err)
-			// Continue with other players despite error
-		}
-	}
-
 	// Update the current phase (to PhaseBlind)
 	if err := socketio_utils.SetGamePhase(redisClient, lobbyID, redis_models.PhaseBlind); err != nil {
 		log.Printf("[ROUND-ADVANCE-ERROR] %v", err)

@@ -388,16 +388,11 @@ func checkPlayerFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, clien
 	}
 
 	// Check if player has no plays left OR has reached their betting goal
-	if (player.HandPlaysLeft <= 0) ||
-		(player.BetMinimumBlind && player.CurrentRoundPoints >= lobby.CurrentBaseBlind) ||
-		(!player.BetMinimumBlind && player.CurrentRoundPoints >= lobby.CurrentHighBlind) {
+	if (player.HandPlaysLeft <= 0) || (player.CurrentRoundPoints >= lobby.CurrentHighBlind) {
 
 		// Log which condition was met
 		if player.HandPlaysLeft <= 0 {
 			log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays left)", username)
-		} else if player.BetMinimumBlind {
-			log.Printf("[ROUND-CHECK] Player %s has reached their base blind of %d with %d points",
-				username, lobby.CurrentBaseBlind, player.CurrentRoundPoints)
 		} else {
 			log.Printf("[ROUND-CHECK] Player %s has reached the high blind of %d with %d points",
 				username, lobby.CurrentHighBlind, player.CurrentRoundPoints)

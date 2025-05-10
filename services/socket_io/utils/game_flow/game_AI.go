@@ -122,15 +122,6 @@ func ProposeBlindAI(redisClient *redis.RedisClient, lobbyID string, sio *socketi
 		log.Printf("[AI-BLIND] Player %s proposed blind %d exceeding MAX_BLIND, capping at %d",
 			currentAIPlayerUsername, proposedBlind, int(game_constants.MAX_BLIND))
 		proposedBlind = game_constants.MAX_BLIND
-		AI.BetMinimumBlind = false
-	} else if proposedBlind < lobby.CurrentBaseBlind {
-		// If below or equal to base blind, set BetMinimumBlind to true
-		log.Printf("[AI-BLIND] Player %s proposed blind %d below or equal to base blind %d, marking as min blind better",
-			currentAIPlayerUsername, proposedBlind, lobby.CurrentBaseBlind)
-		AI.BetMinimumBlind = true
-	} else {
-		// Otherwise, they're not betting the minimum
-		AI.BetMinimumBlind = false
 	}
 
 	// Save player data
@@ -599,16 +590,11 @@ func checkAIFinishedRound(redisClient *redis.RedisClient, db *gorm.DB, lobbyID s
 	}
 
 	// Check if player has no plays and discards left OR has reached/exceeded the blind
-	if (player.HandPlaysLeft <= 0) ||
-		(player.BetMinimumBlind && player.CurrentRoundPoints >= lobby.CurrentBaseBlind) ||
-		(!player.BetMinimumBlind && player.CurrentRoundPoints >= lobby.CurrentHighBlind) {
+	if (player.HandPlaysLeft <= 0) || (player.CurrentRoundPoints >= lobby.CurrentHighBlind) {
 
 		// Log which condition was met
 		if player.HandPlaysLeft <= 0 {
 			log.Printf("[ROUND-CHECK] Player %s has finished their round (no plays left)", player.Username)
-		} else if player.BetMinimumBlind {
-			log.Printf("[ROUND-CHECK] Player %s has reached their base blind of %d with %d points",
-				player.Username, lobby.CurrentBaseBlind, player.CurrentRoundPoints)
 		} else {
 			log.Printf("[ROUND-CHECK] Player %s has reached the high blind of %d with %d points",
 				player.Username, lobby.CurrentHighBlind, player.CurrentRoundPoints)

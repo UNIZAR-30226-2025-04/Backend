@@ -96,12 +96,8 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			}
 		}
 
-		var actualCurrentBet int
-		if player.BetMinimumBlind {
-			actualCurrentBet = lobby.CurrentBaseBlind
-		} else {
-			actualCurrentBet = lobby.CurrentHighBlind
-		}
+		// NEW: actualCurrentBet is always the current target blind (which is called high blind for VERY UNKNOWN REASONS)
+		actualCurrentBet := lobby.CurrentHighBlind
 
 		// Get all players in the lobby
 		players, err := redisClient.GetAllPlayersInLobby(lobbyID)

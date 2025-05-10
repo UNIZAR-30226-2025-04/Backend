@@ -102,7 +102,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 	}
 
 	highestBlindProposer := lobby.HighestBlindProposer
-	currentHighBlind := lobby.CurrentHighBlind
+	currentTargetBlind := lobby.CurrentHighBlind
 	baseBlind := lobby.CurrentBaseBlind
 
 	// Get all players in the lobby
@@ -127,7 +127,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 
 		if proposerPlayer != nil {
 			// Check if the highest blind proposer reached their proposed blind
-			proposerReachedBlind = proposerPlayer.CurrentRoundPoints >= currentHighBlind
+			proposerReachedBlind = proposerPlayer.CurrentRoundPoints >= currentTargetBlind
 			var reachedText string
 			if proposerReachedBlind {
 				reachedText = "reached"
@@ -138,7 +138,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 			log.Printf("[ELIMINATION-CHECK] Highest proposer %s %s their proposed blind of %d with %d points",
 				highestBlindProposer,
 				reachedText,
-				currentHighBlind,
+				currentTargetBlind,
 				proposerPlayer.CurrentRoundPoints)
 		} else {
 			// Log the issue but don't return an error - proposer might have already been eliminated
@@ -149,25 +149,13 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 		log.Printf("[ELIMINATION-INFO] No blind proposer for lobby %s, only applying base blind eliminations", lobbyID)
 	}
 
-	/*
-		// First, handle all minimum-blind players (they ALWAYS get eliminated if they don't reach the base blind)
-		for _, player := range players {
-			if player.BetMinimumBlind && player.CurrentRoundPoints < baseBlind {
-				// Minimum-betting players are eliminated if below base blind, regardless of proposer's success
-				eliminatedPlayers = append(eliminatedPlayers, player.Username)
-				log.Printf("[ELIMINATION] Player %s eliminated for betting minimum and not reaching base blind of %d (scored %d)",
-					player.Username, baseBlind, player.CurrentRoundPoints)
-			}
-		}
-	*/
-
 	// Only process proposer-specific logic if we have a valid proposer
 	if highestBlindProposer != "" && proposerPlayer != nil {
 		if !proposerReachedBlind {
 			// Proposer failed: Only eliminate proposer and min-blind-betting players who failed (already handled)
 			eliminatedPlayers = append(eliminatedPlayers, highestBlindProposer)
 			log.Printf("[ELIMINATION] Proposer %s eliminated for not reaching their proposed blind of %d (scored %d)",
-				highestBlindProposer, currentHighBlind, proposerPlayer.CurrentRoundPoints)
+				highestBlindProposer, currentTargetBlind, proposerPlayer.CurrentRoundPoints)
 		} else {
 			// Proposer succeeded: Everyone must reach their respective targets
 			for _, player := range players {
@@ -177,10 +165,10 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 				}
 
 				// Non-minimum players must reach the high blind
-				if player.CurrentRoundPoints < currentHighBlind {
+				if player.CurrentRoundPoints < currentTargetBlind {
 					eliminatedPlayers = append(eliminatedPlayers, player.Username)
 					log.Printf("[ELIMINATION] Player %s eliminated for not reaching high blind of %d (scored %d)",
-						player.Username, currentHighBlind, player.CurrentRoundPoints)
+						player.Username, currentTargetBlind, player.CurrentRoundPoints)
 				} else {
 					log.Printf("[ELIMINATION-SAFE] Player %s safe by reaching high blind with %d points",
 						player.Username, player.CurrentRoundPoints)
@@ -188,10 +176,14 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 			}
 		}
 	} else if highestBlindProposer == "" {
-		// No high blind proposer: non-minimum players are safe (already handled minimum players)
+		// No high blind proposer: the target blind is the base blind
 		for _, player := range players {
-			if !player.BetMinimumBlind {
-				log.Printf("[ELIMINATION-SAFE] Player %s safe as no high blind was proposed (scored %d)",
+			if player.CurrentRoundPoints < currentTargetBlind {
+				eliminatedPlayers = append(eliminatedPlayers, player.Username)
+				log.Printf("[ELIMINATION] Player %s eliminated for not reaching target base blind of %d (scored %d)",
+					player.Username, currentTargetBlind, player.CurrentRoundPoints)
+			} else {
+				log.Printf("[ELIMINATION-SAFE] Player %s safe by reaching target base blind with %d points",
 					player.Username, player.CurrentRoundPoints)
 			}
 		}
@@ -228,7 +220,7 @@ func HandlePlayerEliminations(redisClient *redis.RedisClient, lobbyID string, si
 		sio.Sio_server.To(socket.Room(lobbyID)).Emit("players_eliminated", gin.H{
 			"eliminated_players": eliminatedPlayers,
 			"reason":             "blind_check",
-			"high_blind_value":   currentHighBlind,
+			"high_blind_value":   currentTargetBlind,
 			"base_blind":         baseBlind,
 			"proposer_succeeded": proposerReachedBlind,
 		})

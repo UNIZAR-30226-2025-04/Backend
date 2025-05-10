@@ -72,18 +72,6 @@ func HandleProposeBlind(redisClient *redis.RedisClient, client *socket.Socket,
 			return
 		}
 
-		if proposedBlind <= lobby.CurrentBaseBlind {
-			// If below or equal to base blind, set BetMinimumBlind to true
-			log.Printf("[BLIND] Player %s proposed blind %d below or equal to base blind %d, marking as min blind better",
-				username, proposedBlind, lobby.CurrentBaseBlind)
-			player.BetMinimumBlind = true
-		} else {
-			// Otherwise, they're not betting the minimum
-			log.Printf("[BLIND] Player %s proposed blind %d above base blind %d, marking as non-min blind better",
-				username, proposedBlind, lobby.CurrentBaseBlind)
-			player.BetMinimumBlind = false
-		}
-
 		// Save player data
 		if err := redisClient.SaveInGamePlayer(player); err != nil {
 			log.Printf("[BLIND-ERROR] Error saving player data: %v", err)
