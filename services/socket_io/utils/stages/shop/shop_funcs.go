@@ -815,8 +815,16 @@ func generatePackVouchers(rng *rand.Rand, count int) []poker.Modifier {
 	return vouchers
 }
 
-func GetRerollPrice(lobby *redis.GameLobby) int {
+func GetRerollPriceForPlayer(player *redis.InGamePlayer) int {
 	// Calculate the reroll price based on the number of rerolls
+	if player != nil {
+		return player.Rerolls + 2
+	}
+	return -1
+}
+
+func GetGlobalShopRerollPrice(lobby *redis.GameLobby) int {
+	// Calculate the global reroll price based on the number of rerolls
 	if lobby != nil && lobby.ShopState != nil {
 		return lobby.ShopState.Rerolls + 2
 	}

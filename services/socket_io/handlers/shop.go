@@ -587,12 +587,12 @@ func HandleRerollShop(redisClient *redis_services.RedisClient, client *socket.So
 			return
 		}
 		// Check if the player has enough money to reroll
-		if playerState.PlayersMoney < shop.GetRerollPrice(lobby) {
+		if playerState.PlayersMoney < shop.GetRerollPriceForPlayer(playerState) {
 			client.Emit("error", gin.H{"error": "Not enough money to reroll"})
 			return
 		}
 
-		playerState.PlayersMoney -= shop.GetRerollPrice(lobby)
+		playerState.PlayersMoney -= shop.GetRerollPriceForPlayer(playerState)
 
 		// Check if it is the highest reroll
 		if playerState.Rerolls == lobby.ShopState.Rerolls {
@@ -607,7 +607,7 @@ func HandleRerollShop(redisClient *redis_services.RedisClient, client *socket.So
 			client.Emit("rerolled_jokers", gin.H{
 				"message":          "Successfully rerolled jokers",
 				"new_jokers":       rerolledJokers,
-				"next_reroll_cost": shop.GetRerollPrice(lobby),
+				"next_reroll_cost": shop.GetRerollPriceForPlayer(playerState),
 				"remaining_money":  playerState.PlayersMoney,
 			})
 
@@ -642,7 +642,7 @@ func HandleRerollShop(redisClient *redis_services.RedisClient, client *socket.So
 			client.Emit("rerolled_jokers", gin.H{
 				"message":          "Successfully rerolled jokers",
 				"new_jokers":       newJokers,
-				"next_reroll_cost": shop.GetRerollPrice(lobby),
+				"next_reroll_cost": shop.GetRerollPriceForPlayer(playerState),
 				"remaining_money":  playerState.PlayersMoney,
 			})
 		}

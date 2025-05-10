@@ -145,7 +145,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 				"current_points":    player.CurrentRoundPoints,
 				"total_points":      player.TotalGamePoints,
 				"hand_plays_left":   player.HandPlaysLeft,
-				"next_reroll_price": shop.GetRerollPrice(lobby), // player.Rerolls + 2, TODO, revisar si se hace con player o con shop state
+				"next_reroll_price": shop.GetRerollPriceForPlayer(player), // player.Rerolls + 2, TODO, revisar si se hace con player o con shop state
 				"discards_left":     player.DiscardsLeft,
 				"played_cards":      len(deck.PlayedCards),
 				"unplayed_cards":    len(deck.TotalCards) + len(currentHand),
@@ -166,7 +166,7 @@ func HandleRequestGamePhaseInfo(redisClient *redis.RedisClient, client *socket.S
 			shop.RemovePurchasedItems(lobby.ShopState, player)
 			response["shop_items"] = lobby.ShopState
 			response["players_finished_shop"] = len(lobby.PlayersFinishedShop)
-			response["reroll_price"] = shop.GetRerollPrice(lobby)
+			response["reroll_price"] = shop.GetRerollPriceForPlayer(player)
 
 		// NEW: vouchers phase info
 		case redis_models.PhaseVouchers:
