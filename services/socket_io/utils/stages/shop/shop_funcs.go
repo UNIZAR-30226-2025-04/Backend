@@ -184,7 +184,7 @@ func GenerateRerollableItems(rng *rand.Rand, nextUniqueId *int) redis.RerolledJo
 
 func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.GameLobby, item redis.ShopItem) (*redis.PackContents, error) {
 	// Unique key per pack state
-	packKey := redis_utils.FormatPackKey(lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, item.ID)
+	packKey := redis_utils.FormatPackKey(lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, item.ID, lobby.CurrentRound)
 
 	// Try to get existing pack contents
 	existing, err := rc.GetPackContents(packKey)
@@ -471,7 +471,7 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 	}
 
 	// Get pack contents
-	packKey := redis_utils.FormatPackKey(lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, itemID)
+	packKey := redis_utils.FormatPackKey(lobby.Id, lobby.MaxRounds, lobby.ShopState.Rerolls, itemID, lobby.CurrentRound)
 	packContents, err := redisClient.GetPackContents(packKey)
 	if err != nil || packContents == nil {
 		return nil, fmt.Errorf("pack contents not found for item ID %d", itemID)
