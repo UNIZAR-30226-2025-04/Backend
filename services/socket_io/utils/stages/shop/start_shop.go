@@ -39,6 +39,9 @@ func MulticastStartingShop(sio *socketio_types.SocketServer, redisClient *redis_
 		// KEY: Reset the last purchased pack ID to prevent exploits between rounds
 		player.LastPurchasedPackItemId = -1
 
+		// KEY: Reset the player's reroll count
+		player.Rerolls = 0
+
 		// NEW, KEY: reset purchased shop item IDs map
 		player.CurrentShopPurchasedItemIDs = make(map[int]bool)
 

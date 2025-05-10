@@ -209,7 +209,8 @@ func HandleContinueToVouchers(redisClient *redis.RedisClient, client *socket.Soc
 			return
 		}
 
-		player.Rerolls = 0
+		// NOTE: moved to starting shop phase
+		// player.Rerolls = 0
 
 		lobbyID := player.LobbyId
 		if lobbyID == "" {
