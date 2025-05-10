@@ -129,6 +129,8 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			return
 		}
 
+		log.Println("[PURCHASE-PACK] Generating pack contents, pack type:", item.PackType)
+
 		// Get pack contents and process jokers to include sell prices
 		contents, err := shop.GetOrGeneratePackContents(redisClient, lobbyState, item)
 		if err != nil {
@@ -170,6 +172,10 @@ func HandlePurchasePack(redisClient *redis_services.RedisClient, client *socket.
 			client.Emit("error", gin.H{"error": "Failed to save purchase"})
 			return
 		}
+
+		log.Println("[PURCHASE-PACK] Pack purchased successfully, contents to return: ", contents)
+		log.Println("[PURCHASE-PACK] Pack purchased successfully, jokers with prices: ", jokersWithPrices)
+		log.Println("[PURCHASE-PACK] Pack purchased successfully, pack type: ", item.PackType)
 
 		// Emit the pack_purchased event with joker sell prices included
 		client.Emit("pack_purchased", gin.H{

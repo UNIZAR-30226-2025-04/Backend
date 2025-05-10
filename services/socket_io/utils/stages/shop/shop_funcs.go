@@ -195,6 +195,9 @@ func GetOrGeneratePackContents(rc *redis_services.RedisClient, lobby *redis.Game
 	// Generate new contents if not found
 	newContents := generatePackContents(uint64(item.PackSeed), item.PackType)
 
+	log.Println("[GENERATE-PACK-CONTENTS] Pack type:", item.PackType)
+	log.Println("[GENERATE-PACK-CONTENTS] Generated new pack contents:", newContents)
+
 	if err := rc.SetPackContents(packKey, newContents, 24*time.Hour); err != nil {
 		return nil, err
 	}
@@ -210,6 +213,8 @@ func generatePackContents(seed uint64, packType int) redis.PackContents {
 		Vouchers: []poker.Modifier{},
 	}
 
+	log.Println("[GENERATE-PACK-CONTENTS] Pack type:", packType)
+
 	switch packType {
 	case game_constants.PACK_TYPE_CARDS:
 		numCards := 4 + rng.Intn(3) // 4, 5, or 6 cards
@@ -224,6 +229,8 @@ func generatePackContents(seed uint64, packType int) redis.PackContents {
 		numVouchers := 3 + rng.Intn(2) // 3 or 4
 		contents.Vouchers = generatePackVouchers(rng, numVouchers)
 	}
+
+	log.Println("[GENERATE-PACK-CONTENTS] Pack contents:", contents)
 
 	return contents
 }
