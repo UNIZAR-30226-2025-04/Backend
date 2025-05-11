@@ -2,6 +2,7 @@ package poker
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"sort"
 
@@ -53,12 +54,12 @@ func SolidSevenJoker(hand Hand, fichas int, mult int, gold int, used []bool, ind
 }
 
 func AverageSizeMichel(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
+	used[index] = true
 	randomNumber := rand.Intn(15) + 1
 	if randomNumber == 1 {
-		used[index] = true
-		return fichas, mult + 15, gold, used
+		// Manage destroy the joker
 	}
-	return fichas, mult, gold, used
+	return fichas, mult + 15, gold, used
 }
 
 func PoorJoker(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
@@ -164,7 +165,6 @@ func itssoover(hand Hand, fichas int, mult int, gold int, used []bool, index int
 	// +10 de oro si solo se juega 1 carta (mano de tamaño 1)
 	if len(hand.Cards) == 1 {
 		used[index] = true
-
 		gold += 10
 	}
 
@@ -219,8 +219,8 @@ func bicicleta(hand Hand, fichas int, mult int, gold int, used []bool, index int
 
 func nasus(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
 	used[index] = true
-	
-	return fichas, max(mult * gold, 1), gold, used
+
+	return fichas, max(mult*gold, 1), gold, used
 }
 
 func sombrilla(hand Hand, fichas int, mult int, gold int, used []bool, index int) (int, int, int, []bool) {
@@ -319,7 +319,7 @@ func crowave(hand Hand, fichas int, mult int, gold int, used []bool, index int) 
 	return fichas, mult, gold, used
 }
 
-func ApplyJokers(hand Hand, js Jokers, initialFichas int, initialMult int, currentGold int) (int, int, int, []bool) {
+func ApplyJokers(hand Hand, js Jokers, initialFichas int, initialMult int, currentGold int, username string) (int, int, int, []bool) {
 	currentFichas, currentMult, currentGold := initialFichas, initialMult, currentGold
 	used := make([]bool, len(js.Juglares)) // Jokers triggereados
 
@@ -331,6 +331,7 @@ func ApplyJokers(hand Hand, js Jokers, initialFichas int, initialMult int, curre
 		if jokerFunc, exists := jokerTable[jokerID]; exists {
 			// Apply joker and update state
 			currentFichas, currentMult, currentGold, used = jokerFunc(hand, currentFichas, currentMult, currentGold, used, i)
+			log.Println("[JOKER-APPLIED] User: ", username, "Joker", jokerID, "Fichas:", currentFichas, "Mult:", currentMult, "Gold:", currentGold)
 		} else {
 			fmt.Printf("Warning: Unknown joker ID — what is %d?\n", jokerID)
 		}

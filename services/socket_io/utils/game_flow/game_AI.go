@@ -314,7 +314,7 @@ func PlayHandAI(redisClient *redis.RedisClient, db *gorm.DB, lobbyID string, sio
 		enhancedFichas, enhancedMult := poker.ApplyEnhancements(bestTokens, bestMult, bestScoredCards)
 
 		// 4. Apply jokers (passing the hand which contains the jokers)
-		finalFichas, finalMult, finalGold, _ := poker.ApplyJokers(bestHand, bestHand.Jokers, enhancedFichas, enhancedMult, bestHand.Gold)
+		finalFichas, finalMult, finalGold, _ := poker.ApplyJokers(bestHand, bestHand.Jokers, enhancedFichas, enhancedMult, bestHand.Gold, player.Username)
 
 		// 5. Apply modifiers
 
