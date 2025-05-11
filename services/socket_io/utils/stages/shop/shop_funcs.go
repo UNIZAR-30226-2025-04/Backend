@@ -131,7 +131,10 @@ func generateFixedModifiers(rng *rand.Rand, nextUniqueId *int) []redis.ShopItem 
 		modifierID := rng.Intn(9) + 1
 		if modifierID == 0 {
 			modifierID = 1
-			}
+		}
+		if modifierID == 2 || modifierID == 9 {
+			modifierID = 3
+		}
 
 		modifiers[i] = redis.ShopItem{
 			ID:         *nextUniqueId,
@@ -779,7 +782,10 @@ func generatePackVouchers(rng *rand.Rand, count int) []poker.Modifier {
 		modifierID := rng.Intn(9) + 1
 		if modifierID == 0 {
 			modifierID = 1
-			}
+		}
+		if modifierID == 2 || modifierID == 9 {
+			modifierID = 3
+		}
 
 		// Create a modifier directly
 		vouchers[i] = poker.Modifier{
