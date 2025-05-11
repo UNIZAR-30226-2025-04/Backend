@@ -145,6 +145,7 @@ func ApplyModifiers(hand Hand, ms *Modifiers, initialFichas int, initialMult int
 	finalFichas := initialFichas
 	finalMult := initialMult
 	finalGold := currentGold
+	log.Println("[APPLY-MODIFIERS] gold:", finalGold)
 
 	for _, modifierID := range ms.Modificadores {
 		if modifierID.Value == 0 {
@@ -154,9 +155,11 @@ func ApplyModifiers(hand Hand, ms *Modifiers, initialFichas int, initialMult int
 			modifierID.Value == 7 || modifierID.Value == 8 || modifierID.Value == 9 {
 			currentFichas, currentMult, currentGold, modifierID.LeftUses = Apply(modifierID, hand, currentFichas, currentMult, currentGold)
 		}
+		log.Println("[APPLY-MODIFIERS] Gold obtained from:", modifierID.Value, ":", currentGold)
 		finalFichas += currentFichas
 		finalMult += currentMult
 		finalGold += currentGold
+		log.Println("[APPLY-MODIFIERS] Gold after:", modifierID.Value, ":", currentGold)
 	}
 
 	return finalFichas, finalMult, finalGold

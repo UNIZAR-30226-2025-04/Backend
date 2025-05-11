@@ -165,7 +165,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			client.Emit("error", gin.H{"error": "Error applying modifiers"})
 			return
 		}
-		log.Println("[HAND-PLAY-DEBUG] Jugador:", username, "despues de aplicar modificadores activos tiene", finalGold, "oro")
+		log.Println("[HAND-PLAY-DEBUG] Jugador:", username, "despues de aplicar modificadores recibidos tiene", finalGold, "oro")
 
 		valorFinal := finalFichas * finalMult
 
