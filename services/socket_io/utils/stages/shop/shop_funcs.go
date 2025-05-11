@@ -367,7 +367,7 @@ func PurchaseVoucher(redisClient *redis_services.RedisClient, player *redis.InGa
 	newModifier := poker.Modifier{
 		Value: modifierID,
 		// TODO: should be removed, we're not supposed to use it for now
-		LeftUses: -1, // Set to -1 if it doesn't expire until the end of the game, or set a specific value
+		LeftUses: 1, // Set to -1 if it doesn't expire until the end of the game, or set a specific value
 	}
 	currentModifiers.Modificadores = append(currentModifiers.Modificadores, newModifier)
 
@@ -747,7 +747,7 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 		for _, voucherID := range selectedVoucherIDs {
 			newModifier := poker.Modifier{
 				Value:    voucherID,
-				LeftUses: -1, // Set to -1 if it doesn't expire until manually used
+				LeftUses: 1, // Set to -1 if it doesn't expire until manually used
 			}
 			currentModifiers.Modificadores = append(currentModifiers.Modificadores, newModifier)
 		}
@@ -778,7 +778,7 @@ func generatePackVouchers(rng *rand.Rand, count int) []poker.Modifier {
 		// Create a modifier directly
 		vouchers[i] = poker.Modifier{
 			Value:    modifierID,
-			LeftUses: -1, // Set to -1 if it doesn't expire until manually used
+			LeftUses: 1, // Set to -1 if it doesn't expire until manually used
 		}
 	}
 
