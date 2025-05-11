@@ -2,6 +2,7 @@ package poker
 
 import (
 	"fmt"
+	"log" // DELETE
 	"math/rand"
 )
 
@@ -56,7 +57,9 @@ func Damn(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, in
 
 // Eern 1 dollar for each card played. 1 round duration
 func PabloHoney(hand Hand, leftUses int, fichas int, mult int, gold int) (int, int, int, int) {
+	log.Println("[PABLO-HONEY] gold before:", gold, "cards:", len(hand.Cards))
 	gold += len(hand.Cards)
+	log.Println("[PABLO-HONEY] gold after:", gold)
 	return fichas, mult, gold, leftUses
 }
 
