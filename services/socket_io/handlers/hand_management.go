@@ -112,6 +112,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		if hand.Gold == 0 {
 			hand.Gold = player.PlayersMoney
 		}
+		log.Println("[HAND-PLAY-DEBUG] Username:", username, "jugando mano con oro:", hand.Gold)
 
 		// 3. Calculate base points
 		fichas, mult, handType, scored_cards := poker.BestHand(hand)
@@ -121,8 +122,9 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 		enhancedFichas, enhancedMult := poker.ApplyEnhancements(fichas, mult, scored_cards)
 
 		// 4. Apply jokers (passing the hand which contains the jokers)
-		finalFichas, finalMult, finalGold, jokersTriggered := poker.ApplyJokers(hand, hand.Jokers, enhancedFichas, enhancedMult, hand.Gold)
+		finalFichas, finalMult, finalGold, jokersTriggered := poker.ApplyJokers(hand, hand.Jokers, enhancedFichas, enhancedMult, hand.Gold, username)
 
+		log.Println("[HAND-PLAY-DEBUG] Jugador:", username, "despues de aplicar jokers tiene", finalGold, "oro")
 		// 5. Apply modifiers
 
 		// Apply activated modifiers
@@ -143,6 +145,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			client.Emit("error", gin.H{"error": "Error applying modifiers"})
 			return
 		}
+		log.Println("[HAND-PLAY-DEBUG] Jugador:", username, "despues de aplicar modificadores activos tiene", finalGold, "oro")
 
 		// Apply received modifiers
 		var receivedModifiers poker.Modifiers
@@ -162,6 +165,7 @@ func HandlePlayHand(redisClient *redis.RedisClient, client *socket.Socket,
 			client.Emit("error", gin.H{"error": "Error applying modifiers"})
 			return
 		}
+		log.Println("[HAND-PLAY-DEBUG] Jugador:", username, "despues de aplicar modificadores activos tiene", finalGold, "oro")
 
 		valorFinal := finalFichas * finalMult
 
