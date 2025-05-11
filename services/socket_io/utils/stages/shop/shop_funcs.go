@@ -126,29 +126,14 @@ func calculatePackPrice(packType int) int {
 func generateFixedModifiers(rng *rand.Rand, nextUniqueId *int) []redis.ShopItem {
 	modifiers := make([]redis.ShopItem, TOTAL_FIXED_VOUCHERS)
 
-	// Calculate total weight
-	totalWeight := 0
-	for _, modifier := range poker.ModifierWeights {
-		totalWeight += modifier.Weight
-	}
-
 	for i := range modifiers {
-		// Generate weighted random modifier ID
-		randomWeight := rng.Intn(totalWeight)
-		modifierID := 1 // Default to 1 in case something goes wrong
-
-		for _, modifier := range poker.ModifierWeights {
-			if randomWeight < modifier.Weight {
-				modifierID = modifier.ID
-				break
-			}
-			randomWeight -= modifier.Weight
-		}
+		// Simply generate a random number between 1 and 9
+		modifierID := rng.Intn(9) + 1
 
 		modifiers[i] = redis.ShopItem{
 			ID:         *nextUniqueId,
 			Type:       game_constants.MODIFIER_TYPE,
-			Price:      2, // 50 + rng.Intn(50), TODO, CHANGE, Emilliano estaba pobre
+			Price:      2, // Fixed price of 2
 			ModifierId: modifierID,
 		}
 
@@ -786,26 +771,11 @@ func ProcessPackSelection(redisClient *redis_services.RedisClient, lobby *redis.
 func generatePackVouchers(rng *rand.Rand, count int) []poker.Modifier {
 	vouchers := make([]poker.Modifier, count)
 
-	// Calculate total weight of modifiers - same approach as in generateFixedModifiers
-	totalWeight := 0
-	for _, modifier := range poker.ModifierWeights {
-		totalWeight += modifier.Weight
-	}
-
 	for i := 0; i < count; i++ {
-		// Generate weighted random modifier ID - identical to generateFixedModifiers
-		randomWeight := rng.Intn(totalWeight)
-		modifierID := 1 // Default to 1 in case something goes wrong
+		// Simply generate a random number between 1 and 9
+		modifierID := rng.Intn(9) + 1
 
-		for _, modifier := range poker.ModifierWeights {
-			if randomWeight < modifier.Weight {
-				modifierID = modifier.ID
-				break
-			}
-			randomWeight -= modifier.Weight
-		}
-
-		// Create a modifier directly instead of a card
+		// Create a modifier directly
 		vouchers[i] = poker.Modifier{
 			Value:    modifierID,
 			LeftUses: -1, // Set to -1 if it doesn't expire until manually used
